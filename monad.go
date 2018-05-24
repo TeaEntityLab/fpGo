@@ -25,6 +25,12 @@ func (self MonadDef) Or(or *interface{}) MonadDef {
 	return self
 }
 
+func (self MonadDef) Let(fn func()) {
+	if self.IsPresent() {
+		fn()
+	}
+}
+
 func (self MonadDef) Val() *interface{} {
 	return self.ref
 }
