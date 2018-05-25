@@ -85,6 +85,7 @@ func TestCast(t *testing.T) {
 	var i int
 	var err error
 
+	// Int
 	m = Monad.JustVal(1)
 	assert.Equal(t, "1", m.ToString())
 
@@ -98,6 +99,35 @@ func TestCast(t *testing.T) {
 	assert.Equal(t, 1, i)
 	assert.Equal(t, nil, err)
 
+	// Float32
+	m = Monad.JustVal(float32(1.1))
+	assert.Equal(t, "1.1", m.ToString())
+
+	f32, err = m.ToFloat32()
+	assert.Equal(t, float32(1.1), f32)
+	assert.Equal(t, nil, err)
+	f64, err = m.ToFloat64()
+	assert.Equal(t, float64(1.100000023841858), f64)
+	assert.Equal(t, nil, err)
+	i, err = m.ToInt()
+	assert.Equal(t, 1, i)
+	assert.Equal(t, nil, err)
+
+	// Float64
+	m = Monad.JustVal(float64(1.2))
+	assert.Equal(t, "1.2", m.ToString())
+
+	f32, err = m.ToFloat32()
+	assert.Equal(t, float32(1.2), f32)
+	assert.Equal(t, nil, err)
+	f64, err = m.ToFloat64()
+	assert.Equal(t, float64(1.2), f64)
+	assert.Equal(t, nil, err)
+	i, err = m.ToInt()
+	assert.Equal(t, 1, i)
+	assert.Equal(t, nil, err)
+
+	// Nil
 	m = Monad.Just(nil)
 	assert.Equal(t, "<nil>", m.ToString())
 
