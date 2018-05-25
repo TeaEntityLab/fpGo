@@ -26,9 +26,9 @@ func TestOr(t *testing.T) {
 	var m MonadDef
 
 	m = Monad.JustVal(1)
-	assert.Equal(t, 1, *m.OrVal(3).Val())
+	assert.Equal(t, 1, m.OrVal(3).Unwrap())
 	m = Monad.Just(nil)
-	assert.Equal(t, 3, *m.OrVal(3).Val())
+	assert.Equal(t, 3, m.OrVal(3).Unwrap())
 }
 
 func TestLet(t *testing.T) {
@@ -49,4 +49,16 @@ func TestLet(t *testing.T) {
 		letVal = 3
 	})
 	assert.Equal(t, 1, letVal)
+}
+
+func TestType(t *testing.T) {
+	var m MonadDef
+
+	m = Monad.JustVal(1)
+	assert.Equal(t, "int", m.Type())
+	assert.Equal(t, "1", m.ToString())
+	m = Monad.Just(nil)
+	assert.Equal(t, "*interface {}", m.Type())
+	assert.Equal(t, "<nil>", m.ToString())
+
 }
