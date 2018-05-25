@@ -77,3 +77,17 @@ func TestFilter(t *testing.T) {
 	assert.Equal(t, "{[2 3]}", Monad.JustVal(s).ToString())
 	assert.Equal(t, "[2 3]", Monad.JustVal(s.ToArray()).ToString())
 }
+
+func TestSort(t *testing.T) {
+	var s StreamDef
+
+	s = Stream.FromArrayInt([]int{11}).Extend(Stream.FromArrayInt([]int{2, 3, 4, 5})).Remove(4)
+	assert.Equal(t, "{[11 2 3 4]}", Monad.JustVal(s).ToString())
+	s = s.Sort(func(i, j int) bool {
+		var vali, _ = Monad.JustVal(s.Get(i)).ToInt()
+		var valj, _ = Monad.JustVal(s.Get(j)).ToInt()
+		return vali < valj
+	})
+	assert.Equal(t, "{[2 3 4 11]}", Monad.JustVal(s).ToString())
+	assert.Equal(t, "[2 3 4 11]", Monad.JustVal(s.ToArray()).ToString())
+}

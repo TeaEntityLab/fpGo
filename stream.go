@@ -4,6 +4,10 @@
 
 package fpGo
 
+import (
+	"sort"
+)
+
 type StreamDef struct {
 	list []interface{}
 }
@@ -104,10 +108,34 @@ func (self StreamDef) Append(item interface{}) StreamDef {
 	self.list = append(self.list, item)
 	return self
 }
-func (self StreamDef) Extend(stream StreamDef) StreamDef {
-	for _, item := range stream.ToArray() {
-		self.list = append(self.list, item)
+func (self StreamDef) Remove(index int) StreamDef {
+	if index >= 0 && index < self.Len() {
+		self.list = append(self.list[:index], self.list[index+1:]...)
 	}
+	return self
+}
+func (self StreamDef) Len() int {
+	return len(self.list)
+}
+func (self StreamDef) Extend(stream StreamDef) StreamDef {
+	var mine = self.list
+	var mineLen = len(mine)
+	var target = stream.ToArray()
+	var targetLen = len(target)
+
+	var new = make([]interface{}, mineLen+targetLen)
+	for i, item := range mine {
+		new[i] = item
+	}
+	for j, item := range target {
+		new[mineLen+j] = item
+	}
+	self.list = new
+
+	return self
+}
+func (self StreamDef) Sort(fn func(i, j int) bool) StreamDef {
+	sort.Slice(self.list, fn)
 	return self
 }
 
