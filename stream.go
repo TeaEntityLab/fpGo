@@ -78,12 +78,35 @@ func (self StreamDef) FromArray(list []interface{}) StreamDef {
 func (self StreamDef) ToArray() []interface{} {
 	return self.list
 }
+
 func (self StreamDef) Map(fn func(int) interface{}) StreamDef {
 
 	for i, _ := range self.list {
 		self.list[i] = fn(i)
 
 		// fmt.Println(fn(i))
+	}
+	return self
+}
+func (self StreamDef) Filter(fn func(int) bool) StreamDef {
+
+	var new StreamDef
+
+	for i, _ := range self.list {
+		if fn(i) {
+			new = new.Append(self.list[i])
+		}
+	}
+
+	return new
+}
+func (self StreamDef) Append(item interface{}) StreamDef {
+	self.list = append(self.list, item)
+	return self
+}
+func (self StreamDef) Extend(stream StreamDef) StreamDef {
+	for _, item := range stream.ToArray() {
+		self.list = append(self.list, item)
 	}
 	return self
 }

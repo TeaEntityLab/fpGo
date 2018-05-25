@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestMapReduce(t *testing.T) {
+func TestFromArrayMapReduce(t *testing.T) {
 	var s StreamDef
 	var tempString = ""
 
@@ -63,4 +63,17 @@ func TestMapReduce(t *testing.T) {
 	})
 	assert.Equal(t, "{[1 4 9 16]}", Monad.JustVal(s).ToString())
 	assert.Equal(t, "[1 4 9 16]", Monad.JustVal(s.ToArray()).ToString())
+}
+
+func TestFilter(t *testing.T) {
+	var s StreamDef
+
+	s = Stream.FromArrayInt([]int{1}).Extend(Stream.FromArrayInt([]int{2, 3, 4}))
+	assert.Equal(t, "{[1 2 3 4]}", Monad.JustVal(s).ToString())
+	s = s.Filter(func(index int) bool {
+		var val, _ = Monad.JustVal(s.Get(index)).ToInt()
+		return val > 1 && val < 4
+	})
+	assert.Equal(t, "{[2 3]}", Monad.JustVal(s).ToString())
+	assert.Equal(t, "[2 3]", Monad.JustVal(s.ToArray()).ToString())
 }
