@@ -17,77 +17,131 @@ func TestFromArrayMapReduce(t *testing.T) {
 	s = Stream.FromArrayMonad([]MonadDef{Monad.JustVal("1"), Monad.JustVal("2"), Monad.JustVal("3"), Monad.JustVal("4")})
 	tempString = ""
 	for _, v := range s.ToArray() {
-		tempString += Monad.JustVal(v).ToMonad().ToString()
+		tempString += Monad.Just(v).ToMonad().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
-	s.Map(func(index int) interface{} {
-		var val = Monad.JustVal(s.Get(index)).ToMonad().ToString()
-		return "v" + val
+	s = s.Map(func(index int) *interface{} {
+		var val = Monad.Just(s.Get(index)).ToMonad().ToString()
+		var result interface{} = "v" + val
+		return &result
 	})
-	assert.Equal(t, "&{[v1 v2 v3 v4]}", Monad.JustVal(s).ToString())
-	assert.Equal(t, "[v1 v2 v3 v4]", Monad.JustVal(s.ToArray()).ToString())
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "v1v2v3v4", tempString)
 	tempString = ""
 
 	s = Stream.FromArrayString([]string{"1", "2", "3", "4"})
-	assert.Equal(t, "&{[1 2 3 4]}", Monad.JustVal(s).ToString())
-	s.Map(func(index int) interface{} {
-		var val = Monad.JustVal(s.Get(index)).ToString()
-		return "v" + val
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "1234", tempString)
+	s = s.Map(func(index int) *interface{} {
+		var val = Monad.Just(s.Get(index)).ToString()
+		var result interface{} = "v" + val
+		return &result
 	})
-	assert.Equal(t, "&{[v1 v2 v3 v4]}", Monad.JustVal(s).ToString())
-	assert.Equal(t, "[v1 v2 v3 v4]", Monad.JustVal(s.ToArray()).ToString())
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "v1v2v3v4", tempString)
 
 	s = Stream.FromArrayInt([]int{1, 2, 3, 4})
-	assert.Equal(t, "&{[1 2 3 4]}", Monad.JustVal(s).ToString())
-	s.Map(func(index int) interface{} {
-		var val, _ = Monad.JustVal(s.Get(index)).ToInt()
-		return val * val
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "1234", tempString)
+	s = s.Map(func(index int) *interface{} {
+		var val, _ = Monad.Just(s.Get(index)).ToInt()
+		var result interface{} = val * val
+		return &result
 	})
-	assert.Equal(t, "&{[1 4 9 16]}", Monad.JustVal(s).ToString())
-	assert.Equal(t, "[1 4 9 16]", Monad.JustVal(s.ToArray()).ToString())
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "14916", tempString)
 
 	s = Stream.FromArrayFloat32([]float32{1, 2, 3, 4})
-	assert.Equal(t, "&{[1 2 3 4]}", Monad.JustVal(s).ToString())
-	s.Map(func(index int) interface{} {
-		var val, _ = Monad.JustVal(s.Get(index)).ToFloat32()
-		return val * val
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "1234", tempString)
+	s = s.Map(func(index int) *interface{} {
+		var val, _ = Monad.Just(s.Get(index)).ToFloat32()
+		var result interface{} = val * val
+		return &result
 	})
-	assert.Equal(t, "&{[1 4 9 16]}", Monad.JustVal(s).ToString())
-	assert.Equal(t, "[1 4 9 16]", Monad.JustVal(s.ToArray()).ToString())
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "14916", tempString)
 
 	s = Stream.FromArrayFloat64([]float64{1, 2, 3, 4})
-	assert.Equal(t, "&{[1 2 3 4]}", Monad.JustVal(s).ToString())
-	s.Map(func(index int) interface{} {
-		var val, _ = Monad.JustVal(s.Get(index)).ToFloat64()
-		return val * val
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "1234", tempString)
+
+	s = s.Map(func(index int) *interface{} {
+		var val, _ = Monad.Just(s.Get(index)).ToFloat64()
+		var result interface{} = val * val
+		return &result
 	})
-	assert.Equal(t, "&{[1 4 9 16]}", Monad.JustVal(s).ToString())
-	assert.Equal(t, "[1 4 9 16]", Monad.JustVal(s.ToArray()).ToString())
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "14916", tempString)
 }
 
 func TestFilter(t *testing.T) {
 	var s *StreamDef
+	var tempString = ""
 
 	s = Stream.FromArrayInt([]int{1}).Extend(Stream.FromArrayInt([]int{2, 3, 4}))
-	assert.Equal(t, "&{[1 2 3 4]}", Monad.JustVal(s).ToString())
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "1234", tempString)
+
 	s = s.Filter(func(index int) bool {
-		var val, _ = Monad.JustVal(s.Get(index)).ToInt()
+		var val, _ = Monad.Just(s.Get(index)).ToInt()
 		return val > 1 && val < 4
 	})
-	assert.Equal(t, "&{[2 3]}", Monad.JustVal(s).ToString())
-	assert.Equal(t, "[2 3]", Monad.JustVal(s.ToArray()).ToString())
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "23", tempString)
 }
 
 func TestSort(t *testing.T) {
 	var s *StreamDef
+	var tempString = ""
 
 	s = Stream.FromArrayInt([]int{11}).Extend(Stream.FromArrayInt([]int{2, 3, 4, 5})).Remove(4)
-	assert.Equal(t, "&{[11 2 3 4]}", Monad.JustVal(s).ToString())
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "11234", tempString)
+
 	s = s.Sort(func(i, j int) bool {
-		var vali, _ = Monad.JustVal(s.Get(i)).ToInt()
-		var valj, _ = Monad.JustVal(s.Get(j)).ToInt()
+		var vali, _ = Monad.Just(s.Get(i)).ToInt()
+		var valj, _ = Monad.Just(s.Get(j)).ToInt()
 		return vali < valj
 	})
-	assert.Equal(t, "&{[2 3 4 11]}", Monad.JustVal(s).ToString())
-	assert.Equal(t, "[2 3 4 11]", Monad.JustVal(s.ToArray()).ToString())
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "23411", tempString)
 }
