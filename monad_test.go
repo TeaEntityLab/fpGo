@@ -65,8 +65,6 @@ func TestType(t *testing.T) {
 	assert.Equal(t, true, m.IsType(reflect.TypeOf(1)))
 	assert.Equal(t, false, m.IsType(reflect.TypeOf(nil)))
 
-	assert.Equal(t, "1", m.ToString())
-
 	m = Monad.Just(nil)
 	assert.Equal(t, reflect.Ptr, m.Kind())
 	assert.Equal(t, false, m.IsKind(reflect.Int))
