@@ -31,6 +31,7 @@ func (self MonadDef) Or(or *interface{}) MonadDef {
 
 	return self
 }
+
 func (self MonadDef) ToString() string {
 	if self.IsNil() {
 		return "<nil>"
@@ -45,6 +46,18 @@ func (self MonadDef) ToString() string {
 		return self.Unwrap().(string)
 	}
 }
+func (self MonadDef) ToMonad() MonadDef {
+	if self.IsNil() {
+		return self
+	}
+
+	switch self.Unwrap().(type) {
+	default:
+		return self
+	case MonadDef:
+		return self.Unwrap().(MonadDef)
+	}
+}
 func (self MonadDef) ToFloat64() (float64, error) {
 	if self.IsNil() {
 		return float64(0), errors.New("<nil>")
@@ -55,8 +68,21 @@ func (self MonadDef) ToFloat64() (float64, error) {
 		return float64(0), errors.New("unsupported")
 	case string:
 		return strconv.ParseFloat(self.ToString(), 64)
+	case bool:
+		val, err := self.ToBool()
+		if val {
+			return float64(1), err
+		} else {
+			return float64(0), err
+		}
 	case int:
 		val, err := self.ToInt()
+		return float64(val), err
+	case int32:
+		val, err := self.ToInt32()
+		return float64(val), err
+	case int64:
+		val, err := self.ToInt64()
 		return float64(val), err
 	case float32:
 		val, err := self.ToFloat32()
@@ -76,8 +102,21 @@ func (self MonadDef) ToFloat32() (float32, error) {
 	case string:
 		val, err := strconv.ParseFloat(self.ToString(), 32)
 		return float32(val), err
+	case bool:
+		val, err := self.ToBool()
+		if val {
+			return float32(1), err
+		} else {
+			return float32(0), err
+		}
 	case int:
 		val, err := self.ToInt()
+		return float32(val), err
+	case int32:
+		val, err := self.ToInt32()
+		return float32(val), err
+	case int64:
+		val, err := self.ToInt64()
 		return float32(val), err
 	case float32:
 		return self.Unwrap().(float32), nil
@@ -96,14 +135,123 @@ func (self MonadDef) ToInt() (int, error) {
 		return int(0), errors.New("unsupported")
 	case string:
 		return strconv.Atoi(self.ToString())
+	case bool:
+		val, err := self.ToBool()
+		if val {
+			return int(1), err
+		} else {
+			return int(0), err
+		}
 	case int:
 		return self.Unwrap().(int), nil
+	case int32:
+		val, err := self.ToInt32()
+		return int(val), err
+	case int64:
+		val, err := self.ToInt64()
+		return int(val), err
 	case float32:
 		val, err := self.ToFloat32()
 		return int(val), err
 	case float64:
 		val, err := self.ToFloat64()
 		return int(val), err
+	}
+}
+func (self MonadDef) ToInt32() (int32, error) {
+	if self.IsNil() {
+		return int32(0), errors.New("<nil>")
+	}
+
+	switch self.Unwrap().(type) {
+	default:
+		return int32(0), errors.New("unsupported")
+	case string:
+		val, err := self.ToInt64()
+		return int32(val), err
+	case bool:
+		val, err := self.ToBool()
+		if val {
+			return int32(1), err
+		} else {
+			return int32(0), err
+		}
+	case int:
+		val, err := self.ToInt()
+		return int32(val), err
+	case int32:
+		return self.Unwrap().(int32), nil
+	case int64:
+		val, err := self.ToInt64()
+		return int32(val), err
+	case float32:
+		val, err := self.ToFloat32()
+		return int32(val), err
+	case float64:
+		val, err := self.ToFloat64()
+		return int32(val), err
+	}
+}
+func (self MonadDef) ToInt64() (int64, error) {
+	if self.IsNil() {
+		return int64(0), errors.New("<nil>")
+	}
+
+	switch self.Unwrap().(type) {
+	default:
+		return int64(0), errors.New("unsupported")
+	case string:
+		return strconv.ParseInt(self.ToString(), 10, 32)
+	case bool:
+		val, err := self.ToBool()
+		if val {
+			return int64(1), err
+		} else {
+			return int64(0), err
+		}
+	case int:
+		val, err := self.ToInt()
+		return int64(val), err
+	case int32:
+		val, err := self.ToInt32()
+		return int64(val), err
+	case int64:
+		return self.Unwrap().(int64), nil
+	case float32:
+		val, err := self.ToFloat32()
+		return int64(val), err
+	case float64:
+		val, err := self.ToFloat64()
+		return int64(val), err
+	}
+}
+func (self MonadDef) ToBool() (bool, error) {
+	if self.IsNil() {
+		return bool(false), errors.New("<nil>")
+	}
+
+	switch self.Unwrap().(type) {
+	default:
+		return bool(false), errors.New("unsupported")
+	case string:
+		return strconv.ParseBool(self.ToString())
+	case bool:
+		return self.Unwrap().(bool), nil
+	case int:
+		val, err := self.ToInt()
+		return bool(val != 0), err
+	case int32:
+		val, err := self.ToInt32()
+		return bool(val != 0), err
+	case int64:
+		val, err := self.ToInt64()
+		return bool(val != 0), err
+	case float32:
+		val, err := self.ToFloat32()
+		return bool(val != 0), err
+	case float64:
+		val, err := self.ToFloat64()
+		return bool(val != 0), err
 	}
 }
 
@@ -114,9 +262,17 @@ func (self MonadDef) Let(fn func()) {
 }
 
 func (self MonadDef) Ref() *interface{} {
+	if self.IsNil() {
+		return nil
+	}
+
 	return self.ref
 }
 func (self MonadDef) Unwrap() interface{} {
+	if self.IsNil() {
+		return nil
+	}
+
 	return *self.ref
 }
 func (self MonadDef) IsPresent() bool {

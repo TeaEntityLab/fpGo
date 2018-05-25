@@ -8,6 +8,14 @@ type StreamDef struct {
 	list []interface{}
 }
 
+func (self StreamDef) FromArrayMonad(old []MonadDef) StreamDef {
+	new := make([]interface{}, len(old))
+	for i, v := range old {
+		new[i] = v
+	}
+
+	return self.FromArray(new)
+}
 func (self StreamDef) FromArrayString(old []string) StreamDef {
 	new := make([]interface{}, len(old))
 	for i, v := range old {
@@ -16,7 +24,31 @@ func (self StreamDef) FromArrayString(old []string) StreamDef {
 
 	return self.FromArray(new)
 }
+func (self StreamDef) FromArrayBool(old []bool) StreamDef {
+	new := make([]interface{}, len(old))
+	for i, v := range old {
+		new[i] = v
+	}
+
+	return self.FromArray(new)
+}
 func (self StreamDef) FromArrayInt(old []int) StreamDef {
+	new := make([]interface{}, len(old))
+	for i, v := range old {
+		new[i] = v
+	}
+
+	return self.FromArray(new)
+}
+func (self StreamDef) FromArrayInt32(old []int32) StreamDef {
+	new := make([]interface{}, len(old))
+	for i, v := range old {
+		new[i] = v
+	}
+
+	return self.FromArray(new)
+}
+func (self StreamDef) FromArrayInt64(old []int64) StreamDef {
 	new := make([]interface{}, len(old))
 	for i, v := range old {
 		new[i] = v
