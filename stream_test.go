@@ -10,7 +10,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	var s *StreamDef
 	var tempString = ""
 
-	s = Stream.FromArrayMonad([]MonadDef{Monad.JustVal("1"), Monad.JustVal("2"), Monad.JustVal("3"), Monad.JustVal("4")})
+	s = Stream.FromArrayMonad([]MonadProto{Monad.JustVal("1"), Monad.JustVal("2"), Monad.JustVal("3"), Monad.JustVal("4")})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Monad.Just(v).ToMonad().ToString()

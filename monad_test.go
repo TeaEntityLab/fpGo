@@ -9,7 +9,7 @@ import (
 )
 
 func TestIsPresent(t *testing.T) {
-	var m MonadDef
+	var m MonadProto
 
 	m = Monad.JustVal(1)
 	assert.Equal(t, true, m.IsPresent())
@@ -21,7 +21,7 @@ func TestIsPresent(t *testing.T) {
 }
 
 func TestOr(t *testing.T) {
-	var m MonadDef
+	var m MonadProto
 
 	m = Monad.JustVal(1)
 	assert.Equal(t, 1, m.OrVal(3).Unwrap())
@@ -30,7 +30,7 @@ func TestOr(t *testing.T) {
 }
 
 func TestLet(t *testing.T) {
-	var m MonadDef
+	var m MonadProto
 
 	var letVal int
 
@@ -50,7 +50,7 @@ func TestLet(t *testing.T) {
 }
 
 func TestType(t *testing.T) {
-	var m MonadDef
+	var m MonadProto
 
 	m = Monad.JustVal(1)
 	assert.Equal(t, reflect.Int, m.Kind())
@@ -72,7 +72,7 @@ func TestType(t *testing.T) {
 }
 
 func TestCast(t *testing.T) {
-	var m MonadDef
+	var m MonadProto
 
 	var f32 float32
 	var f64 float64

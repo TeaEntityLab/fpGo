@@ -7,6 +7,35 @@ import (
 	"strconv"
 )
 
+type MonadProto interface {
+	JustVal(in interface{}) MonadDef
+	Just(in *interface{}) MonadDef
+	AsyncVal(in interface{}) MonadDefAsync
+	Async(in *interface{}) MonadDefAsync
+	OrVal(or interface{}) MonadProto
+	Or(or *interface{}) MonadProto
+	FlatMap(fn func(MonadProto) MonadProto) MonadProto
+
+	ToString() string
+	ToMonad() MonadProto
+	ToFloat64() (float64, error)
+	ToFloat32() (float32, error)
+	ToInt() (int, error)
+	ToInt32() (int32, error)
+	ToInt64() (int64, error)
+	ToBool() (bool, error)
+
+	Let(fn func())
+	Ref() *interface{}
+	Unwrap() interface{}
+	IsPresent() bool
+	IsNil() bool
+
+	Type() reflect.Type
+	Kind() reflect.Kind
+	IsType(t reflect.Type) bool
+	IsKind(t reflect.Kind) bool
+}
 type MonadDef struct {
 	ref *interface{}
 }
@@ -17,15 +46,28 @@ func (self MonadDef) JustVal(in interface{}) MonadDef {
 func (self MonadDef) Just(in *interface{}) MonadDef {
 	return MonadDef{ref: in}
 }
-func (self MonadDef) OrVal(or interface{}) MonadDef {
+func (self MonadDef) AsyncVal(in interface{}) MonadDefAsync {
+	m := MonadDefAsync{}
+	m.MonadDef.ref = &in
+	return m
+}
+func (self MonadDef) Async(in *interface{}) MonadDefAsync {
+	m := MonadDefAsync{}
+	m.MonadDef.ref = in
+	return m
+}
+func (self MonadDef) OrVal(or interface{}) MonadProto {
 	return self.Or(&or)
 }
-func (self MonadDef) Or(or *interface{}) MonadDef {
+func (self MonadDef) Or(or *interface{}) MonadProto {
 	if self.IsNil() {
 		return MonadDef{ref: or}
 	}
 
 	return self
+}
+func (self MonadDef) FlatMap(fn func(MonadProto) MonadProto) MonadProto {
+	return fn(self)
 }
 
 func (self MonadDef) ToString() string {
@@ -42,7 +84,7 @@ func (self MonadDef) ToString() string {
 		return self.Unwrap().(string)
 	}
 }
-func (self MonadDef) ToMonad() MonadDef {
+func (self MonadDef) ToMonad() MonadProto {
 	if self.IsNil() {
 		return self
 	}
@@ -50,8 +92,8 @@ func (self MonadDef) ToMonad() MonadDef {
 	switch self.Unwrap().(type) {
 	default:
 		return self
-	case MonadDef:
-		return self.Unwrap().(MonadDef)
+	case MonadProto:
+		return self.Unwrap().(MonadProto)
 	}
 }
 func (self MonadDef) ToFloat64() (float64, error) {
