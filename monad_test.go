@@ -49,18 +49,33 @@ func TestLet(t *testing.T) {
 	assert.Equal(t, 1, letVal)
 }
 
-func TestFlatMap(t *testing.T) {
+func TestFlatMapSubscription(t *testing.T) {
 	var m MonadProto
 
 	var expectedInt int
+	var actualInt int
 
 	expectedInt = 2
+	actualInt = 0
 	m = Monad.JustVal(1)
 	m = m.FlatMap(func(in MonadProto) MonadProto {
 		val, _ := in.ToInt()
 		return Monad.JustVal(val + 1)
 	})
-	assert.Equal(t, expectedInt, m.Unwrap())
+	actualInt, _ = m.ToInt()
+	assert.Equal(t, expectedInt, actualInt)
+
+	expectedInt = 3
+	actualInt = 0
+	m = Monad.JustVal(1)
+	m.Subscribe(Subscription{})
+	m.Subscribe(Subscription{
+		OnNext: func(in MonadProto) {
+			val, _ := in.ToInt()
+			actualInt = val + 2
+		},
+	})
+	assert.Equal(t, expectedInt, actualInt)
 
 }
 

@@ -15,6 +15,7 @@ type MonadProto interface {
 	OrVal(or interface{}) MonadProto
 	Or(or *interface{}) MonadProto
 	FlatMap(fn func(MonadProto) MonadProto) MonadProto
+	Subscribe(s Subscription)
 
 	ToMonad() MonadProto
 	ToAsync() MonadDefAsync
@@ -40,6 +41,9 @@ type MonadProto interface {
 }
 type MonadDef struct {
 	ref *interface{}
+}
+type Subscription struct {
+	OnNext func(MonadProto)
 }
 
 func (self MonadDef) JustVal(in interface{}) MonadDef {
@@ -70,6 +74,11 @@ func (self MonadDef) Or(or *interface{}) MonadProto {
 }
 func (self MonadDef) FlatMap(fn func(MonadProto) MonadProto) MonadProto {
 	return fn(self)
+}
+func (self MonadDef) Subscribe(s Subscription) {
+	if s.OnNext != nil {
+		s.OnNext(self)
+	}
 }
 
 func (self MonadDef) ToString() string {
