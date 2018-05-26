@@ -101,7 +101,13 @@ func TestFilter(t *testing.T) {
 	var s *StreamDef
 	var tempString = ""
 
-	s = Stream.FromArrayInt([]int{1}).Extend(Stream.FromArrayInt([]int{2, 3, 4}))
+	s = Stream.FromArrayInt([]int{}).Append(Monad.JustVal(1).Ref()).Extend(Stream.FromArrayInt([]int{2, 3, 4})).Extend(Stream.FromArray([]*interface{}{Monad.Just(nil).Ref()}))
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Monad.Just(v).ToMonad().ToString()
+	}
+	assert.Equal(t, "1234<nil>", tempString)
+	s = s.Distinct()
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Monad.Just(v).ToMonad().ToString()
@@ -109,8 +115,9 @@ func TestFilter(t *testing.T) {
 	assert.Equal(t, "1234", tempString)
 
 	s = s.Filter(func(index int) bool {
-		var val, _ = Monad.Just(s.Get(index)).ToInt()
-		return val > 1 && val < 4
+		var val, err = Monad.Just(s.Get(index)).ToInt()
+
+		return err == nil && val > 1 && val < 4
 	})
 	tempString = ""
 	for _, v := range s.ToArray() {

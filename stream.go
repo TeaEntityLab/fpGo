@@ -99,15 +99,23 @@ func (self *StreamDef) Map(fn func(int) *interface{}) *StreamDef {
 }
 func (self *StreamDef) Filter(fn func(int) bool) *StreamDef {
 
-	var new = &StreamDef{}
+	var list = make([]*interface{}, self.Len())
+
+	var newLen = 0
 
 	for i, _ := range self.list {
 		if fn(i) {
-			new = new.Append(self.list[i])
+			newLen += 1
+			list[newLen-1] = self.list[i]
 		}
 	}
 
-	return new
+	return &StreamDef{list: list[:newLen]}
+}
+func (self *StreamDef) Distinct() *StreamDef {
+	return self.Filter(func(i int) bool {
+		return self.list[i] != nil
+	})
 }
 func (self *StreamDef) Append(item *interface{}) *StreamDef {
 	self.list = append(self.list, item)
