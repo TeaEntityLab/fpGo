@@ -16,8 +16,10 @@ type MonadProto interface {
 	Or(or *interface{}) MonadProto
 	FlatMap(fn func(MonadProto) MonadProto) MonadProto
 
-	ToString() string
 	ToMonad() MonadProto
+	ToAsync() MonadDefAsync
+
+	ToString() string
 	ToFloat64() (float64, error)
 	ToFloat32() (float32, error)
 	ToInt() (int, error)
@@ -75,13 +77,14 @@ func (self MonadDef) ToString() string {
 		return "<nil>"
 	}
 
-	switch self.Unwrap().(type) {
+	ref := self.ref
+	switch (*ref).(type) {
 	default:
-		return fmt.Sprintf("%v", self.Unwrap())
+		return fmt.Sprintf("%v", *ref)
 	case int:
-		return strconv.Itoa(self.Unwrap().(int))
+		return strconv.Itoa((*ref).(int))
 	case string:
-		return self.Unwrap().(string)
+		return (*ref).(string)
 	}
 }
 func (self MonadDef) ToMonad() MonadProto {
@@ -89,11 +92,22 @@ func (self MonadDef) ToMonad() MonadProto {
 		return self
 	}
 
-	switch self.Unwrap().(type) {
+	var ref = self.ref
+	switch (*ref).(type) {
 	default:
 		return self
 	case MonadProto:
-		return self.Unwrap().(MonadProto)
+		return (*ref).(MonadProto)
+	}
+}
+func (self MonadDef) ToAsync() MonadDefAsync {
+	var ref = self.ref
+	switch (*ref).(type) {
+	default:
+		return self.Async(self.ref)
+	case MonadDefAsync:
+		var m MonadDefAsync = (*ref).(MonadDefAsync)
+		return m
 	}
 }
 func (self MonadDef) ToFloat64() (float64, error) {
@@ -101,7 +115,8 @@ func (self MonadDef) ToFloat64() (float64, error) {
 		return float64(0), errors.New("<nil>")
 	}
 
-	switch self.Unwrap().(type) {
+	ref := self.ref
+	switch (*ref).(type) {
 	default:
 		return float64(0), errors.New("unsupported")
 	case string:
@@ -126,7 +141,7 @@ func (self MonadDef) ToFloat64() (float64, error) {
 		val, err := self.ToFloat32()
 		return float64(val), err
 	case float64:
-		return self.Unwrap().(float64), nil
+		return (*ref).(float64), nil
 	}
 }
 func (self MonadDef) ToFloat32() (float32, error) {
@@ -134,7 +149,8 @@ func (self MonadDef) ToFloat32() (float32, error) {
 		return float32(0), errors.New("<nil>")
 	}
 
-	switch self.Unwrap().(type) {
+	ref := self.ref
+	switch (*ref).(type) {
 	default:
 		return float32(0), errors.New("unsupported")
 	case string:
@@ -157,7 +173,7 @@ func (self MonadDef) ToFloat32() (float32, error) {
 		val, err := self.ToInt64()
 		return float32(val), err
 	case float32:
-		return self.Unwrap().(float32), nil
+		return (*ref).(float32), nil
 	case float64:
 		val, err := self.ToFloat64()
 		return float32(val), err
@@ -168,7 +184,8 @@ func (self MonadDef) ToInt() (int, error) {
 		return int(0), errors.New("<nil>")
 	}
 
-	switch self.Unwrap().(type) {
+	ref := self.ref
+	switch (*ref).(type) {
 	default:
 		return int(0), errors.New("unsupported")
 	case string:
@@ -181,7 +198,7 @@ func (self MonadDef) ToInt() (int, error) {
 			return int(0), err
 		}
 	case int:
-		return self.Unwrap().(int), nil
+		return (*ref).(int), nil
 	case int32:
 		val, err := self.ToInt32()
 		return int(val), err
@@ -201,7 +218,8 @@ func (self MonadDef) ToInt32() (int32, error) {
 		return int32(0), errors.New("<nil>")
 	}
 
-	switch self.Unwrap().(type) {
+	ref := self.ref
+	switch (*ref).(type) {
 	default:
 		return int32(0), errors.New("unsupported")
 	case string:
@@ -218,7 +236,7 @@ func (self MonadDef) ToInt32() (int32, error) {
 		val, err := self.ToInt()
 		return int32(val), err
 	case int32:
-		return self.Unwrap().(int32), nil
+		return (*ref).(int32), nil
 	case int64:
 		val, err := self.ToInt64()
 		return int32(val), err
@@ -235,7 +253,8 @@ func (self MonadDef) ToInt64() (int64, error) {
 		return int64(0), errors.New("<nil>")
 	}
 
-	switch self.Unwrap().(type) {
+	ref := self.ref
+	switch (*ref).(type) {
 	default:
 		return int64(0), errors.New("unsupported")
 	case string:
@@ -254,7 +273,7 @@ func (self MonadDef) ToInt64() (int64, error) {
 		val, err := self.ToInt32()
 		return int64(val), err
 	case int64:
-		return self.Unwrap().(int64), nil
+		return (*ref).(int64), nil
 	case float32:
 		val, err := self.ToFloat32()
 		return int64(val), err
@@ -268,13 +287,14 @@ func (self MonadDef) ToBool() (bool, error) {
 		return bool(false), errors.New("<nil>")
 	}
 
-	switch self.Unwrap().(type) {
+	ref := self.ref
+	switch (*ref).(type) {
 	default:
 		return bool(false), errors.New("unsupported")
 	case string:
 		return strconv.ParseBool(self.ToString())
 	case bool:
-		return self.Unwrap().(bool), nil
+		return (*ref).(bool), nil
 	case int:
 		val, err := self.ToInt()
 		return bool(val != 0), err

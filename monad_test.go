@@ -49,6 +49,21 @@ func TestLet(t *testing.T) {
 	assert.Equal(t, 1, letVal)
 }
 
+func TestFlatMap(t *testing.T) {
+	var m MonadProto
+
+	var expectedInt int
+
+	expectedInt = 2
+	m = Monad.JustVal(1)
+	m = m.FlatMap(func(in MonadProto) MonadProto {
+		val, _ := in.ToInt()
+		return Monad.JustVal(val + 1)
+	})
+	assert.Equal(t, expectedInt, m.Unwrap())
+
+}
+
 func TestType(t *testing.T) {
 	var m MonadProto
 
