@@ -8,7 +8,7 @@ type StreamDef struct {
 	list []*interface{}
 }
 
-func (self *StreamDef) FromArrayMonad(old []MonadProto) *StreamDef {
+func (self *StreamDef) FromArrayMonad(old []MonadDef) *StreamDef {
 	new := make([]*interface{}, len(old))
 	for i, v := range old {
 		var item interface{} = v

@@ -6,10 +6,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAsync(t *testing.T) {
-	var m MonadProto
+func TestMonadIO(t *testing.T) {
+	var m *MonadIODef
+	var actualInt int
 
-	m = Monad.AsyncVal(1)
-	assert.Equal(t, true, m.IsPresent())
-	assert.Equal(t, 1, m.Unwrap())
+	m = MonadIO.JustVal(1)
+	actualInt = 0
+	m.Subscribe(Subscription{
+		OnNext: func(in *interface{}) {
+			actualInt, _ = Monad.Just(in).ToInt()
+		},
+	})
+	assert.Equal(t, 1, actualInt)
 }

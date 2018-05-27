@@ -9,7 +9,7 @@ import (
 )
 
 func TestIsPresent(t *testing.T) {
-	var m MonadProto
+	var m MonadDef
 
 	m = Monad.JustVal(1)
 	assert.Equal(t, true, m.IsPresent())
@@ -21,7 +21,7 @@ func TestIsPresent(t *testing.T) {
 }
 
 func TestOr(t *testing.T) {
-	var m MonadProto
+	var m MonadDef
 
 	m = Monad.JustVal(1)
 	assert.Equal(t, 1, m.OrVal(3).Unwrap())
@@ -30,7 +30,7 @@ func TestOr(t *testing.T) {
 }
 
 func TestLet(t *testing.T) {
-	var m MonadProto
+	var m MonadDef
 
 	var letVal int
 
@@ -49,38 +49,8 @@ func TestLet(t *testing.T) {
 	assert.Equal(t, 1, letVal)
 }
 
-func TestFlatMapSubscription(t *testing.T) {
-	var m MonadProto
-
-	var expectedInt int
-	var actualInt int
-
-	expectedInt = 2
-	actualInt = 0
-	m = Monad.JustVal(1)
-	m = m.FlatMap(func(in MonadProto) MonadProto {
-		val, _ := in.ToInt()
-		return Monad.JustVal(val + 1)
-	})
-	actualInt, _ = m.ToInt()
-	assert.Equal(t, expectedInt, actualInt)
-
-	expectedInt = 3
-	actualInt = 0
-	m = Monad.JustVal(1)
-	m.Subscribe(Subscription{})
-	m.Subscribe(Subscription{
-		OnNext: func(in MonadProto) {
-			val, _ := in.ToInt()
-			actualInt = val + 2
-		},
-	})
-	assert.Equal(t, expectedInt, actualInt)
-
-}
-
 func TestType(t *testing.T) {
-	var m MonadProto
+	var m MonadDef
 
 	m = Monad.JustVal(1)
 	assert.Equal(t, reflect.Int, m.Kind())
@@ -102,7 +72,7 @@ func TestType(t *testing.T) {
 }
 
 func TestCast(t *testing.T) {
-	var m MonadProto
+	var m MonadDef
 
 	var f32 float32
 	var f64 float64
