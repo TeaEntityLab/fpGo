@@ -22,7 +22,7 @@ func YieldIO(target MonadIODef) *interface{} {
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	target.ObserveOn(nil).SubscribeOn(nil).Subscribe(Subscription{
+	target.SubscribeOn(nil).Subscribe(Subscription{
 		OnNext: func(in *interface{}) {
 			result = in
 			wg.Done()
