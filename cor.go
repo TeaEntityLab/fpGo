@@ -45,8 +45,8 @@ func (self *CorDef) Start(in *interface{}) {
 		return
 	}
 
+	self.receive(nil, in)
 	go func() {
-		self.receive(nil, in)
 		self.effect()
 		self.close()
 	}()
