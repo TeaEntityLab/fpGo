@@ -18,6 +18,9 @@ func (self MonadIODef) Just(in *interface{}) *MonadIODef {
 		return in
 	}}
 }
+func (self *MonadIODef) New(effect func() *interface{}) *MonadIODef {
+	return &MonadIODef{effect: effect}
+}
 
 func (self *MonadIODef) FlatMap(fn func(*interface{}) *MonadIODef) *MonadIODef {
 

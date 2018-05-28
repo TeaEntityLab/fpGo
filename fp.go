@@ -1,7 +1,5 @@
 package fpGo
 
-import "sync"
-
 type fnObj func(*interface{}) *interface{}
 
 func Compose(fnList ...fnObj) fnObj {
@@ -15,20 +13,4 @@ func Compose(fnList ...fnObj) fnObj {
 
 		return f(Compose(nextFnList...)(s))
 	}
-}
-
-func YieldIO(target MonadIODef) *interface{} {
-	var result *interface{} = nil
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	target.SubscribeOn(nil).Subscribe(Subscription{
-		OnNext: func(in *interface{}) {
-			result = in
-			wg.Done()
-		},
-	})
-	wg.Wait()
-
-	return result
 }
