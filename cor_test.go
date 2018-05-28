@@ -43,13 +43,19 @@ func TestCorYield(t *testing.T) {
 	testee = Cor.New(func() {
 		self := testee
 
+		v := 0
+		var m MonadDef
+
 		logMessage("cor", "initialized")
 
-		v, _ := Monad.Just(self.Yield()).ToInt()
+		v, _ = Monad.Just(self.Yield()).ToInt()
 		actualInt = v + 1
 
+		// v, _ = Monad.Just(self.YieldFromIO(MonadIO.JustVal(1))).ToInt()
+		// actualInt += v
+
 		logMessage("c1", c1.IsDone())
-		m := Monad.Just(self.YieldFrom(c1, nil)).ToMonad()
+		m = Monad.Just(self.YieldFrom(c1, nil)).ToMonad()
 		logMessage("c1", c1.IsDone())
 
 		logMessage(m)
