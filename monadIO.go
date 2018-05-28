@@ -2,9 +2,14 @@ package fpGo
 
 type MonadIODef struct {
 	effect func() *interface{}
+
+	obOn  *HandlerDef
+	subOn *HandlerDef
 }
 type Subscription struct {
 	OnNext func(*interface{})
+
+	originMonadIO *MonadIODef
 }
 
 func (self MonadIODef) JustVal(in interface{}) *MonadIODef {
@@ -25,8 +30,27 @@ func (self *MonadIODef) FlatMap(fn func(*interface{}) *MonadIODef) *MonadIODef {
 
 }
 func (self *MonadIODef) Subscribe(s Subscription) *Subscription {
+	s.originMonadIO = self
 	if s.OnNext != nil {
-		s.OnNext(self.doEffect())
+		var result *interface{}
+
+		doSub := func() {
+			s.OnNext(result)
+		}
+		doOb := func() {
+			result = self.doEffect()
+
+			if self.subOn != nil {
+				self.subOn.Post(doSub)
+			} else {
+				doSub()
+			}
+		}
+		if self.obOn != nil {
+			self.obOn.Post(doOb)
+		} else {
+			doOb()
+		}
 	}
 
 	return &s
