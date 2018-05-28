@@ -8,8 +8,6 @@ type MonadIODef struct {
 }
 type Subscription struct {
 	OnNext func(*interface{})
-
-	originMonadIO *MonadIODef
 }
 
 func (self MonadIODef) JustVal(in interface{}) *MonadIODef {
@@ -30,7 +28,20 @@ func (self *MonadIODef) FlatMap(fn func(*interface{}) *MonadIODef) *MonadIODef {
 
 }
 func (self *MonadIODef) Subscribe(s Subscription) *Subscription {
-	s.originMonadIO = self
+	obOn := self.obOn
+	subOn := self.subOn
+	return self.doSubscribe(&s, obOn, subOn)
+}
+func (self *MonadIODef) SubscribeOn(h *HandlerDef) *MonadIODef {
+	self.subOn = h
+	return self
+}
+func (self *MonadIODef) ObserveOn(h *HandlerDef) *MonadIODef {
+	self.obOn = h
+	return self
+}
+func (self *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, subOn *HandlerDef) *Subscription {
+
 	if s.OnNext != nil {
 		var result *interface{}
 
@@ -40,20 +51,20 @@ func (self *MonadIODef) Subscribe(s Subscription) *Subscription {
 		doOb := func() {
 			result = self.doEffect()
 
-			if self.subOn != nil {
-				self.subOn.Post(doSub)
+			if subOn != nil {
+				subOn.Post(doSub)
 			} else {
 				doSub()
 			}
 		}
-		if self.obOn != nil {
-			self.obOn.Post(doOb)
+		if obOn != nil {
+			obOn.Post(doOb)
 		} else {
 			doOb()
 		}
 	}
 
-	return &s
+	return s
 }
 func (self *MonadIODef) doEffect() *interface{} {
 	return self.effect()
