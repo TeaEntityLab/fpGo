@@ -57,7 +57,7 @@ func TestCorYield(t *testing.T) {
 		logMessage(self, "s", 6)
 
 		logMessage(self, "c1", c1.IsDone())
-		c1.WaitStart()
+		logMessage(self, "c1", c1.IsStarted())
 		m = Monad.Just(self.YieldFrom(c1, nil)).ToMonad()
 		logMessage(self, "c1", c1.IsDone())
 

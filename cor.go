@@ -29,7 +29,6 @@ type CorDef struct {
 	isStarted AtomBool
 	isClosed  AtomBool
 	closedM   sync.Mutex
-	wgStarted sync.WaitGroup
 
 	opCh     *chan *CorOp
 	resultCh *chan *interface{}
@@ -41,7 +40,6 @@ func (self *CorDef) New(effect func()) *CorDef {
 	opCh := make(chan *CorOp, 5)
 	resultCh := make(chan *interface{}, 5)
 	cor := &CorDef{effect: effect, opCh: &opCh, resultCh: &resultCh, isStarted: AtomBool{flag: 0}}
-	cor.wgStarted.Add(1)
 	return cor
 }
 func (self *CorDef) Start(in *interface{}) {
@@ -51,7 +49,6 @@ func (self *CorDef) Start(in *interface{}) {
 	self.isStarted.Set(true)
 
 	self.receive(nil, in)
-	self.wgStarted.Done()
 	go func() {
 		self.effect()
 		self.close()
@@ -120,8 +117,8 @@ func (self *CorDef) YieldFromIO(target *MonadIODef) *interface{} {
 func (self *CorDef) IsDone() bool {
 	return self.isClosed.Get()
 }
-func (self *CorDef) WaitStart() {
-	self.wgStarted.Wait()
+func (self *CorDef) IsStarted() bool {
+	return self.isStarted.Get()
 }
 func (self *CorDef) close() {
 	self.isClosed.Set(true)
