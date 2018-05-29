@@ -70,7 +70,9 @@ func (self *CorDef) YieldRef(out *interface{}) *interface{} {
 
 	if op != nil && op.cor != nil {
 		cor := op.cor
-		*cor.resultCh <- out
+		cor.doCloseSafe(func() {
+			*cor.resultCh <- out
+		})
 	}
 	result = op.val
 
