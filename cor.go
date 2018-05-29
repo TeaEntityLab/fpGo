@@ -64,11 +64,12 @@ func (self *CorDef) YieldRef(out *interface{}) *interface{} {
 	}
 
 	var op *CorOp = nil
+	var more bool
 	// fmt.Println(self, "Wait for", "op")
-	op = <-*self.opCh
+	op, more = <-*self.opCh
 	// fmt.Println(self, "Wait for", "op", "done")
 
-	if op != nil && op.cor != nil {
+	if more && op != nil && op.cor != nil {
 		cor := op.cor
 		cor.doCloseSafe(func() {
 			*cor.resultCh <- out
@@ -87,7 +88,7 @@ func (self *CorDef) YieldFrom(target *CorDef, in *interface{}) *interface{} {
 	target.receive(self, in)
 
 	// fmt.Println(self, "Wait for", "result")
-	result = <-*self.resultCh
+	result, _ = <-*self.resultCh
 	// fmt.Println(self, "Wait for", "result", "done")
 
 	return result
