@@ -63,16 +63,17 @@ func (self *CorDef) Yield() *interface{} {
 func (self *CorDef) YieldRef(out *interface{}) *interface{} {
 	var result *interface{} = nil
 
+	var op *CorOp = nil
 	self.doCloseSafe(func() {
 		// fmt.Println(self, "Wait for", "op")
-		op := <-*self.opCh
+		op = <-*self.opCh
 		// fmt.Println(self, "Wait for", "op", "done")
-		if op.cor != nil {
-			cor := op.cor
-			*cor.resultCh <- out
-		}
-		result = op.val
 	})
+	if op != nil && op.cor != nil {
+		cor := op.cor
+		*cor.resultCh <- out
+	}
+	result = op.val
 
 	return result
 }
