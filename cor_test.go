@@ -71,8 +71,8 @@ func TestCorYield(t *testing.T) {
 		wg.Done()
 	})
 
-	c1.Start(Monad.JustVal(1).Ref())
-	testee.Start(Monad.JustVal(1).Ref())
+	c1.StartWithRef(Monad.JustVal(1).Ref())
+	testee.StartWithRef(Monad.JustVal(1).Ref())
 
 	wg.Wait()
 	assert.Equal(t, expectedInt, actualInt)
@@ -82,23 +82,17 @@ func TestCorDoNotation(t *testing.T) {
 	var expectedInt = 0
 	var actual *interface{} = nil
 
-	expectedInt = 4
+	expectedInt = 3
 	actual = nil
 	// Cor c1
 	var c1 *CorDef
-	c1 = Cor.New(func() {
+	c1 = Cor.NewAndStart(func() {
 		self := c1
 
-		initVal := self.Yield()
-		v, _ := Monad.Just(initVal).ToInt()
-		logMessage(self, "c1 initVal", *initVal)
-		// v := 0
-		self.YieldRef(Monad.JustVal(v + 1).Ref())
-		logMessage(self, "c1 initVal", v)
-		self.Yield()
-		logMessage(self, "c1 initVal", v)
+		val := self.YieldRef(Monad.JustVal(1).Ref())
+		Monad.Just(val).ToInt()
+		logMessage(self, "c1 val", val)
 	})
-	c1.Start(Monad.JustVal(1).Ref())
 	// Testee
 	actual = Cor.DoNotation(func(self *CorDef) *interface{} {
 		logMessage(self, "Do Notation", "init")
@@ -119,10 +113,10 @@ func TestCorDoNotation(t *testing.T) {
 
 		m = Monad.Just(self.YieldFrom(c1, nil)).ToMonad()
 
-		logMessage(self, "Do Notation", "result", result)
-
 		v, _ = m.ToInt()
 		result += v
+
+		logMessage(self, "Do Notation", "result", result)
 
 		return Monad.JustVal(result).Ref()
 	})

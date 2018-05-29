@@ -42,6 +42,11 @@ func (self *CorDef) New(effect func()) *CorDef {
 	cor := &CorDef{effect: effect, opCh: &opCh, resultCh: &resultCh, isStarted: AtomBool{flag: 0}}
 	return cor
 }
+func (self *CorDef) NewAndStart(effect func()) *CorDef {
+	cor := self.New(effect)
+	cor.Start()
+	return cor
+}
 func (self *CorDef) DoNotation(effect func(*CorDef) *interface{}) *interface{} {
 	var result *interface{} = nil
 
@@ -49,22 +54,28 @@ func (self *CorDef) DoNotation(effect func(*CorDef) *interface{}) *interface{} {
 	wg.Add(1)
 	var cor *CorDef = nil
 	cor = self.New(func() {
-		cor.Yield()
 		result = effect(cor)
 		wg.Done()
 	})
-	cor.Start(nil)
+	cor.Start()
 	wg.Wait()
 
 	return result
 }
-func (self *CorDef) Start(in *interface{}) {
+func (self *CorDef) StartWithRef(in *interface{}) {
+	if self.IsDone() || self.isStarted.Get() {
+		return
+	}
+
+	self.receive(nil, in)
+	self.Start()
+}
+func (self *CorDef) Start() {
 	if self.IsDone() || self.isStarted.Get() {
 		return
 	}
 	self.isStarted.Set(true)
 
-	self.receive(nil, in)
 	go func() {
 		self.effect()
 		self.close()
