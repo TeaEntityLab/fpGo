@@ -42,6 +42,22 @@ func (self *CorDef) New(effect func()) *CorDef {
 	cor := &CorDef{effect: effect, opCh: &opCh, resultCh: &resultCh, isStarted: AtomBool{flag: 0}}
 	return cor
 }
+func (self *CorDef) DoNotation(effect func(*CorDef) *interface{}) *interface{} {
+	var result *interface{} = nil
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var cor *CorDef = nil
+	cor = self.New(func() {
+		cor.Yield()
+		result = effect(cor)
+		wg.Done()
+	})
+	cor.Start(nil)
+	wg.Wait()
+
+	return result
+}
 func (self *CorDef) Start(in *interface{}) {
 	if self.IsDone() || self.isStarted.Get() {
 		return

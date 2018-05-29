@@ -77,3 +77,55 @@ func TestCorYield(t *testing.T) {
 	wg.Wait()
 	assert.Equal(t, expectedInt, actualInt)
 }
+
+func TestCorDoNotation(t *testing.T) {
+	var expectedInt = 0
+	var actual *interface{} = nil
+
+	expectedInt = 4
+	actual = nil
+	// Cor c1
+	var c1 *CorDef
+	c1 = Cor.New(func() {
+		self := c1
+
+		initVal := self.Yield()
+		v, _ := Monad.Just(initVal).ToInt()
+		logMessage(self, "c1 initVal", *initVal)
+		// v := 0
+		self.YieldRef(Monad.JustVal(v + 1).Ref())
+		logMessage(self, "c1 initVal", v)
+		self.Yield()
+		logMessage(self, "c1 initVal", v)
+	})
+	c1.Start(Monad.JustVal(1).Ref())
+	// Testee
+	actual = Cor.DoNotation(func(self *CorDef) *interface{} {
+		logMessage(self, "Do Notation", "init")
+
+		result := 0
+		v := 0
+		var m MonadDef
+
+		result = v + 1
+
+		logMessage(self, "Do Notation", "v", v)
+		logMessage(self, "Do Notation", "result", result)
+
+		v, _ = Monad.Just(self.YieldFromIO(MonadIO.JustVal(1).ObserveOn(&Handler))).ToInt()
+		result += v
+
+		logMessage(self, "Do Notation", "result", result)
+
+		m = Monad.Just(self.YieldFrom(c1, nil)).ToMonad()
+
+		logMessage(self, "Do Notation", "result", result)
+
+		v, _ = m.ToInt()
+		result += v
+
+		return Monad.JustVal(result).Ref()
+	})
+
+	assert.Equal(t, expectedInt, *(actual))
+}
