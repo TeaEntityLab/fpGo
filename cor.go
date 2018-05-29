@@ -29,6 +29,7 @@ type CorDef struct {
 	isStarted AtomBool
 	isClosed  AtomBool
 	closedM   sync.Mutex
+	wgStarted sync.WaitGroup
 
 	opCh     *chan *CorOp
 	resultCh *chan *interface{}
@@ -37,19 +38,20 @@ type CorDef struct {
 }
 
 func (self *CorDef) New(effect func()) *CorDef {
-	opCh := make(chan *CorOp, 3)
-	resultCh := make(chan *interface{}, 3)
-	return &CorDef{effect: effect, opCh: &opCh, resultCh: &resultCh, isStarted: AtomBool{flag: 0}}
+	opCh := make(chan *CorOp, 5)
+	resultCh := make(chan *interface{}, 5)
+	cor := &CorDef{effect: effect, opCh: &opCh, resultCh: &resultCh, isStarted: AtomBool{flag: 0}}
+	cor.wgStarted.Add(1)
+	return cor
 }
 func (self *CorDef) Start(in *interface{}) {
 	if self.IsDone() || self.isStarted.Get() {
 		return
 	}
-	self.doCloseSafe(func() {
-		self.isStarted.Set(true)
-	})
+	self.isStarted.Set(true)
 
 	self.receive(nil, in)
+	self.wgStarted.Done()
 	go func() {
 		self.effect()
 		self.close()
@@ -62,7 +64,9 @@ func (self *CorDef) YieldRef(out *interface{}) *interface{} {
 	var result *interface{} = nil
 
 	self.doCloseSafe(func() {
+		// fmt.Println(self, "Wait for", "op")
 		op := <-*self.opCh
+		// fmt.Println(self, "Wait for", "op", "done")
 		if op.cor != nil {
 			cor := op.cor
 			*cor.resultCh <- out
@@ -75,16 +79,20 @@ func (self *CorDef) YieldRef(out *interface{}) *interface{} {
 func (self *CorDef) YieldFrom(target *CorDef, in *interface{}) *interface{} {
 	var result *interface{} = nil
 
+	target.receive(self, in)
 	self.doCloseSafe(func() {
-		target.receive(self, in)
+		// fmt.Println(self, "Wait for", "result")
 		result = <-*self.resultCh
+		// fmt.Println(self, "Wait for", "result", "done")
 	})
 	return result
 }
 func (self *CorDef) receive(cor *CorDef, in *interface{}) {
 	self.doCloseSafe(func() {
 		if self.opCh != nil {
+			// fmt.Println(self, "Wait for", "receive", cor, in)
 			*(self.opCh) <- &CorOp{cor: cor, val: in}
+			// fmt.Println(self, "Wait for", "receive", "done")
 		}
 	})
 }
@@ -105,6 +113,9 @@ func (self *CorDef) YieldFromIO(target *MonadIODef) *interface{} {
 }
 func (self *CorDef) IsDone() bool {
 	return self.isClosed.Get()
+}
+func (self *CorDef) WaitStart() {
+	self.wgStarted.Wait()
 }
 func (self *CorDef) close() {
 	self.isClosed.Set(true)

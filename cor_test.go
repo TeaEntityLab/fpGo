@@ -21,7 +21,7 @@ func TestCorYield(t *testing.T) {
 	var testee *CorDef
 	var wg sync.WaitGroup
 
-	expectedInt = 4
+	expectedInt = 5
 	actualInt = 0
 	wg.Add(1)
 	// Cor c1
@@ -29,15 +29,15 @@ func TestCorYield(t *testing.T) {
 	c1 = Cor.New(func() {
 		self := c1
 
-		logMessage("c1 effect")
+		logMessage(self, "c1 effect")
 		initVal := self.Yield()
-		logMessage("c1 initVal", initVal)
-		logMessage("c1 initVal(unwrap)", *initVal)
+		logMessage(self, "c1 initVal", initVal)
+		logMessage(self, "c1 initVal(unwrap)", *initVal)
 		v, _ := Monad.Just(initVal).ToInt()
 		// v := 0
 		receive := self.YieldRef(Monad.JustVal(v + 1).Ref())
-		logMessage("c1 yield initVal+1 & receive", receive)
-		logMessage("c1", self.Yield())
+		logMessage(self, "c1 yield initVal+1 & receive", receive)
+		logMessage(self, "c1", self.Yield())
 	})
 	// Testee
 	testee = Cor.New(func() {
@@ -46,24 +46,27 @@ func TestCorYield(t *testing.T) {
 		v := 0
 		var m MonadDef
 
-		logMessage("cor", "initialized")
+		logMessage(self, "cor", "initialized")
 
 		v, _ = Monad.Just(self.Yield()).ToInt()
 		actualInt = v + 1
 
-		// v, _ = Monad.Just(self.YieldFromIO(MonadIO.JustVal(1))).ToInt()
-		// actualInt += v
+		v, _ = Monad.Just(self.YieldFromIO(MonadIO.JustVal(1).ObserveOn(&Handler))).ToInt()
+		logMessage(self, "s", 5)
+		actualInt += v
+		logMessage(self, "s", 6)
 
-		logMessage("c1", c1.IsDone())
+		logMessage(self, "c1", c1.IsDone())
+		c1.WaitStart()
 		m = Monad.Just(self.YieldFrom(c1, nil)).ToMonad()
-		logMessage("c1", c1.IsDone())
+		logMessage(self, "c1", c1.IsDone())
 
 		logMessage(m)
 
 		v, _ = m.ToInt()
 		actualInt += v
 
-		logMessage("received", v)
+		logMessage(self, "received", v)
 
 		wg.Done()
 	})

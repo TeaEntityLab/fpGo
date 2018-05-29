@@ -42,5 +42,6 @@ func (self *HandlerDef) run() {
 var Handler HandlerDef
 
 func init() {
-	defaultHandler = Handler.New()
+	Handler = *Handler.New()
+	defaultHandler = &Handler
 }
