@@ -62,13 +62,15 @@ func (self *CorDef) Yield() *interface{} {
 }
 func (self *CorDef) YieldRef(out *interface{}) *interface{} {
 	var result *interface{} = nil
+	if self.IsDone() {
+		return result
+	}
 
 	var op *CorOp = nil
-	self.doCloseSafe(func() {
-		// fmt.Println(self, "Wait for", "op")
-		op = <-*self.opCh
-		// fmt.Println(self, "Wait for", "op", "done")
-	})
+	// fmt.Println(self, "Wait for", "op")
+	op = <-*self.opCh
+	// fmt.Println(self, "Wait for", "op", "done")
+
 	if op != nil && op.cor != nil {
 		cor := op.cor
 		*cor.resultCh <- out
@@ -79,13 +81,16 @@ func (self *CorDef) YieldRef(out *interface{}) *interface{} {
 }
 func (self *CorDef) YieldFrom(target *CorDef, in *interface{}) *interface{} {
 	var result *interface{} = nil
+	if self.IsDone() {
+		return result
+	}
 
 	target.receive(self, in)
-	self.doCloseSafe(func() {
-		// fmt.Println(self, "Wait for", "result")
-		result = <-*self.resultCh
-		// fmt.Println(self, "Wait for", "result", "done")
-	})
+
+	// fmt.Println(self, "Wait for", "result")
+	result = <-*self.resultCh
+	// fmt.Println(self, "Wait for", "result", "done")
+
 	return result
 }
 func (self *CorDef) receive(cor *CorDef, in *interface{}) {
@@ -131,11 +136,10 @@ func (self *CorDef) close() {
 	self.closedM.Unlock()
 }
 func (self *CorDef) doCloseSafe(fn func()) {
-	self.closedM.Lock()
 	if self.IsDone() {
 		return
 	}
-
+	self.closedM.Lock()
 	fn()
 	self.closedM.Unlock()
 }
