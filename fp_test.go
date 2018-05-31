@@ -1,6 +1,7 @@
 package fpGo
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,4 +43,12 @@ func TestCompose(t *testing.T) {
 
 	expectedinteger = 6
 	assert.Equal(t, expectedinteger, *Compose(fn01, fn02, fn03)(Monad.JustVal(0).Ref()))
+}
+
+func TestCompType(t *testing.T) {
+	var compTypeA CompType = DefProduct(reflect.Int, reflect.String)
+	var compTypeB CompType = DefProduct(reflect.String)
+	var myType CompType = DefSum(NilType{}, compTypeA, compTypeB)
+
+	assert.Equal(t, true, myType.Matches(Monad.JustVal(1).Ref(), Monad.JustVal("1").Ref()))
 }
