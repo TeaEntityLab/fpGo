@@ -35,23 +35,23 @@ type PatternMatching struct {
 	patterns []Pattern
 }
 
-type KindPattern struct {
+type KindPatternDef struct {
 	kind   reflect.Kind
 	effect fnObj
 }
-type CompTypePattern struct {
+type CompTypePatternDef struct {
 	compType CompType
 	effect   fnObj
 }
-type EqualPattern struct {
+type EqualPatternDef struct {
 	value  *interface{}
 	effect fnObj
 }
-type RegexPattern struct {
+type RegexPatternDef struct {
 	pattern string
 	effect  fnObj
 }
-type OtherwisePattern struct {
+type OtherwisePatternDef struct {
 	effect fnObj
 }
 
@@ -62,51 +62,59 @@ func (self PatternMatching) MatchFor(value *interface{}) *interface{} {
 		}
 	}
 
-	panic(fmt.Sprintf("Cannot match %v", value))
+	if value == nil {
+		panic(fmt.Sprintf("Cannot match %v", value))
+	} else {
+		panic(fmt.Sprintf("Cannot match %v", *value))
+	}
 }
 
-func (self KindPattern) Matches(value *interface{}) bool {
+func (self KindPatternDef) Matches(value *interface{}) bool {
 	if value == nil {
 		return false
 	}
 
 	return self.kind == reflect.TypeOf(*value).Kind()
 }
-func (self CompTypePattern) Matches(value *interface{}) bool {
+func (self CompTypePatternDef) Matches(value *interface{}) bool {
 	return self.compType.Matches(value)
 }
-func (self EqualPattern) Matches(value *interface{}) bool {
-	return self.value == value
+func (self EqualPatternDef) Matches(value *interface{}) bool {
+	if value == nil {
+		return self.value == value
+	}
+
+	return *self.value == *value
 }
-func (self RegexPattern) Matches(value *interface{}) bool {
+func (self RegexPatternDef) Matches(value *interface{}) bool {
 	if value == nil || reflect.TypeOf(*value).Kind() != reflect.String {
 		return false
 	}
 
-	matches, err := regexp.MatchString("p([a-z]+)ch", "peach")
+	matches, err := regexp.MatchString(self.pattern, (*value).(string))
 	if err == nil && matches {
 		return true
 	}
 
 	return false
 }
-func (self OtherwisePattern) Matches(value *interface{}) bool {
+func (self OtherwisePatternDef) Matches(value *interface{}) bool {
 	return true
 }
 
-func (self KindPattern) Apply(value *interface{}) *interface{} {
+func (self KindPatternDef) Apply(value *interface{}) *interface{} {
 	return self.effect(value)
 }
-func (self CompTypePattern) Apply(value *interface{}) *interface{} {
+func (self CompTypePatternDef) Apply(value *interface{}) *interface{} {
 	return self.effect(value)
 }
-func (self EqualPattern) Apply(value *interface{}) *interface{} {
+func (self EqualPatternDef) Apply(value *interface{}) *interface{} {
 	return self.effect(value)
 }
-func (self RegexPattern) Apply(value *interface{}) *interface{} {
+func (self RegexPatternDef) Apply(value *interface{}) *interface{} {
 	return self.effect(value)
 }
-func (self OtherwisePattern) Apply(value *interface{}) *interface{} {
+func (self OtherwisePatternDef) Apply(value *interface{}) *interface{} {
 	return self.effect(value)
 }
 
@@ -114,20 +122,20 @@ func DefPattern(patterns ...Pattern) PatternMatching {
 	return PatternMatching{patterns: patterns}
 }
 
-func NewKindPattern(kind reflect.Kind, effect fnObj) Pattern {
-	return KindPattern{kind: kind, effect: effect}
+func InCaseOfKind(kind reflect.Kind, effect fnObj) Pattern {
+	return KindPatternDef{kind: kind, effect: effect}
 }
-func NewSumTypePattern(compType CompType, effect fnObj) Pattern {
-	return CompTypePattern{compType: compType, effect: effect}
+func InCaseOfSumType(compType CompType, effect fnObj) Pattern {
+	return CompTypePatternDef{compType: compType, effect: effect}
 }
-func NewEqualPattern(value *interface{}, effect fnObj) Pattern {
-	return EqualPattern{value: value, effect: effect}
+func InCaseOfEqual(value *interface{}, effect fnObj) Pattern {
+	return EqualPatternDef{value: value, effect: effect}
 }
-func NewRegexPattern(pattern string, effect fnObj) Pattern {
-	return RegexPattern{pattern: pattern, effect: effect}
+func InCaseOfRegex(pattern string, effect fnObj) Pattern {
+	return RegexPatternDef{pattern: pattern, effect: effect}
 }
-func NewOtherwisePattern(effect fnObj) Pattern {
-	return OtherwisePattern{effect: effect}
+func Otherwise(effect fnObj) Pattern {
+	return OtherwisePatternDef{effect: effect}
 }
 
 func Either(value interface{}, patterns ...Pattern) *interface{} {
