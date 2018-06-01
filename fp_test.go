@@ -62,12 +62,19 @@ func TestCompType(t *testing.T) {
 }
 
 func TestPatternMatching(t *testing.T) {
+	var compTypeA CompType = DefProduct(reflect.Int, reflect.String)
+	var compTypeB CompType = DefProduct(reflect.String, reflect.String)
+	var myType CompType = DefSum(NilType, compTypeA, compTypeB)
+
 	var patterns = []Pattern{
 		InCaseOfKind(reflect.Int, func(x *interface{}) *interface{} {
 			return PtrOf(fmt.Sprintf("Integer: %v", *x))
 		}),
 		InCaseOfEqual(PtrOf("world"), func(x *interface{}) *interface{} {
 			return PtrOf(fmt.Sprintf("Hello %v", *x))
+		}),
+		InCaseOfSumType(myType, func(x *interface{}) *interface{} {
+			return PtrOf(fmt.Sprintf("SumType %v %v", *(*x).(CompData).objects[0], *(*x).(CompData).objects[0]))
 		}),
 		InCaseOfRegex("c+", func(x *interface{}) *interface{} {
 			return PtrOf(fmt.Sprintf("Matched: %v", *x))
@@ -80,10 +87,12 @@ func TestPatternMatching(t *testing.T) {
 	assert.Equal(t, "Integer: 42", *pm.MatchFor(PtrOf(42)))
 	assert.Equal(t, "Hello world", *pm.MatchFor(PtrOf("world")))
 	assert.Equal(t, "Matched: ccc", *pm.MatchFor(PtrOf("ccc")))
+	assert.Equal(t, "SumType 1 1", *pm.MatchFor(PtrOf(*NewCompData(myType, PtrOf("1"), PtrOf("1")))))
 	assert.Equal(t, "got this object: TEST", *pm.MatchFor(PtrOf("TEST")))
 
 	assert.Equal(t, "Integer: 42", *Either(42, patterns...))
 	assert.Equal(t, "Hello world", *Either("world", patterns...))
 	assert.Equal(t, "Matched: ccc", *Either("ccc", patterns...))
+	assert.Equal(t, "SumType 1 1", *Either(*NewCompData(myType, PtrOf("1"), PtrOf("1")), patterns...))
 	assert.Equal(t, "got this object: TEST", *Either("TEST", patterns...))
 }

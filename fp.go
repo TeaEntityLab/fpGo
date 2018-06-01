@@ -77,6 +77,10 @@ func (self KindPatternDef) Matches(value *interface{}) bool {
 	return self.kind == reflect.TypeOf(*value).Kind()
 }
 func (self CompTypePatternDef) Matches(value *interface{}) bool {
+	if value != nil && reflect.TypeOf(*value).Kind() == reflect.TypeOf(CompData{}).Kind() {
+		return MatchCompType(self.compType, (*value).(CompData))
+	}
+
 	return self.compType.Matches(value)
 }
 func (self EqualPatternDef) Matches(value *interface{}) bool {
