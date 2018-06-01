@@ -19,6 +19,10 @@ func Compose(fnList ...fnObj) fnObj {
 	}
 }
 
+func PtrOf(v interface{}) *interface{} {
+	return &v
+}
+
 type CompData struct {
 	compType CompType
 	objects  []*interface{}
@@ -34,7 +38,7 @@ type SumType struct {
 type ProductType struct {
 	kinds []reflect.Kind
 }
-type NilType struct {
+type NilTypeDef struct {
 }
 
 func (self SumType) Matches(value ...*interface{}) bool {
@@ -57,7 +61,7 @@ func (self ProductType) Matches(value ...*interface{}) bool {
 	}
 	return matches
 }
-func (self NilType) Matches(value ...*interface{}) bool {
+func (self NilTypeDef) Matches(value ...*interface{}) bool {
 	if len(value) != 1 {
 		return false
 	}
@@ -73,6 +77,15 @@ func DefProduct(kinds ...reflect.Kind) CompType {
 	return ProductType{kinds: kinds}
 }
 
+func NewCompDataVal(compType CompType, value ...interface{}) *CompData {
+	list := make([]*interface{}, len(value))
+	for i, v := range value {
+		list[i] = &v
+	}
+
+	return NewCompData(compType, list...)
+}
+
 func NewCompData(compType CompType, value ...*interface{}) *CompData {
 	if compType.Matches(value...) {
 		return &CompData{compType: compType, objects: value}
@@ -80,3 +93,12 @@ func NewCompData(compType CompType, value ...*interface{}) *CompData {
 
 	return nil
 }
+
+func MatchCompType(compType CompType, value CompData) bool {
+	return MatchCompTypeRef(compType, &value)
+}
+func MatchCompTypeRef(compType CompType, value *CompData) bool {
+	return compType.Matches(value.objects...)
+}
+
+var NilType NilTypeDef

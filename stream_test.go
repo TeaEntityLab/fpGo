@@ -101,7 +101,7 @@ func TestFilter(t *testing.T) {
 	var s *StreamDef
 	var tempString = ""
 
-	s = Stream.FromArrayInt([]int{}).Append(Monad.JustVal(1).Ref()).Extend(Stream.FromArrayInt([]int{2, 3, 4})).Extend(Stream.FromArray([]*interface{}{Monad.Just(nil).Ref()}))
+	s = Stream.FromArrayInt([]int{}).Append(PtrOf(1)).Extend(Stream.FromArrayInt([]int{2, 3, 4})).Extend(Stream.FromArray([]*interface{}{Monad.Just(nil).Ref()}))
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Monad.Just(v).ToMonad().ToString()

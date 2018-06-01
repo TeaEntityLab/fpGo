@@ -35,7 +35,7 @@ func TestCorYield(t *testing.T) {
 		logMessage(self, "c1 initVal(unwrap)", *initVal)
 		v, _ := Monad.Just(initVal).ToInt()
 		// v := 0
-		receive := self.YieldRef(Monad.JustVal(v + 1).Ref())
+		receive := self.YieldRef(PtrOf(v + 1))
 		logMessage(self, "c1 yield initVal+1 & receive", receive)
 		logMessage(self, "c1", self.Yield())
 	})
@@ -71,8 +71,8 @@ func TestCorYield(t *testing.T) {
 		wg.Done()
 	})
 
-	c1.StartWithRef(Monad.JustVal(1).Ref())
-	testee.StartWithRef(Monad.JustVal(1).Ref())
+	c1.StartWithRef(PtrOf(1))
+	testee.StartWithRef(PtrOf(1))
 
 	wg.Wait()
 	assert.Equal(t, expectedInt, actualInt)
@@ -89,7 +89,7 @@ func TestCorDoNotation(t *testing.T) {
 	c1 = Cor.NewAndStart(func() {
 		self := c1
 
-		val := self.YieldRef(Monad.JustVal(1).Ref())
+		val := self.YieldRef(PtrOf(1))
 		Monad.Just(val).ToInt()
 		logMessage(self, "c1 val", val)
 	})
@@ -118,7 +118,7 @@ func TestCorDoNotation(t *testing.T) {
 
 		logMessage(self, "Do Notation", "result", result)
 
-		return Monad.JustVal(result).Ref()
+		return PtrOf(result)
 	})
 
 	assert.Equal(t, expectedInt, *(actual))
