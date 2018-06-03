@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sync"
 )
 
 type fnObj func(*interface{}) *interface{}
@@ -24,6 +25,43 @@ func Compose(fnList ...fnObj) fnObj {
 func PtrOf(v interface{}) *interface{} {
 	return &v
 }
+
+// Curry
+
+type CurryDef struct {
+	fn     func(c *CurryDef, args ...*interface{}) *interface{}
+	result *interface{}
+	isDone AtomBool
+
+	callM sync.Mutex
+	args  []*interface{}
+}
+
+func (self *CurryDef) New(fn func(c *CurryDef, args ...*interface{}) *interface{}) *CurryDef {
+	c := &CurryDef{fn: fn}
+
+	return c
+}
+func (self *CurryDef) Call(args ...*interface{}) *CurryDef {
+	self.callM.Lock()
+	if !self.isDone.Get() {
+		self.args = append(self.args, args...)
+		self.result = self.fn(self, self.args...)
+	}
+	self.callM.Unlock()
+	return self
+}
+func (self *CurryDef) MarkDone() {
+	self.isDone.Set(true)
+}
+func (self *CurryDef) IsDone() bool {
+	return self.isDone.Get()
+}
+func (self *CurryDef) Result() *interface{} {
+	return self.result
+}
+
+var Curry CurryDef
 
 // PatternMatching
 

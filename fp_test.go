@@ -46,6 +46,36 @@ func TestCompose(t *testing.T) {
 	assert.Equal(t, expectedinteger, *Compose(fn01, fn02, fn03)(PtrOf(0)))
 }
 
+func TestCurry(t *testing.T) {
+	c := Curry.New(func(c *CurryDef, args ...*interface{}) *interface{} {
+		result := 0
+		if len(args) == 3 {
+			v := 0
+			v, _ = Monad.Just(args[0]).ToInt()
+			// fmt.Println(v)
+			result += v
+			v, _ = Monad.Just(args[1]).ToInt()
+			// fmt.Println(v)
+			result += v
+			v, _ = Monad.Just(args[2]).ToInt()
+			// fmt.Println(v)
+			result += v
+
+			c.MarkDone()
+		}
+		return PtrOf(result)
+	})
+
+	assert.Equal(t, false, c.IsDone())
+	c.Call(PtrOf(1))
+	assert.Equal(t, false, c.IsDone())
+	c.Call(PtrOf(2))
+	assert.Equal(t, false, c.IsDone())
+	c.Call(PtrOf(3))
+	assert.Equal(t, true, c.IsDone())
+	assert.Equal(t, 6, *c.Result())
+}
+
 func TestCompType(t *testing.T) {
 	var compTypeA CompType = DefProduct(reflect.Int, reflect.String)
 	var compTypeB CompType = DefProduct(reflect.String)
