@@ -28,6 +28,11 @@ func (self MonadDef) Or(or *interface{}) MonadDef {
 	return self
 }
 
+func (self MonadDef) FlatMap(fn func(*interface{}) *MonadDef) *MonadDef {
+	var val interface{} = *(self.ref)
+	return fn(&val)
+}
+
 func (self MonadDef) ToString() string {
 	if self.IsNil() {
 		return "<nil>"

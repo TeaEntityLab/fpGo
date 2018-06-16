@@ -29,6 +29,17 @@ func TestOr(t *testing.T) {
 	assert.Equal(t, 3, m.OrVal(3).Unwrap())
 }
 
+func TestFlatMap(t *testing.T) {
+	var m *MonadDef
+
+	m = Monad.JustVal(1).FlatMap(func(in *interface{}) *MonadDef {
+		v, _ := Monad.Just(in).ToInt()
+		result := Monad.JustVal(v + 1)
+		return &result
+	})
+	assert.Equal(t, 2, m.Unwrap())
+}
+
 func TestLet(t *testing.T) {
 	var m MonadDef
 
