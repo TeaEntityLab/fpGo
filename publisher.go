@@ -16,7 +16,7 @@ func (self *PublisherDef) New() *PublisherDef {
 	return p
 }
 
-func (self *PublisherDef) FlatMap(fn func(*interface{}) *interface{}) *PublisherDef {
+func (self *PublisherDef) Map(fn func(*interface{}) *interface{}) *PublisherDef {
 	next := self.New()
 	next.origin = self
 	self.Subscribe(Subscription{

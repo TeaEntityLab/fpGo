@@ -39,10 +39,10 @@ func TestPublisher(t *testing.T) {
 	assert.Equal(t, expected, actual)
 
 	p = Publisher.New()
-	p2 = p.FlatMap(func(in *interface{}) *interface{} {
+	p2 = p.Map(func(in *interface{}) *interface{} {
 		v, _ := Monad.Just(in).ToInt()
 		return PtrOf(v + 2)
-	}).FlatMap(func(in *interface{}) *interface{} {
+	}).Map(func(in *interface{}) *interface{} {
 		v, _ := Monad.Just(in).ToInt()
 		return PtrOf(v + 3)
 	})
