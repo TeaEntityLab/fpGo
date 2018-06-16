@@ -24,9 +24,9 @@ func TestOr(t *testing.T) {
 	var m MonadDef
 
 	m = Monad.JustVal(1)
-	assert.Equal(t, 1, m.OrVal(3).Unwrap())
+	assert.Equal(t, 1, *m.OrVal(3))
 	m = Monad.Just(nil)
-	assert.Equal(t, 3, m.OrVal(3).Unwrap())
+	assert.Equal(t, 3, *m.OrVal(3))
 }
 
 func TestFlatMap(t *testing.T) {

@@ -17,20 +17,19 @@ func (self MonadDef) JustVal(in interface{}) MonadDef {
 func (self MonadDef) Just(in *interface{}) MonadDef {
 	return MonadDef{ref: in}
 }
-func (self MonadDef) OrVal(or interface{}) MonadDef {
+func (self MonadDef) OrVal(or interface{}) *interface{} {
 	return self.Or(&or)
 }
-func (self MonadDef) Or(or *interface{}) MonadDef {
+func (self MonadDef) Or(or *interface{}) *interface{} {
 	if self.IsNil() {
-		return MonadDef{ref: or}
+		return or
 	}
 
-	return self
+	return self.ref
 }
 
 func (self MonadDef) FlatMap(fn func(*interface{}) *MonadDef) *MonadDef {
-	var val interface{} = *(self.ref)
-	return fn(&val)
+	return fn(self.ref)
 }
 
 func (self MonadDef) ToString() string {
