@@ -49,9 +49,9 @@ boolVal = m.IsNil() // true
 
 // Or()
 m = Monad.JustVal(1)
-orVal = m.OrVal(3).Unwrap() // orVal would be 1
+fmt.Println(*(m.OrVal(3))) // 1
 m = Monad.Just(nil)
-orVal = m.OrVal(3).Unwrap() // orVal would be 3
+fmt.Println(*(m.OrVal(3))) // 3
 
 // Let()
 var letVal int
