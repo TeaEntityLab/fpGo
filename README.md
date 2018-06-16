@@ -1,6 +1,29 @@
 # fpGo
 Monad, Functional Programming features for Golang
 
+# Features
+
+* Optional
+
+* Monad
+
+* Publisher
+
+
+
+* Pattern matching
+
+* Fp functions
+
+
+
+* Java8Stream-like Collection
+
+* PythonicGenerator-like Coroutine(yield/yieldFrom)
+
+
+# Usage
+
 ## Optional (IsPresent/IsNil, Or, Let)
 
 ```go
