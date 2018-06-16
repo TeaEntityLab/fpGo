@@ -12,15 +12,15 @@ func TestCompose(t *testing.T) {
 	var expectedinteger = 0
 
 	var fn01 = func(obj *interface{}) *interface{} {
-		val, _ := Monad.Just(obj).ToInt()
+		val, _ := Maybe.Just(obj).ToInt()
 		return PtrOf(val + 1)
 	}
 	var fn02 = func(obj *interface{}) *interface{} {
-		val, _ := Monad.Just(obj).ToInt()
+		val, _ := Maybe.Just(obj).ToInt()
 		return PtrOf(val + 2)
 	}
 	var fn03 = func(obj *interface{}) *interface{} {
-		val, _ := Monad.Just(obj).ToInt()
+		val, _ := Maybe.Just(obj).ToInt()
 		return PtrOf(val + 3)
 	}
 
@@ -51,13 +51,13 @@ func TestCurry(t *testing.T) {
 		result := 0
 		if len(args) == 3 {
 			v := 0
-			v, _ = Monad.Just(args[0]).ToInt()
+			v, _ = Maybe.Just(args[0]).ToInt()
 			// fmt.Println(v)
 			result += v
-			v, _ = Monad.Just(args[1]).ToInt()
+			v, _ = Maybe.Just(args[1]).ToInt()
 			// fmt.Println(v)
 			result += v
-			v, _ = Monad.Just(args[2]).ToInt()
+			v, _ = Maybe.Just(args[2]).ToInt()
 			// fmt.Println(v)
 			result += v
 

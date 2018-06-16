@@ -7,20 +7,20 @@ import (
 	"strconv"
 )
 
-type MonadDef struct {
+type MaybeDef struct {
 	ref *interface{}
 }
 
-func (self MonadDef) JustVal(in interface{}) MonadDef {
-	return MonadDef{ref: &in}
+func (self MaybeDef) JustVal(in interface{}) MaybeDef {
+	return MaybeDef{ref: &in}
 }
-func (self MonadDef) Just(in *interface{}) MonadDef {
-	return MonadDef{ref: in}
+func (self MaybeDef) Just(in *interface{}) MaybeDef {
+	return MaybeDef{ref: in}
 }
-func (self MonadDef) OrVal(or interface{}) *interface{} {
+func (self MaybeDef) OrVal(or interface{}) *interface{} {
 	return self.Or(&or)
 }
-func (self MonadDef) Or(or *interface{}) *interface{} {
+func (self MaybeDef) Or(or *interface{}) *interface{} {
 	if self.IsNil() {
 		return or
 	}
@@ -28,11 +28,11 @@ func (self MonadDef) Or(or *interface{}) *interface{} {
 	return self.ref
 }
 
-func (self MonadDef) FlatMap(fn func(*interface{}) *MonadDef) *MonadDef {
+func (self MaybeDef) FlatMap(fn func(*interface{}) *MaybeDef) *MaybeDef {
 	return fn(self.ref)
 }
 
-func (self MonadDef) ToString() string {
+func (self MaybeDef) ToString() string {
 	if self.IsNil() {
 		return "<nil>"
 	}
@@ -47,7 +47,7 @@ func (self MonadDef) ToString() string {
 		return (*ref).(string)
 	}
 }
-func (self MonadDef) ToMonad() MonadDef {
+func (self MaybeDef) ToMaybe() MaybeDef {
 	if self.IsNil() {
 		return self
 	}
@@ -56,11 +56,11 @@ func (self MonadDef) ToMonad() MonadDef {
 	switch (*ref).(type) {
 	default:
 		return self
-	case MonadDef:
-		return (*ref).(MonadDef)
+	case MaybeDef:
+		return (*ref).(MaybeDef)
 	}
 }
-func (self MonadDef) ToFloat64() (float64, error) {
+func (self MaybeDef) ToFloat64() (float64, error) {
 	if self.IsNil() {
 		return float64(0), errors.New("<nil>")
 	}
@@ -94,7 +94,7 @@ func (self MonadDef) ToFloat64() (float64, error) {
 		return (*ref).(float64), nil
 	}
 }
-func (self MonadDef) ToFloat32() (float32, error) {
+func (self MaybeDef) ToFloat32() (float32, error) {
 	if self.IsNil() {
 		return float32(0), errors.New("<nil>")
 	}
@@ -129,7 +129,7 @@ func (self MonadDef) ToFloat32() (float32, error) {
 		return float32(val), err
 	}
 }
-func (self MonadDef) ToInt() (int, error) {
+func (self MaybeDef) ToInt() (int, error) {
 	if self.IsNil() {
 		return int(0), errors.New("<nil>")
 	}
@@ -163,7 +163,7 @@ func (self MonadDef) ToInt() (int, error) {
 		return int(val), err
 	}
 }
-func (self MonadDef) ToInt32() (int32, error) {
+func (self MaybeDef) ToInt32() (int32, error) {
 	if self.IsNil() {
 		return int32(0), errors.New("<nil>")
 	}
@@ -198,7 +198,7 @@ func (self MonadDef) ToInt32() (int32, error) {
 		return int32(val), err
 	}
 }
-func (self MonadDef) ToInt64() (int64, error) {
+func (self MaybeDef) ToInt64() (int64, error) {
 	if self.IsNil() {
 		return int64(0), errors.New("<nil>")
 	}
@@ -232,7 +232,7 @@ func (self MonadDef) ToInt64() (int64, error) {
 		return int64(val), err
 	}
 }
-func (self MonadDef) ToBool() (bool, error) {
+func (self MaybeDef) ToBool() (bool, error) {
 	if self.IsNil() {
 		return bool(false), errors.New("<nil>")
 	}
@@ -263,52 +263,52 @@ func (self MonadDef) ToBool() (bool, error) {
 	}
 }
 
-func (self MonadDef) Let(fn func()) {
+func (self MaybeDef) Let(fn func()) {
 	if self.IsPresent() {
 		fn()
 	}
 }
 
-func (self MonadDef) Ref() *interface{} {
+func (self MaybeDef) Ref() *interface{} {
 	if self.IsNil() {
 		return nil
 	}
 
 	return self.ref
 }
-func (self MonadDef) Unwrap() interface{} {
+func (self MaybeDef) Unwrap() interface{} {
 	if self.IsNil() {
 		return nil
 	}
 
 	return *self.ref
 }
-func (self MonadDef) IsPresent() bool {
+func (self MaybeDef) IsPresent() bool {
 	return !(self.IsNil())
 }
-func (self MonadDef) IsNil() bool {
+func (self MaybeDef) IsNil() bool {
 	return self.ref == nil
 }
 
-func (self MonadDef) Type() reflect.Type {
+func (self MaybeDef) Type() reflect.Type {
 	if self.IsNil() {
 		return reflect.TypeOf(nil)
 	}
 
 	return reflect.TypeOf(self.Unwrap())
 }
-func (self MonadDef) Kind() reflect.Kind {
+func (self MaybeDef) Kind() reflect.Kind {
 	if self.IsNil() {
 		return reflect.TypeOf(self.ref).Kind()
 	}
 
 	return self.Type().Kind()
 }
-func (self MonadDef) IsType(t reflect.Type) bool {
+func (self MaybeDef) IsType(t reflect.Type) bool {
 	return self.Type() == t
 }
-func (self MonadDef) IsKind(t reflect.Kind) bool {
+func (self MaybeDef) IsKind(t reflect.Kind) bool {
 	return self.Kind() == t
 }
 
-var Monad MonadDef
+var Maybe MaybeDef

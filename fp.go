@@ -224,7 +224,7 @@ func (self ProductType) Matches(value ...*interface{}) bool {
 
 	matches := true
 	for i, v := range value {
-		matches = matches && self.kinds[i] == Monad.Just(v).Kind()
+		matches = matches && self.kinds[i] == Maybe.Just(v).Kind()
 	}
 	return matches
 }
