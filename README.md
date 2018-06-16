@@ -1,6 +1,14 @@
 # fpGo
 Monad, Functional Programming features for Golang
 
+# Why
+
+I love functional programing, Rx-style coding, and Optional usages.
+
+However it's hard to implement them in Golang, and there're few libraries to achieve parts of them.
+
+Thus I implemented fpGo. I hope you would like it :)
+
 # Features
 
 * Optional
