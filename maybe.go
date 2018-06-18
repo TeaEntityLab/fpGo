@@ -21,6 +21,25 @@ func (self MaybeDef) Or(or interface{}) interface{} {
 
 	return self.ref
 }
+func (self MaybeDef) CloneTo(dest interface{}) MaybeDef {
+	if self.IsNil() {
+		return self.Just(nil)
+	}
+
+	x := reflect.ValueOf(self.ref)
+	if x.Kind() == reflect.Ptr {
+		starX := x.Elem()
+		y := reflect.New(starX.Type())
+		starY := y.Elem()
+		starY.Set(starX)
+		reflect.ValueOf(dest).Elem().Set(y.Elem())
+		return self.Just(dest)
+	} else {
+		dest = x.Interface()
+	}
+
+	return self.Just(dest)
+}
 
 func (self MaybeDef) FlatMap(fn func(interface{}) *MaybeDef) *MaybeDef {
 	return fn(self.ref)

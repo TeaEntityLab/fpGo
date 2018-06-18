@@ -42,6 +42,36 @@ func TestOr(t *testing.T) {
 	assert.Equal(t, 3, m.Or(3))
 }
 
+func TestClone(t *testing.T) {
+	var m MaybeDef
+
+	var i = 1
+	var i2 = 2
+	var temp = 3
+	var iptr *int = nil
+	var iptr2 *int = &i2
+
+	m = Maybe.Just(1)
+	assert.Equal(t, 1, m.CloneTo(temp).Unwrap())
+	assert.Equal(t, 3, temp)
+	m = Maybe.Just(1)
+	assert.Equal(t, 1, m.CloneTo(iptr2).Unwrap())
+	assert.Equal(t, 2, *iptr2)
+	m = Maybe.Just(nil)
+	assert.Equal(t, nil, m.CloneTo(iptr2).Unwrap())
+	assert.Equal(t, 2, *iptr2)
+
+	iptr = nil
+	m = Maybe.Just(iptr)
+	assert.Equal(t, nil, m.CloneTo(iptr2).Unwrap())
+	assert.Equal(t, 2, *iptr2)
+
+	iptr = &i
+	m = Maybe.Just(iptr)
+	assert.Equal(t, 1, *m.CloneTo(iptr2).ToPtr())
+	assert.Equal(t, 1, *iptr2)
+}
+
 func TestFlatMap(t *testing.T) {
 	var m *MaybeDef
 
