@@ -1,4 +1,8 @@
 # fpGo
+
+[![npm](https://img.shields.io/github/stars/TeaEntityLab/fpGo.svg?style=social&label=Stars)](https://github.com/TeaEntityLab/fpGo)
+[![npm](https://img.shields.io/github/forks/TeaEntityLab/fpGo.svg?style=social&label=Fork)](https://github.com/TeaEntityLab/fpGo)
+
 Monad, Functional Programming features for Golang
 
 # Why
