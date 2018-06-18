@@ -23,7 +23,7 @@ func (self *AtomBool) Get() bool {
 
 type CorOp struct {
 	cor *CorDef
-	val *interface{}
+	val interface{}
 }
 type CorDef struct {
 	isStarted AtomBool
@@ -31,14 +31,14 @@ type CorDef struct {
 	closedM   sync.Mutex
 
 	opCh     *chan *CorOp
-	resultCh *chan *interface{}
+	resultCh *chan interface{}
 
 	effect func()
 }
 
 func (self *CorDef) New(effect func()) *CorDef {
 	opCh := make(chan *CorOp, 5)
-	resultCh := make(chan *interface{}, 5)
+	resultCh := make(chan interface{}, 5)
 	cor := &CorDef{effect: effect, opCh: &opCh, resultCh: &resultCh, isStarted: AtomBool{flag: 0}}
 	return cor
 }
@@ -47,8 +47,8 @@ func (self *CorDef) NewAndStart(effect func()) *CorDef {
 	cor.Start()
 	return cor
 }
-func (self *CorDef) DoNotation(effect func(*CorDef) *interface{}) *interface{} {
-	var result *interface{} = nil
+func (self *CorDef) DoNotation(effect func(*CorDef) interface{}) interface{} {
+	var result interface{} = nil
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -62,7 +62,7 @@ func (self *CorDef) DoNotation(effect func(*CorDef) *interface{}) *interface{} {
 
 	return result
 }
-func (self *CorDef) StartWithRef(in *interface{}) {
+func (self *CorDef) StartWithVal(in interface{}) {
 	if self.IsDone() || self.isStarted.Get() {
 		return
 	}
@@ -81,11 +81,11 @@ func (self *CorDef) Start() {
 		self.close()
 	}()
 }
-func (self *CorDef) Yield() *interface{} {
+func (self *CorDef) Yield() interface{} {
 	return self.YieldRef(nil)
 }
-func (self *CorDef) YieldRef(out *interface{}) *interface{} {
-	var result *interface{} = nil
+func (self *CorDef) YieldRef(out interface{}) interface{} {
+	var result interface{} = nil
 	if self.IsDone() {
 		return result
 	}
@@ -106,8 +106,8 @@ func (self *CorDef) YieldRef(out *interface{}) *interface{} {
 
 	return result
 }
-func (self *CorDef) YieldFrom(target *CorDef, in *interface{}) *interface{} {
-	var result *interface{} = nil
+func (self *CorDef) YieldFrom(target *CorDef, in interface{}) interface{} {
+	var result interface{} = nil
 	if self.IsDone() {
 		return result
 	}
@@ -120,7 +120,7 @@ func (self *CorDef) YieldFrom(target *CorDef, in *interface{}) *interface{} {
 
 	return result
 }
-func (self *CorDef) receive(cor *CorDef, in *interface{}) {
+func (self *CorDef) receive(cor *CorDef, in interface{}) {
 	self.doCloseSafe(func() {
 		if self.opCh != nil {
 			// fmt.Println(self, "Wait for", "receive", cor, in)
@@ -129,13 +129,13 @@ func (self *CorDef) receive(cor *CorDef, in *interface{}) {
 		}
 	})
 }
-func (self *CorDef) YieldFromIO(target *MonadIODef) *interface{} {
-	var result *interface{} = nil
+func (self *CorDef) YieldFromIO(target *MonadIODef) interface{} {
+	var result interface{} = nil
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	target.SubscribeOn(nil).Subscribe(Subscription{
-		OnNext: func(in *interface{}) {
+		OnNext: func(in interface{}) {
 			result = in
 			wg.Done()
 		},

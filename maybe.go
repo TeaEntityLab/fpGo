@@ -8,19 +8,13 @@ import (
 )
 
 type MaybeDef struct {
-	ref *interface{}
+	ref interface{}
 }
 
-func (self MaybeDef) JustVal(in interface{}) MaybeDef {
-	return MaybeDef{ref: &in}
-}
-func (self MaybeDef) Just(in *interface{}) MaybeDef {
+func (self MaybeDef) Just(in interface{}) MaybeDef {
 	return MaybeDef{ref: in}
 }
-func (self MaybeDef) OrVal(or interface{}) *interface{} {
-	return self.Or(&or)
-}
-func (self MaybeDef) Or(or *interface{}) *interface{} {
+func (self MaybeDef) Or(or interface{}) interface{} {
 	if self.IsNil() {
 		return or
 	}
@@ -28,7 +22,7 @@ func (self MaybeDef) Or(or *interface{}) *interface{} {
 	return self.ref
 }
 
-func (self MaybeDef) FlatMap(fn func(*interface{}) *MaybeDef) *MaybeDef {
+func (self MaybeDef) FlatMap(fn func(interface{}) *MaybeDef) *MaybeDef {
 	return fn(self.ref)
 }
 
@@ -38,14 +32,22 @@ func (self MaybeDef) ToString() string {
 	}
 
 	ref := self.ref
-	switch (*ref).(type) {
+	switch (ref).(type) {
 	default:
-		return fmt.Sprintf("%v", *ref)
+		return fmt.Sprintf("%v", ref)
 	case int:
-		return strconv.Itoa((*ref).(int))
+		return strconv.Itoa((ref).(int))
 	case string:
-		return (*ref).(string)
+		return (ref).(string)
 	}
+}
+func (self MaybeDef) ToPtr() *interface{} {
+	if self.Kind() == reflect.Ptr {
+		val := reflect.Indirect(reflect.ValueOf(self.ref)).Interface()
+		return &val
+	}
+
+	return &self.ref
 }
 func (self MaybeDef) ToMaybe() MaybeDef {
 	if self.IsNil() {
@@ -53,11 +55,11 @@ func (self MaybeDef) ToMaybe() MaybeDef {
 	}
 
 	var ref = self.ref
-	switch (*ref).(type) {
+	switch (ref).(type) {
 	default:
 		return self
 	case MaybeDef:
-		return (*ref).(MaybeDef)
+		return (ref).(MaybeDef)
 	}
 }
 func (self MaybeDef) ToFloat64() (float64, error) {
@@ -66,7 +68,7 @@ func (self MaybeDef) ToFloat64() (float64, error) {
 	}
 
 	ref := self.ref
-	switch (*ref).(type) {
+	switch (ref).(type) {
 	default:
 		return float64(0), errors.New("unsupported")
 	case string:
@@ -91,7 +93,7 @@ func (self MaybeDef) ToFloat64() (float64, error) {
 		val, err := self.ToFloat32()
 		return float64(val), err
 	case float64:
-		return (*ref).(float64), nil
+		return (ref).(float64), nil
 	}
 }
 func (self MaybeDef) ToFloat32() (float32, error) {
@@ -100,7 +102,7 @@ func (self MaybeDef) ToFloat32() (float32, error) {
 	}
 
 	ref := self.ref
-	switch (*ref).(type) {
+	switch (ref).(type) {
 	default:
 		return float32(0), errors.New("unsupported")
 	case string:
@@ -123,7 +125,7 @@ func (self MaybeDef) ToFloat32() (float32, error) {
 		val, err := self.ToInt64()
 		return float32(val), err
 	case float32:
-		return (*ref).(float32), nil
+		return (ref).(float32), nil
 	case float64:
 		val, err := self.ToFloat64()
 		return float32(val), err
@@ -135,7 +137,7 @@ func (self MaybeDef) ToInt() (int, error) {
 	}
 
 	ref := self.ref
-	switch (*ref).(type) {
+	switch (ref).(type) {
 	default:
 		return int(0), errors.New("unsupported")
 	case string:
@@ -148,7 +150,7 @@ func (self MaybeDef) ToInt() (int, error) {
 			return int(0), err
 		}
 	case int:
-		return (*ref).(int), nil
+		return (ref).(int), nil
 	case int32:
 		val, err := self.ToInt32()
 		return int(val), err
@@ -169,7 +171,7 @@ func (self MaybeDef) ToInt32() (int32, error) {
 	}
 
 	ref := self.ref
-	switch (*ref).(type) {
+	switch (ref).(type) {
 	default:
 		return int32(0), errors.New("unsupported")
 	case string:
@@ -186,7 +188,7 @@ func (self MaybeDef) ToInt32() (int32, error) {
 		val, err := self.ToInt()
 		return int32(val), err
 	case int32:
-		return (*ref).(int32), nil
+		return (ref).(int32), nil
 	case int64:
 		val, err := self.ToInt64()
 		return int32(val), err
@@ -204,7 +206,7 @@ func (self MaybeDef) ToInt64() (int64, error) {
 	}
 
 	ref := self.ref
-	switch (*ref).(type) {
+	switch (ref).(type) {
 	default:
 		return int64(0), errors.New("unsupported")
 	case string:
@@ -223,7 +225,7 @@ func (self MaybeDef) ToInt64() (int64, error) {
 		val, err := self.ToInt32()
 		return int64(val), err
 	case int64:
-		return (*ref).(int64), nil
+		return (ref).(int64), nil
 	case float32:
 		val, err := self.ToFloat32()
 		return int64(val), err
@@ -238,13 +240,13 @@ func (self MaybeDef) ToBool() (bool, error) {
 	}
 
 	ref := self.ref
-	switch (*ref).(type) {
+	switch (ref).(type) {
 	default:
 		return bool(false), errors.New("unsupported")
 	case string:
 		return strconv.ParseBool(self.ToString())
 	case bool:
-		return (*ref).(bool), nil
+		return (ref).(bool), nil
 	case int:
 		val, err := self.ToInt()
 		return bool(val != 0), err
@@ -269,40 +271,38 @@ func (self MaybeDef) Let(fn func()) {
 	}
 }
 
-func (self MaybeDef) Ref() *interface{} {
+func (self MaybeDef) Unwrap() interface{} {
 	if self.IsNil() {
 		return nil
 	}
 
 	return self.ref
 }
-func (self MaybeDef) Unwrap() interface{} {
-	if self.IsNil() {
-		return nil
-	}
-
-	return *self.ref
-}
 func (self MaybeDef) IsPresent() bool {
 	return !(self.IsNil())
 }
 func (self MaybeDef) IsNil() bool {
-	return self.ref == nil
+	val := reflect.ValueOf(self.ref)
+
+	if self.Kind() == reflect.Ptr {
+		return val.IsNil()
+	} else {
+		return !val.IsValid()
+	}
+}
+func (self MaybeDef) IsValid() bool {
+	val := reflect.ValueOf(self.ref)
+	return val.IsValid()
 }
 
 func (self MaybeDef) Type() reflect.Type {
 	if self.IsNil() {
 		return reflect.TypeOf(nil)
 	}
-
-	return reflect.TypeOf(self.Unwrap())
+	return reflect.TypeOf(self.ref)
 }
 func (self MaybeDef) Kind() reflect.Kind {
-	if self.IsNil() {
-		return reflect.TypeOf(self.ref).Kind()
-	}
-
-	return self.Type().Kind()
+	return reflect.ValueOf(self.ref).Kind()
 }
 func (self MaybeDef) IsType(t reflect.Type) bool {
 	return self.Type() == t

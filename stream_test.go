@@ -10,16 +10,16 @@ func TestFromArrayMapReduce(t *testing.T) {
 	var s *StreamDef
 	var tempString = ""
 
-	s = Stream.FromArrayMaybe([]MaybeDef{Maybe.JustVal("1"), Maybe.JustVal("2"), Maybe.JustVal("3"), Maybe.JustVal("4")})
+	s = Stream.FromArrayMaybe([]MaybeDef{Maybe.Just("1"), Maybe.Just("2"), Maybe.Just("3"), Maybe.Just("4")})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
-	s = s.Map(func(index int) *interface{} {
+	s = s.Map(func(index int) interface{} {
 		var val = Maybe.Just(s.Get(index)).ToMaybe().ToString()
 		var result interface{} = "v" + val
-		return &result
+		return result
 	})
 	tempString = ""
 	for _, v := range s.ToArray() {
@@ -33,10 +33,10 @@ func TestFromArrayMapReduce(t *testing.T) {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
-	s = s.Map(func(index int) *interface{} {
+	s = s.Map(func(index int) interface{} {
 		var val = Maybe.Just(s.Get(index)).ToString()
 		var result interface{} = "v" + val
-		return &result
+		return result
 	})
 	tempString = ""
 	for _, v := range s.ToArray() {
@@ -50,10 +50,10 @@ func TestFromArrayMapReduce(t *testing.T) {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
-	s = s.Map(func(index int) *interface{} {
+	s = s.Map(func(index int) interface{} {
 		var val, _ = Maybe.Just(s.Get(index)).ToInt()
 		var result interface{} = val * val
-		return &result
+		return result
 	})
 	tempString = ""
 	for _, v := range s.ToArray() {
@@ -67,10 +67,10 @@ func TestFromArrayMapReduce(t *testing.T) {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
-	s = s.Map(func(index int) *interface{} {
+	s = s.Map(func(index int) interface{} {
 		var val, _ = Maybe.Just(s.Get(index)).ToFloat32()
 		var result interface{} = val * val
-		return &result
+		return result
 	})
 	tempString = ""
 	for _, v := range s.ToArray() {
@@ -85,10 +85,10 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = s.Map(func(index int) *interface{} {
+	s = s.Map(func(index int) interface{} {
 		var val, _ = Maybe.Just(s.Get(index)).ToFloat64()
 		var result interface{} = val * val
-		return &result
+		return result
 	})
 	tempString = ""
 	for _, v := range s.ToArray() {
@@ -101,7 +101,7 @@ func TestFilter(t *testing.T) {
 	var s *StreamDef
 	var tempString = ""
 
-	s = Stream.FromArrayInt([]int{}).Append(PtrOf(1)).Extend(Stream.FromArrayInt([]int{2, 3, 4})).Extend(Stream.FromArray([]*interface{}{Maybe.Just(nil).Ref()}))
+	s = Stream.FromArrayInt([]int{}).Append(1).Extend(Stream.FromArrayInt([]int{2, 3, 4})).Extend(Stream.FromArray([]interface{}{nil}))
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()

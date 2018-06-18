@@ -7,10 +7,10 @@ import (
 	"sync"
 )
 
-type fnObj func(*interface{}) *interface{}
+type fnObj func(interface{}) interface{}
 
 func Compose(fnList ...fnObj) fnObj {
-	return func(s *interface{}) *interface{} {
+	return func(s interface{}) interface{} {
 		f := fnList[0]
 		nextFnList := fnList[1:len(fnList)]
 
@@ -29,20 +29,20 @@ func PtrOf(v interface{}) *interface{} {
 // Curry
 
 type CurryDef struct {
-	fn     func(c *CurryDef, args ...*interface{}) *interface{}
-	result *interface{}
+	fn     func(c *CurryDef, args ...interface{}) interface{}
+	result interface{}
 	isDone AtomBool
 
 	callM sync.Mutex
-	args  []*interface{}
+	args  []interface{}
 }
 
-func (self *CurryDef) New(fn func(c *CurryDef, args ...*interface{}) *interface{}) *CurryDef {
+func (self *CurryDef) New(fn func(c *CurryDef, args ...interface{}) interface{}) *CurryDef {
 	c := &CurryDef{fn: fn}
 
 	return c
 }
-func (self *CurryDef) Call(args ...*interface{}) *CurryDef {
+func (self *CurryDef) Call(args ...interface{}) *CurryDef {
 	self.callM.Lock()
 	if !self.isDone.Get() {
 		self.args = append(self.args, args...)
@@ -57,7 +57,7 @@ func (self *CurryDef) MarkDone() {
 func (self *CurryDef) IsDone() bool {
 	return self.isDone.Get()
 }
-func (self *CurryDef) Result() *interface{} {
+func (self *CurryDef) Result() interface{} {
 	return self.result
 }
 
@@ -66,8 +66,8 @@ var Curry CurryDef
 // PatternMatching
 
 type Pattern interface {
-	Matches(value *interface{}) bool
-	Apply(*interface{}) *interface{}
+	Matches(value interface{}) bool
+	Apply(interface{}) interface{}
 }
 type PatternMatching struct {
 	patterns []Pattern
@@ -82,7 +82,7 @@ type CompTypePatternDef struct {
 	effect   fnObj
 }
 type EqualPatternDef struct {
-	value  *interface{}
+	value  interface{}
 	effect fnObj
 }
 type RegexPatternDef struct {
@@ -93,70 +93,71 @@ type OtherwisePatternDef struct {
 	effect fnObj
 }
 
-func (self PatternMatching) MatchFor(value *interface{}) *interface{} {
+func (self PatternMatching) MatchFor(inValue interface{}) interface{} {
 	for _, pattern := range self.patterns {
+		value := inValue
+		maybe := Maybe.Just(inValue)
+		if maybe.IsKind(reflect.Ptr) {
+			ptr := maybe.ToPtr()
+			if reflect.TypeOf(*ptr).Kind() == (reflect.TypeOf(CompData{}).Kind()) {
+				value = *ptr
+			}
+		}
+
 		if pattern.Matches(value) {
 			return pattern.Apply(value)
 		}
 	}
 
-	if value == nil {
-		panic(fmt.Sprintf("Cannot match %v", value))
-	} else {
-		panic(fmt.Sprintf("Cannot match %v", *value))
-	}
+	panic(fmt.Sprintf("Cannot match %v", inValue))
 }
 
-func (self KindPatternDef) Matches(value *interface{}) bool {
+func (self KindPatternDef) Matches(value interface{}) bool {
 	if value == nil {
 		return false
 	}
 
-	return self.kind == reflect.TypeOf(*value).Kind()
+	return self.kind == reflect.TypeOf(value).Kind()
 }
-func (self CompTypePatternDef) Matches(value *interface{}) bool {
-	if value != nil && reflect.TypeOf(*value).Kind() == reflect.TypeOf(CompData{}).Kind() {
-		return MatchCompType(self.compType, (*value).(CompData))
+func (self CompTypePatternDef) Matches(value interface{}) bool {
+	if value != nil && reflect.TypeOf(value).Kind() == reflect.TypeOf(CompData{}).Kind() {
+		return MatchCompType(self.compType, (value).(CompData))
 	}
 
 	return self.compType.Matches(value)
 }
-func (self EqualPatternDef) Matches(value *interface{}) bool {
-	if value == nil {
-		return self.value == value
-	}
-
-	return *self.value == *value
+func (self EqualPatternDef) Matches(value interface{}) bool {
+	return self.value == value
 }
-func (self RegexPatternDef) Matches(value *interface{}) bool {
-	if value == nil || reflect.TypeOf(*value).Kind() != reflect.String {
+func (self RegexPatternDef) Matches(value interface{}) bool {
+	if value == nil || reflect.TypeOf(value).Kind() != reflect.String {
 		return false
 	}
 
-	matches, err := regexp.MatchString(self.pattern, (*value).(string))
+	matches, err := regexp.MatchString(self.pattern, (value).(string))
 	if err == nil && matches {
 		return true
 	}
 
 	return false
 }
-func (self OtherwisePatternDef) Matches(value *interface{}) bool {
+func (self OtherwisePatternDef) Matches(value interface{}) bool {
 	return true
 }
 
-func (self KindPatternDef) Apply(value *interface{}) *interface{} {
+func (self KindPatternDef) Apply(value interface{}) interface{} {
 	return self.effect(value)
 }
-func (self CompTypePatternDef) Apply(value *interface{}) *interface{} {
+func (self CompTypePatternDef) Apply(value interface{}) interface{} {
 	return self.effect(value)
 }
-func (self EqualPatternDef) Apply(value *interface{}) *interface{} {
+func (self EqualPatternDef) Apply(value interface{}) interface{} {
 	return self.effect(value)
 }
-func (self RegexPatternDef) Apply(value *interface{}) *interface{} {
+func (self RegexPatternDef) Apply(value interface{}) interface{} {
 	return self.effect(value)
 }
-func (self OtherwisePatternDef) Apply(value *interface{}) *interface{} {
+func (self OtherwisePatternDef) Apply(value interface{}) interface{} {
 	return self.effect(value)
 }
 
@@ -170,7 +171,7 @@ func InCaseOfKind(kind reflect.Kind, effect fnObj) Pattern {
 func InCaseOfSumType(compType CompType, effect fnObj) Pattern {
 	return CompTypePatternDef{compType: compType, effect: effect}
 }
-func InCaseOfEqual(value *interface{}, effect fnObj) Pattern {
+func InCaseOfEqual(value interface{}, effect fnObj) Pattern {
 	return EqualPatternDef{value: value, effect: effect}
 }
 func InCaseOfRegex(pattern string, effect fnObj) Pattern {
@@ -180,11 +181,7 @@ func Otherwise(effect fnObj) Pattern {
 	return OtherwisePatternDef{effect: effect}
 }
 
-func Either(value interface{}, patterns ...Pattern) *interface{} {
-	return EitherRef(&value, patterns...)
-}
-
-func EitherRef(value *interface{}, patterns ...Pattern) *interface{} {
+func Either(value interface{}, patterns ...Pattern) interface{} {
 	return DefPattern(patterns...).MatchFor(value)
 }
 
@@ -192,11 +189,11 @@ func EitherRef(value *interface{}, patterns ...Pattern) *interface{} {
 
 type CompData struct {
 	compType CompType
-	objects  []*interface{}
+	objects  []interface{}
 }
 
 type CompType interface {
-	Matches(value ...*interface{}) bool
+	Matches(value ...interface{}) bool
 }
 
 type SumType struct {
@@ -208,7 +205,7 @@ type ProductType struct {
 type NilTypeDef struct {
 }
 
-func (self SumType) Matches(value ...*interface{}) bool {
+func (self SumType) Matches(value ...interface{}) bool {
 	for _, compType := range self.compTypes {
 		if compType.Matches(value...) {
 			return true
@@ -217,7 +214,7 @@ func (self SumType) Matches(value ...*interface{}) bool {
 
 	return false
 }
-func (self ProductType) Matches(value ...*interface{}) bool {
+func (self ProductType) Matches(value ...interface{}) bool {
 	if len(value) != len(self.kinds) {
 		return false
 	}
@@ -228,12 +225,12 @@ func (self ProductType) Matches(value ...*interface{}) bool {
 	}
 	return matches
 }
-func (self NilTypeDef) Matches(value ...*interface{}) bool {
+func (self NilTypeDef) Matches(value ...interface{}) bool {
 	if len(value) != 1 {
 		return false
 	}
 
-	return value[0] == nil
+	return Maybe.Just(value[0]).IsNil()
 }
 
 func DefSum(compTypes ...CompType) CompType {
@@ -244,16 +241,7 @@ func DefProduct(kinds ...reflect.Kind) CompType {
 	return ProductType{kinds: kinds}
 }
 
-func NewCompDataVal(compType CompType, value ...interface{}) *CompData {
-	list := make([]*interface{}, len(value))
-	for i, v := range value {
-		list[i] = &v
-	}
-
-	return NewCompData(compType, list...)
-}
-
-func NewCompData(compType CompType, value ...*interface{}) *CompData {
+func NewCompData(compType CompType, value ...interface{}) *CompData {
 	if compType.Matches(value...) {
 		return &CompData{compType: compType, objects: value}
 	}

@@ -11,7 +11,7 @@ import (
 func TestIsPresent(t *testing.T) {
 	var m MaybeDef
 
-	m = Maybe.JustVal(1)
+	m = Maybe.Just(1)
 	assert.Equal(t, true, m.IsPresent())
 	assert.Equal(t, false, m.IsNil())
 
@@ -23,18 +23,18 @@ func TestIsPresent(t *testing.T) {
 func TestOr(t *testing.T) {
 	var m MaybeDef
 
-	m = Maybe.JustVal(1)
-	assert.Equal(t, 1, *m.OrVal(3))
+	m = Maybe.Just(1)
+	assert.Equal(t, 1, m.Or(3))
 	m = Maybe.Just(nil)
-	assert.Equal(t, 3, *m.OrVal(3))
+	assert.Equal(t, 3, m.Or(3))
 }
 
 func TestFlatMap(t *testing.T) {
 	var m *MaybeDef
 
-	m = Maybe.JustVal(1).FlatMap(func(in *interface{}) *MaybeDef {
+	m = Maybe.Just(1).FlatMap(func(in interface{}) *MaybeDef {
 		v, _ := Maybe.Just(in).ToInt()
-		result := Maybe.JustVal(v + 1)
+		result := Maybe.Just(v + 1)
 		return &result
 	})
 	assert.Equal(t, 2, m.Unwrap())
@@ -46,7 +46,7 @@ func TestLet(t *testing.T) {
 	var letVal int
 
 	letVal = 1
-	m = Maybe.JustVal(1)
+	m = Maybe.Just(1)
 	m.Let(func() {
 		letVal = 2
 	})
@@ -63,7 +63,7 @@ func TestLet(t *testing.T) {
 func TestType(t *testing.T) {
 	var m MaybeDef
 
-	m = Maybe.JustVal(1)
+	m = Maybe.Just(1)
 	assert.Equal(t, reflect.Int, m.Kind())
 	assert.Equal(t, true, m.IsKind(reflect.Int))
 	assert.Equal(t, false, m.IsKind(reflect.Ptr))
@@ -73,9 +73,9 @@ func TestType(t *testing.T) {
 	assert.Equal(t, false, m.IsType(reflect.TypeOf(nil)))
 
 	m = Maybe.Just(nil)
-	assert.Equal(t, reflect.Ptr, m.Kind())
+	assert.Equal(t, reflect.Invalid, m.Kind())
 	assert.Equal(t, false, m.IsKind(reflect.Int))
-	assert.Equal(t, true, m.IsKind(reflect.Ptr))
+	assert.Equal(t, true, m.IsKind(reflect.Invalid))
 
 	assert.Equal(t, reflect.TypeOf(nil), m.Type())
 	assert.Equal(t, true, m.IsType(reflect.TypeOf(nil)))
@@ -94,7 +94,7 @@ func TestCast(t *testing.T) {
 	var err error
 
 	// Int
-	m = Maybe.JustVal(1)
+	m = Maybe.Just(1)
 	assert.Equal(t, "1", m.ToString())
 
 	f32, err = m.ToFloat32()
@@ -117,7 +117,7 @@ func TestCast(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	// Int32
-	m = Maybe.JustVal(int32(1))
+	m = Maybe.Just(int32(1))
 	assert.Equal(t, "1", m.ToString())
 
 	f32, err = m.ToFloat32()
@@ -140,7 +140,7 @@ func TestCast(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	// Int64
-	m = Maybe.JustVal(int64(1))
+	m = Maybe.Just(int64(1))
 	assert.Equal(t, "1", m.ToString())
 
 	f32, err = m.ToFloat32()
@@ -163,7 +163,7 @@ func TestCast(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	// Float32
-	m = Maybe.JustVal(float32(1.1))
+	m = Maybe.Just(float32(1.1))
 	assert.Equal(t, "1.1", m.ToString())
 
 	f32, err = m.ToFloat32()
@@ -186,7 +186,7 @@ func TestCast(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	// Float64
-	m = Maybe.JustVal(float64(1.2))
+	m = Maybe.Just(float64(1.2))
 	assert.Equal(t, "1.2", m.ToString())
 
 	f32, err = m.ToFloat32()
@@ -209,7 +209,7 @@ func TestCast(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	// Bool(true)
-	m = Maybe.JustVal(true)
+	m = Maybe.Just(true)
 	assert.Equal(t, "true", m.ToString())
 
 	f32, err = m.ToFloat32()
@@ -232,7 +232,7 @@ func TestCast(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	// Bool(false)
-	m = Maybe.JustVal(false)
+	m = Maybe.Just(false)
 	assert.Equal(t, "false", m.ToString())
 
 	f32, err = m.ToFloat32()

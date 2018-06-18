@@ -16,11 +16,11 @@ func (self *PublisherDef) New() *PublisherDef {
 	return p
 }
 
-func (self *PublisherDef) Map(fn func(*interface{}) *interface{}) *PublisherDef {
+func (self *PublisherDef) Map(fn func(interface{}) interface{}) *PublisherDef {
 	next := self.New()
 	next.origin = self
 	self.Subscribe(Subscription{
-		OnNext: func(in *interface{}) {
+		OnNext: func(in interface{}) {
 			next.Publish(fn(in))
 		},
 	})
@@ -59,7 +59,7 @@ func (self *PublisherDef) Unsubscribe(s *Subscription) {
 		self.Unsubscribe(s)
 	}
 }
-func (self *PublisherDef) Publish(result *interface{}) {
+func (self *PublisherDef) Publish(result interface{}) {
 	var subscribers []*Subscription
 	self.doSubscribeSafe(func() {
 		subscribers = self.subscribers

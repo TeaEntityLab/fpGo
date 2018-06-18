@@ -1,30 +1,27 @@
 package fpGo
 
 type MonadIODef struct {
-	effect func() *interface{}
+	effect func() interface{}
 
 	obOn  *HandlerDef
 	subOn *HandlerDef
 }
 type Subscription struct {
-	OnNext func(*interface{})
+	OnNext func(interface{})
 }
 
-func (self MonadIODef) JustVal(in interface{}) *MonadIODef {
-	return self.Just(&in)
-}
-func (self MonadIODef) Just(in *interface{}) *MonadIODef {
-	return &MonadIODef{effect: func() *interface{} {
+func (self MonadIODef) Just(in interface{}) *MonadIODef {
+	return &MonadIODef{effect: func() interface{} {
 		return in
 	}}
 }
-func (self *MonadIODef) New(effect func() *interface{}) *MonadIODef {
+func (self *MonadIODef) New(effect func() interface{}) *MonadIODef {
 	return &MonadIODef{effect: effect}
 }
 
-func (self *MonadIODef) FlatMap(fn func(*interface{}) *MonadIODef) *MonadIODef {
+func (self *MonadIODef) FlatMap(fn func(interface{}) *MonadIODef) *MonadIODef {
 
-	return &MonadIODef{effect: func() *interface{} {
+	return &MonadIODef{effect: func() interface{} {
 		next := fn(self.doEffect())
 		return next.doEffect()
 	}}
@@ -46,7 +43,7 @@ func (self *MonadIODef) ObserveOn(h *HandlerDef) *MonadIODef {
 func (self *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, subOn *HandlerDef) *Subscription {
 
 	if s.OnNext != nil {
-		var result *interface{}
+		var result interface{}
 
 		doSub := func() {
 			s.OnNext(result)
@@ -69,7 +66,7 @@ func (self *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, subOn *Ha
 
 	return s
 }
-func (self *MonadIODef) doEffect() *interface{} {
+func (self *MonadIODef) doEffect() interface{} {
 	return self.effect()
 }
 

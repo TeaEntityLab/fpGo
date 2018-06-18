@@ -32,10 +32,9 @@ func TestCorYield(t *testing.T) {
 		logMessage(self, "c1 effect")
 		initVal := self.Yield()
 		logMessage(self, "c1 initVal", initVal)
-		logMessage(self, "c1 initVal(unwrap)", *initVal)
 		v, _ := Maybe.Just(initVal).ToInt()
 		// v := 0
-		receive := self.YieldRef(PtrOf(v + 1))
+		receive := self.YieldRef((v + 1))
 		logMessage(self, "c1 yield initVal+1 & receive", receive)
 		logMessage(self, "c1", self.Yield())
 	})
@@ -51,7 +50,7 @@ func TestCorYield(t *testing.T) {
 		v, _ = Maybe.Just(self.Yield()).ToInt()
 		actualInt = v + 1
 
-		v, _ = Maybe.Just(self.YieldFromIO(MonadIO.JustVal(1).ObserveOn(&Handler))).ToInt()
+		v, _ = Maybe.Just(self.YieldFromIO(MonadIO.Just(1).ObserveOn(&Handler))).ToInt()
 		logMessage(self, "s", 5)
 		actualInt += v
 		logMessage(self, "s", 6)
@@ -71,8 +70,8 @@ func TestCorYield(t *testing.T) {
 		wg.Done()
 	})
 
-	c1.StartWithRef(PtrOf(1))
-	testee.StartWithRef(PtrOf(1))
+	c1.StartWithVal(1)
+	testee.StartWithVal(1)
 
 	wg.Wait()
 	assert.Equal(t, expectedInt, actualInt)
@@ -80,7 +79,7 @@ func TestCorYield(t *testing.T) {
 
 func TestCorDoNotation(t *testing.T) {
 	var expectedInt = 0
-	var actual *interface{} = nil
+	var actual interface{} = nil
 
 	expectedInt = 3
 	actual = nil
@@ -89,12 +88,12 @@ func TestCorDoNotation(t *testing.T) {
 	c1 = Cor.NewAndStart(func() {
 		self := c1
 
-		val := self.YieldRef(PtrOf(1))
+		val := self.YieldRef((1))
 		Maybe.Just(val).ToInt()
 		logMessage(self, "c1 val", val)
 	})
 	// Testee
-	actual = Cor.DoNotation(func(self *CorDef) *interface{} {
+	actual = Cor.DoNotation(func(self *CorDef) interface{} {
 		logMessage(self, "Do Notation", "init")
 
 		result := 0
@@ -106,7 +105,7 @@ func TestCorDoNotation(t *testing.T) {
 		logMessage(self, "Do Notation", "v", v)
 		logMessage(self, "Do Notation", "result", result)
 
-		v, _ = Maybe.Just(self.YieldFromIO(MonadIO.JustVal(1).ObserveOn(&Handler))).ToInt()
+		v, _ = Maybe.Just(self.YieldFromIO(MonadIO.Just(1).ObserveOn(&Handler))).ToInt()
 		result += v
 
 		logMessage(self, "Do Notation", "result", result)
@@ -118,8 +117,8 @@ func TestCorDoNotation(t *testing.T) {
 
 		logMessage(self, "Do Notation", "result", result)
 
-		return PtrOf(result)
+		return (result)
 	})
 
-	assert.Equal(t, expectedInt, *(actual))
+	assert.Equal(t, expectedInt, (actual))
 }
