@@ -52,18 +52,18 @@ func TestClone(t *testing.T) {
 	var iptr2 *int = &i2
 
 	m = Maybe.Just(1)
-	assert.Equal(t, 1, m.CloneTo(temp).Unwrap())
+	assert.Equal(t, 1, m.Clone().Unwrap())
 	assert.Equal(t, 3, temp)
 	m = Maybe.Just(1)
-	assert.Equal(t, 1, m.CloneTo(iptr2).Unwrap())
+	assert.Equal(t, 1, m.Clone().Unwrap())
 	assert.Equal(t, 2, *iptr2)
 	m = Maybe.Just(nil)
-	assert.Equal(t, nil, m.CloneTo(iptr2).Unwrap())
+	assert.Equal(t, nil, m.Clone().Unwrap())
 	assert.Equal(t, 2, *iptr2)
 
 	iptr = nil
 	m = Maybe.Just(iptr)
-	assert.Equal(t, nil, m.CloneTo(iptr2).Unwrap())
+	assert.Equal(t, nil, m.Clone().Unwrap())
 	assert.Equal(t, 2, *iptr2)
 
 	iptr = &i

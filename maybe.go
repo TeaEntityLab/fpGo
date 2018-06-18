@@ -40,6 +40,9 @@ func (self MaybeDef) CloneTo(dest interface{}) MaybeDef {
 
 	return self.Just(dest)
 }
+func (self MaybeDef) Clone() MaybeDef {
+	return self.CloneTo(new(interface{}))
+}
 
 func (self MaybeDef) FlatMap(fn func(interface{}) *MaybeDef) *MaybeDef {
 	return fn(self.ref)
