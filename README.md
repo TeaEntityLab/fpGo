@@ -1,6 +1,6 @@
 # fpGo
 
-[![license](https://img.shields.io/github/license/TeaEntityLab/fpGo.svg?style=social&label=Stars)](https://github.com/TeaEntityLab/fpGo)
+[![license](https://img.shields.io/github/license/TeaEntityLab/fpGo.svg?style=social&label=License)](https://github.com/TeaEntityLab/fpGo)
 [![stars](https://img.shields.io/github/stars/TeaEntityLab/fpGo.svg?style=social&label=Stars)](https://github.com/TeaEntityLab/fpGo)
 [![forks](https://img.shields.io/github/forks/TeaEntityLab/fpGo.svg?style=social&label=Fork)](https://github.com/TeaEntityLab/fpGo)
 
