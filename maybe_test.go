@@ -18,6 +18,19 @@ func TestIsPresent(t *testing.T) {
 	m = Maybe.Just(nil)
 	assert.Equal(t, false, m.IsPresent())
 	assert.Equal(t, true, m.IsNil())
+
+	var i int = 1
+	var iptr *int
+
+	iptr = nil
+	m = Maybe.Just(iptr)
+	assert.Equal(t, false, m.IsPresent())
+	assert.Equal(t, true, m.IsNil())
+
+	iptr = &i
+	m = Maybe.Just(iptr)
+	assert.Equal(t, true, m.IsPresent())
+	assert.Equal(t, false, m.IsNil())
 }
 
 func TestOr(t *testing.T) {
