@@ -56,9 +56,9 @@ boolVal = m.IsNil() // true
 
 // Or()
 m = Maybe.Just(1)
-fmt.Println((m.OrVal(3))) // 1
+fmt.Println((m.Or(3))) // 1
 m = Maybe.Just(nil)
-fmt.Println((m.OrVal(3))) // 3
+fmt.Println((m.Or(3))) // 3
 
 // Let()
 var letVal int
