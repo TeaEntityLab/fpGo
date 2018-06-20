@@ -9,7 +9,8 @@ import (
 
 type fnObj func(interface{}) interface{}
 
-func Compose(fnList ...fnObj) fnObj {
+// Compose Compose the functions from right to left (Math: f(g(x)) Compose: Compose(f, g)(x))
+func Compose(fnList ...fnObj) func(interface{}) interface{} {
 	return func(s interface{}) interface{} {
 		f := fnList[0]
 		nextFnList := fnList[1:]
@@ -22,12 +23,12 @@ func Compose(fnList ...fnObj) fnObj {
 	}
 }
 
+// PtrOf Return Ptr of a value
 func PtrOf(v interface{}) *interface{} {
 	return &v
 }
 
-// Curry
-
+// CurryDef Curry inspired by Currying in Java ways
 type CurryDef struct {
 	fn     func(c *CurryDef, args ...interface{}) interface{}
 	result interface{}
@@ -37,38 +38,51 @@ type CurryDef struct {
 	args  []interface{}
 }
 
-func (self *CurryDef) New(fn func(c *CurryDef, args ...interface{}) interface{}) *CurryDef {
+// New New Curry instance by function
+func (currySelf *CurryDef) New(fn func(c *CurryDef, args ...interface{}) interface{}) *CurryDef {
 	c := &CurryDef{fn: fn}
 
 	return c
 }
-func (self *CurryDef) Call(args ...interface{}) *CurryDef {
-	self.callM.Lock()
-	if !self.isDone.Get() {
-		self.args = append(self.args, args...)
-		self.result = self.fn(self, self.args...)
+
+// Call Call the currying function by partial or all args
+func (currySelf *CurryDef) Call(args ...interface{}) *CurryDef {
+	currySelf.callM.Lock()
+	if !currySelf.isDone.Get() {
+		currySelf.args = append(currySelf.args, args...)
+		currySelf.result = currySelf.fn(currySelf, currySelf.args...)
 	}
-	self.callM.Unlock()
-	return self
-}
-func (self *CurryDef) MarkDone() {
-	self.isDone.Set(true)
-}
-func (self *CurryDef) IsDone() bool {
-	return self.isDone.Get()
-}
-func (self *CurryDef) Result() interface{} {
-	return self.result
+	currySelf.callM.Unlock()
+	return currySelf
 }
 
+// MarkDone Mark the currying is done(let others know it)
+func (currySelf *CurryDef) MarkDone() {
+	currySelf.isDone.Set(true)
+}
+
+// IsDone Is the currying done
+func (currySelf *CurryDef) IsDone() bool {
+	return currySelf.isDone.Get()
+}
+
+// Result Get the result value of currying
+func (currySelf *CurryDef) Result() interface{} {
+	return currySelf.result
+}
+
+// Curry Curry utils instance
 var Curry CurryDef
 
 // PatternMatching
 
+// Pattern Pattern general interface
 type Pattern interface {
 	Matches(value interface{}) bool
 	Apply(interface{}) interface{}
 }
+
+// PatternMatching PatternMatching contains Pattern list
 type PatternMatching struct {
 	patterns []Pattern
 }
@@ -102,8 +116,9 @@ type OtherwisePatternDef struct {
 	effect fnObj
 }
 
-func (self PatternMatching) MatchFor(inValue interface{}) interface{} {
-	for _, pattern := range self.patterns {
+// MatchFor Check does the given value match anyone of the Pattern list of PatternMatching
+func (patternMatchingSelf PatternMatching) MatchFor(inValue interface{}) interface{} {
+	for _, pattern := range patternMatchingSelf.patterns {
 		value := inValue
 		maybe := Maybe.Just(inValue)
 		if maybe.IsKind(reflect.Ptr) {
@@ -188,6 +203,7 @@ func (patternSelf OtherwisePatternDef) Apply(value interface{}) interface{} {
 	return patternSelf.effect(value)
 }
 
+// DefPattern Define the PatternMatching by Pattern list
 func DefPattern(patterns ...Pattern) PatternMatching {
 	return PatternMatching{patterns: patterns}
 }
@@ -217,30 +233,39 @@ func Otherwise(effect fnObj) Pattern {
 	return OtherwisePatternDef{effect: effect}
 }
 
+// Either Match Pattern list and return the effect() result of the matching Pattern
 func Either(value interface{}, patterns ...Pattern) interface{} {
 	return DefPattern(patterns...).MatchFor(value)
 }
 
 // SumType
 
+// CompData Composite Data with values & its CompType(SumType)
 type CompData struct {
 	compType CompType
 	objects  []interface{}
 }
 
+// CompType Abstract SumType concept interface
 type CompType interface {
 	Matches(value ...interface{}) bool
 }
 
+// SumType SumType contains a CompType list
 type SumType struct {
 	compTypes []CompType
 }
+
+// ProductType ProductType with a Kind list
 type ProductType struct {
 	kinds []reflect.Kind
 }
+
+// NilTypeDef NilType implemented by Nil determinations
 type NilTypeDef struct {
 }
 
+// Matches Check does it match the SumType
 func (typeSelf SumType) Matches(value ...interface{}) bool {
 	for _, compType := range typeSelf.compTypes {
 		if compType.Matches(value...) {
@@ -250,6 +275,8 @@ func (typeSelf SumType) Matches(value ...interface{}) bool {
 
 	return false
 }
+
+// Matches Check does it match the ProductType
 func (typeSelf ProductType) Matches(value ...interface{}) bool {
 	if len(value) != len(typeSelf.kinds) {
 		return false
@@ -261,6 +288,8 @@ func (typeSelf ProductType) Matches(value ...interface{}) bool {
 	}
 	return matches
 }
+
+// Matches Check does it match nil
 func (typeSelf NilTypeDef) Matches(value ...interface{}) bool {
 	if len(value) != 1 {
 		return false
@@ -269,14 +298,17 @@ func (typeSelf NilTypeDef) Matches(value ...interface{}) bool {
 	return Maybe.Just(value[0]).IsNil()
 }
 
+// DefSum Define the SumType by CompType list
 func DefSum(compTypes ...CompType) CompType {
 	return SumType{compTypes: compTypes}
 }
 
+// DefProduct Define the ProductType of a SumType
 func DefProduct(kinds ...reflect.Kind) CompType {
 	return ProductType{kinds: kinds}
 }
 
+// NewCompData New SumType Data by its type and composite values
 func NewCompData(compType CompType, value ...interface{}) *CompData {
 	if compType.Matches(value...) {
 		return &CompData{compType: compType, objects: value}
@@ -285,11 +317,15 @@ func NewCompData(compType CompType, value ...interface{}) *CompData {
 	return nil
 }
 
+// MatchCompType Check does the Composite Data match the given SumType
 func MatchCompType(compType CompType, value CompData) bool {
 	return MatchCompTypeRef(compType, &value)
 }
+
+// MatchCompTypeRef Check does the Composite Data match the given SumType
 func MatchCompTypeRef(compType CompType, value *CompData) bool {
 	return compType.Matches(value.objects...)
 }
 
+// NilType NilType CompType instance
 var NilType NilTypeDef
