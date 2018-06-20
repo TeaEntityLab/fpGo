@@ -2,6 +2,7 @@ package fpGo
 
 import "sync"
 
+// PublisherDef Publisher inspired by Rx/NotificationCenter/PubSub
 type PublisherDef struct {
 	subscribers []*Subscription
 	subscribeM  sync.Mutex
@@ -10,16 +11,18 @@ type PublisherDef struct {
 	origin *PublisherDef
 }
 
-func (self *PublisherDef) New() *PublisherDef {
+// New New a Publisher
+func (publisherSelf *PublisherDef) New() *PublisherDef {
 	p := &PublisherDef{}
 
 	return p
 }
 
-func (self *PublisherDef) Map(fn func(interface{}) interface{}) *PublisherDef {
-	next := self.New()
-	next.origin = self
-	self.Subscribe(Subscription{
+// Map Map the Publisher in order to make a broadcasting chain
+func (publisherSelf *PublisherDef) Map(fn func(interface{}) interface{}) *PublisherDef {
+	next := publisherSelf.New()
+	next.origin = publisherSelf
+	publisherSelf.Subscribe(Subscription{
 		OnNext: func(in interface{}) {
 			next.Publish(fn(in))
 		},
@@ -27,28 +30,34 @@ func (self *PublisherDef) Map(fn func(interface{}) interface{}) *PublisherDef {
 
 	return next
 }
-func (self *PublisherDef) Subscribe(sub Subscription) *Subscription {
+
+// Subscribe Subscribe the Publisher by Subscription
+func (publisherSelf *PublisherDef) Subscribe(sub Subscription) *Subscription {
 	s := &sub
 
-	self.doSubscribeSafe(func() {
-		self.subscribers = append(self.subscribers, s)
+	publisherSelf.doSubscribeSafe(func() {
+		publisherSelf.subscribers = append(publisherSelf.subscribers, s)
 	})
 	return s
 }
-func (self *PublisherDef) SubscribeOn(h *HandlerDef) *PublisherDef {
-	self.subOn = h
-	return self
+
+// SubscribeOn Subscribe the Publisher on the specific Handler
+func (publisherSelf *PublisherDef) SubscribeOn(h *HandlerDef) *PublisherDef {
+	publisherSelf.subOn = h
+	return publisherSelf
 }
-func (self *PublisherDef) Unsubscribe(s *Subscription) {
+
+// Unsubscribe Unsubscribe the publisher by the Subscription
+func (publisherSelf *PublisherDef) Unsubscribe(s *Subscription) {
 	isAnyMatching := false
 
-	self.doSubscribeSafe(func() {
-		subscribers := self.subscribers
+	publisherSelf.doSubscribeSafe(func() {
+		subscribers := publisherSelf.subscribers
 		for i, v := range subscribers {
 			if v == s {
 				isAnyMatching = true
 				subscribers = append(subscribers[:i], subscribers[i+1:]...)
-				self.subscribers = subscribers
+				publisherSelf.subscribers = subscribers
 				break
 			}
 		}
@@ -56,13 +65,15 @@ func (self *PublisherDef) Unsubscribe(s *Subscription) {
 
 	// Delete subscriptions recursively
 	if isAnyMatching {
-		self.Unsubscribe(s)
+		publisherSelf.Unsubscribe(s)
 	}
 }
-func (self *PublisherDef) Publish(result interface{}) {
+
+// Publish Publish a value to its subscribers or next chains
+func (publisherSelf *PublisherDef) Publish(result interface{}) {
 	var subscribers []*Subscription
-	self.doSubscribeSafe(func() {
-		subscribers = self.subscribers
+	publisherSelf.doSubscribeSafe(func() {
+		subscribers = publisherSelf.subscribers
 	})
 
 	for _, s := range subscribers {
@@ -71,18 +82,19 @@ func (self *PublisherDef) Publish(result interface{}) {
 			doSub := func() {
 				s.OnNext(result)
 			}
-			if self.subOn != nil {
-				self.subOn.Post(doSub)
+			if publisherSelf.subOn != nil {
+				publisherSelf.subOn.Post(doSub)
 			} else {
 				doSub()
 			}
 		}
 	}
 }
-func (self *PublisherDef) doSubscribeSafe(fn func()) {
-	self.subscribeM.Lock()
+func (publisherSelf *PublisherDef) doSubscribeSafe(fn func()) {
+	publisherSelf.subscribeM.Lock()
 	fn()
-	self.subscribeM.Unlock()
+	publisherSelf.subscribeM.Unlock()
 }
 
+// Publisher Publisher utils instance
 var Publisher PublisherDef

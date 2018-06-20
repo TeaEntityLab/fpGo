@@ -9,7 +9,7 @@ import (
 )
 
 func TestCompose(t *testing.T) {
-	var expectedinteger = 0
+	var expectedinteger int
 
 	var fn01 = func(obj interface{}) interface{} {
 		val, _ := Maybe.Just(obj).ToInt()
@@ -50,7 +50,7 @@ func TestCurry(t *testing.T) {
 	c := Curry.New(func(c *CurryDef, args ...interface{}) interface{} {
 		result := 0
 		if len(args) == 3 {
-			v := 0
+			var v int
 			v, _ = Maybe.Just(args[0]).ToInt()
 			// fmt.Println(v)
 			result += v
@@ -77,9 +77,9 @@ func TestCurry(t *testing.T) {
 }
 
 func TestCompType(t *testing.T) {
-	var compTypeA CompType = DefProduct(reflect.Int, reflect.String)
-	var compTypeB CompType = DefProduct(reflect.String)
-	var myType CompType = DefSum(NilType, compTypeA, compTypeB)
+	var compTypeA = DefProduct(reflect.Int, reflect.String)
+	var compTypeB = DefProduct(reflect.String)
+	var myType = DefSum(NilType, compTypeA, compTypeB)
 
 	assert.Equal(t, true, myType.Matches((1), ("1")))
 	assert.Equal(t, true, myType.Matches(("2")))
@@ -92,9 +92,9 @@ func TestCompType(t *testing.T) {
 }
 
 func TestPatternMatching(t *testing.T) {
-	var compTypeA CompType = DefProduct(reflect.Int, reflect.String)
-	var compTypeB CompType = DefProduct(reflect.String, reflect.String)
-	var myType CompType = DefSum(NilType, compTypeA, compTypeB)
+	var compTypeA = DefProduct(reflect.Int, reflect.String)
+	var compTypeB = DefProduct(reflect.String, reflect.String)
+	var myType = DefSum(NilType, compTypeA, compTypeB)
 
 	assert.Equal(t, true, compTypeA.Matches(1, "3"))
 	assert.Equal(t, false, compTypeA.Matches(1, 3))
@@ -120,7 +120,7 @@ func TestPatternMatching(t *testing.T) {
 			return (fmt.Sprintf("got this object: %v", x))
 		}),
 	}
-	var pm PatternMatching = DefPattern(patterns...)
+	var pm = DefPattern(patterns...)
 	assert.Equal(t, "Integer: 42", pm.MatchFor((42)))
 	assert.Equal(t, "Hello world", pm.MatchFor(("world")))
 	assert.Equal(t, "Matched: ccc", pm.MatchFor(("ccc")))

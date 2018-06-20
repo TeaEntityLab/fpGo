@@ -8,7 +8,7 @@ import (
 
 func TestFromArrayMapReduce(t *testing.T) {
 	var s *StreamDef
-	var tempString = ""
+	var tempString string
 
 	s = Stream.FromArrayMaybe([]MaybeDef{Maybe.Just("1"), Maybe.Just("2"), Maybe.Just("3"), Maybe.Just("4")})
 	tempString = ""
@@ -99,7 +99,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 
 func TestFilter(t *testing.T) {
 	var s *StreamDef
-	var tempString = ""
+	var tempString string
 
 	s = Stream.FromArrayInt([]int{}).Append(1).Extend(Stream.FromArrayInt([]int{2, 3, 4})).Extend(Stream.FromArray([]interface{}{nil}))
 	tempString = ""
@@ -128,7 +128,7 @@ func TestFilter(t *testing.T) {
 
 func TestSort(t *testing.T) {
 	var s *StreamDef
-	var tempString = ""
+	var tempString string
 
 	s = Stream.FromArrayInt([]int{11}).Extend(Stream.FromArrayInt([]int{2, 3, 4, 5})).Remove(4)
 	tempString = ""

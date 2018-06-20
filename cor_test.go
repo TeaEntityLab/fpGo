@@ -16,7 +16,7 @@ func logMessage(args ...interface{}) {
 }
 
 func TestCorYield(t *testing.T) {
-	var expectedInt = 0
+	var expectedInt int
 	var actualInt = 0
 	var testee *CorDef
 	var wg sync.WaitGroup
@@ -42,7 +42,7 @@ func TestCorYield(t *testing.T) {
 	testee = Cor.New(func() {
 		self := testee
 
-		v := 0
+		var v int
 		var m MaybeDef
 
 		logMessage(self, "cor", "initialized")
@@ -78,11 +78,10 @@ func TestCorYield(t *testing.T) {
 }
 
 func TestCorDoNotation(t *testing.T) {
-	var expectedInt = 0
-	var actual interface{} = nil
+	var expectedInt int
+	var actual interface{}
 
 	expectedInt = 3
-	actual = nil
 	// Cor c1
 	var c1 *CorDef
 	c1 = Cor.NewAndStart(func() {
@@ -96,7 +95,7 @@ func TestCorDoNotation(t *testing.T) {
 	actual = Cor.DoNotation(func(self *CorDef) interface{} {
 		logMessage(self, "Do Notation", "init")
 
-		result := 0
+		var result int
 		v := 0
 		var m MaybeDef
 

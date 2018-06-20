@@ -7,15 +7,15 @@ import (
 
 type AtomBool struct{ flag int32 }
 
-func (self *AtomBool) Set(value bool) {
+func (atomBoolSelf *AtomBool) Set(value bool) {
 	var i int32 = 0
 	if value {
 		i = 1
 	}
-	atomic.StoreInt32(&(self.flag), int32(i))
+	atomic.StoreInt32(&(atomBoolSelf.flag), int32(i))
 }
-func (self *AtomBool) Get() bool {
-	if atomic.LoadInt32(&(self.flag)) != 0 {
+func (atomBoolSelf *AtomBool) Get() bool {
+	if atomic.LoadInt32(&(atomBoolSelf.flag)) != 0 {
 		return true
 	}
 	return false
@@ -36,24 +36,24 @@ type CorDef struct {
 	effect func()
 }
 
-func (self *CorDef) New(effect func()) *CorDef {
+func (corSelf *CorDef) New(effect func()) *CorDef {
 	opCh := make(chan *CorOp, 5)
 	resultCh := make(chan interface{}, 5)
 	cor := &CorDef{effect: effect, opCh: &opCh, resultCh: &resultCh, isStarted: AtomBool{flag: 0}}
 	return cor
 }
-func (self *CorDef) NewAndStart(effect func()) *CorDef {
-	cor := self.New(effect)
+func (corSelf *CorDef) NewAndStart(effect func()) *CorDef {
+	cor := corSelf.New(effect)
 	cor.Start()
 	return cor
 }
-func (self *CorDef) DoNotation(effect func(*CorDef) interface{}) interface{} {
+func (corSelf *CorDef) DoNotation(effect func(*CorDef) interface{}) interface{} {
 	var result interface{} = nil
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	var cor *CorDef = nil
-	cor = self.New(func() {
+	cor = corSelf.New(func() {
 		result = effect(cor)
 		wg.Done()
 	})
@@ -62,39 +62,39 @@ func (self *CorDef) DoNotation(effect func(*CorDef) interface{}) interface{} {
 
 	return result
 }
-func (self *CorDef) StartWithVal(in interface{}) {
-	if self.IsDone() || self.isStarted.Get() {
+func (corSelf *CorDef) StartWithVal(in interface{}) {
+	if corSelf.IsDone() || corSelf.isStarted.Get() {
 		return
 	}
 
-	self.receive(nil, in)
-	self.Start()
+	corSelf.receive(nil, in)
+	corSelf.Start()
 }
-func (self *CorDef) Start() {
-	if self.IsDone() || self.isStarted.Get() {
+func (corSelf *CorDef) Start() {
+	if corSelf.IsDone() || corSelf.isStarted.Get() {
 		return
 	}
-	self.isStarted.Set(true)
+	corSelf.isStarted.Set(true)
 
 	go func() {
-		self.effect()
-		self.close()
+		corSelf.effect()
+		corSelf.close()
 	}()
 }
-func (self *CorDef) Yield() interface{} {
-	return self.YieldRef(nil)
+func (corSelf *CorDef) Yield() interface{} {
+	return corSelf.YieldRef(nil)
 }
-func (self *CorDef) YieldRef(out interface{}) interface{} {
+func (corSelf *CorDef) YieldRef(out interface{}) interface{} {
 	var result interface{} = nil
-	if self.IsDone() {
+	if corSelf.IsDone() {
 		return result
 	}
 
 	var op *CorOp = nil
 	var more bool
-	// fmt.Println(self, "Wait for", "op")
-	op, more = <-*self.opCh
-	// fmt.Println(self, "Wait for", "op", "done")
+	// fmt.Println(corSelf, "Wait for", "op")
+	op, more = <-*corSelf.opCh
+	// fmt.Println(corSelf, "Wait for", "op", "done")
 
 	if more && op != nil && op.cor != nil {
 		cor := op.cor
@@ -106,30 +106,30 @@ func (self *CorDef) YieldRef(out interface{}) interface{} {
 
 	return result
 }
-func (self *CorDef) YieldFrom(target *CorDef, in interface{}) interface{} {
+func (corSelf *CorDef) YieldFrom(target *CorDef, in interface{}) interface{} {
 	var result interface{} = nil
-	if self.IsDone() {
+	if corSelf.IsDone() {
 		return result
 	}
 
-	target.receive(self, in)
+	target.receive(corSelf, in)
 
-	// fmt.Println(self, "Wait for", "result")
-	result, _ = <-*self.resultCh
-	// fmt.Println(self, "Wait for", "result", "done")
+	// fmt.Println(corSelf, "Wait for", "result")
+	result, _ = <-*corSelf.resultCh
+	// fmt.Println(corSelf, "Wait for", "result", "done")
 
 	return result
 }
-func (self *CorDef) receive(cor *CorDef, in interface{}) {
-	self.doCloseSafe(func() {
-		if self.opCh != nil {
-			// fmt.Println(self, "Wait for", "receive", cor, in)
-			*(self.opCh) <- &CorOp{cor: cor, val: in}
-			// fmt.Println(self, "Wait for", "receive", "done")
+func (corSelf *CorDef) receive(cor *CorDef, in interface{}) {
+	corSelf.doCloseSafe(func() {
+		if corSelf.opCh != nil {
+			// fmt.Println(corSelf, "Wait for", "receive", cor, in)
+			*(corSelf.opCh) <- &CorOp{cor: cor, val: in}
+			// fmt.Println(corSelf, "Wait for", "receive", "done")
 		}
 	})
 }
-func (self *CorDef) YieldFromIO(target *MonadIODef) interface{} {
+func (corSelf *CorDef) YieldFromIO(target *MonadIODef) interface{} {
 	var result interface{} = nil
 
 	var wg sync.WaitGroup
@@ -144,31 +144,31 @@ func (self *CorDef) YieldFromIO(target *MonadIODef) interface{} {
 
 	return result
 }
-func (self *CorDef) IsDone() bool {
-	return self.isClosed.Get()
+func (corSelf *CorDef) IsDone() bool {
+	return corSelf.isClosed.Get()
 }
-func (self *CorDef) IsStarted() bool {
-	return self.isStarted.Get()
+func (corSelf *CorDef) IsStarted() bool {
+	return corSelf.isStarted.Get()
 }
-func (self *CorDef) close() {
-	self.isClosed.Set(true)
+func (corSelf *CorDef) close() {
+	corSelf.isClosed.Set(true)
 
-	self.closedM.Lock()
-	if self.resultCh != nil {
-		close(*self.resultCh)
+	corSelf.closedM.Lock()
+	if corSelf.resultCh != nil {
+		close(*corSelf.resultCh)
 	}
-	if self.opCh != nil {
-		close(*self.opCh)
+	if corSelf.opCh != nil {
+		close(*corSelf.opCh)
 	}
-	self.closedM.Unlock()
+	corSelf.closedM.Unlock()
 }
-func (self *CorDef) doCloseSafe(fn func()) {
-	if self.IsDone() {
+func (corSelf *CorDef) doCloseSafe(fn func()) {
+	if corSelf.IsDone() {
 		return
 	}
-	self.closedM.Lock()
+	corSelf.closedM.Lock()
 	fn()
-	self.closedM.Unlock()
+	corSelf.closedM.Unlock()
 }
 
 var Cor CorDef

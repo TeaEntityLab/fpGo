@@ -1,44 +1,55 @@
 package fpGo
 
+// HandlerDef Handler inspired by Android/WebWorker
 type HandlerDef struct {
 	isClosed bool
 
 	ch *chan func()
 }
 
-var defaultHandler *HandlerDef = nil
+var defaultHandler *HandlerDef
 
-func (self *HandlerDef) GetDefault() *HandlerDef {
+// GetDefault Get Default Handler
+func (handlerSelf *HandlerDef) GetDefault() *HandlerDef {
 	return defaultHandler
 }
-func (self *HandlerDef) New() *HandlerDef {
+
+// New New Handler instance
+func (handlerSelf *HandlerDef) New() *HandlerDef {
 	ch := make(chan func())
-	return self.NewByCh(&ch)
+	return handlerSelf.NewByCh(&ch)
 }
-func (self *HandlerDef) NewByCh(ioCh *chan func()) *HandlerDef {
+
+// NewByCh New Handler by its Channel
+func (handlerSelf *HandlerDef) NewByCh(ioCh *chan func()) *HandlerDef {
 	new := HandlerDef{ch: ioCh}
 	go new.run()
 
 	return &new
 }
-func (self *HandlerDef) Post(fn func()) {
-	if self.isClosed {
+
+// Post Post a function to execute on the Handler
+func (handlerSelf *HandlerDef) Post(fn func()) {
+	if handlerSelf.isClosed {
 		return
 	}
 
-	*(self.ch) <- fn
+	*(handlerSelf.ch) <- fn
 }
-func (self *HandlerDef) Close() {
-	self.isClosed = true
 
-	close(*self.ch)
+// Close Close the Handler
+func (handlerSelf *HandlerDef) Close() {
+	handlerSelf.isClosed = true
+
+	close(*handlerSelf.ch)
 }
-func (self *HandlerDef) run() {
-	for fn := range *self.ch {
+func (handlerSelf *HandlerDef) run() {
+	for fn := range *handlerSelf.ch {
 		fn()
 	}
 }
 
+// Handler Handler utils instance
 var Handler HandlerDef
 
 func init() {

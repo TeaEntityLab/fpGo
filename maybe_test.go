@@ -19,7 +19,7 @@ func TestIsPresent(t *testing.T) {
 	assert.Equal(t, false, m.IsPresent())
 	assert.Equal(t, true, m.IsNil())
 
-	var i int = 1
+	var i = 1
 	var iptr *int
 
 	iptr = nil
@@ -48,8 +48,9 @@ func TestClone(t *testing.T) {
 	var i = 1
 	var i2 = 2
 	var temp = 3
-	var iptr *int = nil
-	var iptr2 *int = &i2
+	var iptr *int
+	var iptr2 *int
+	iptr2 = &i2
 
 	m = Maybe.Just(1)
 	assert.Equal(t, 1, m.Clone().Unwrap())

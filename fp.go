@@ -73,22 +73,31 @@ type PatternMatching struct {
 	patterns []Pattern
 }
 
+// KindPatternDef Pattern which matching when the kind matches
 type KindPatternDef struct {
 	kind   reflect.Kind
 	effect fnObj
 }
+
+// CompTypePatternDef Pattern which matching when the SumType matches
 type CompTypePatternDef struct {
 	compType CompType
 	effect   fnObj
 }
+
+// EqualPatternDef Pattern which matching when the given object is equal to predefined one
 type EqualPatternDef struct {
 	value  interface{}
 	effect fnObj
 }
+
+// RegexPatternDef Pattern which matching when the regex rule matches the given string
 type RegexPatternDef struct {
 	pattern string
 	effect  fnObj
 }
+
+// OtherwisePatternDef Pattern which matching when the others didn't match(finally)
 type OtherwisePatternDef struct {
 	effect fnObj
 }
@@ -112,71 +121,98 @@ func (self PatternMatching) MatchFor(inValue interface{}) interface{} {
 	panic(fmt.Sprintf("Cannot match %v", inValue))
 }
 
-func (self KindPatternDef) Matches(value interface{}) bool {
+// Matches Match the given value by the pattern
+func (patternSelf KindPatternDef) Matches(value interface{}) bool {
 	if value == nil {
 		return false
 	}
 
-	return self.kind == reflect.TypeOf(value).Kind()
+	return patternSelf.kind == reflect.TypeOf(value).Kind()
 }
-func (self CompTypePatternDef) Matches(value interface{}) bool {
+
+// Matches Match the given value by the pattern
+func (patternSelf CompTypePatternDef) Matches(value interface{}) bool {
 	if value != nil && reflect.TypeOf(value).Kind() == reflect.TypeOf(CompData{}).Kind() {
-		return MatchCompType(self.compType, (value).(CompData))
+		return MatchCompType(patternSelf.compType, (value).(CompData))
 	}
 
-	return self.compType.Matches(value)
+	return patternSelf.compType.Matches(value)
 }
-func (self EqualPatternDef) Matches(value interface{}) bool {
-	return self.value == value
+
+// Matches Match the given value by the pattern
+func (patternSelf EqualPatternDef) Matches(value interface{}) bool {
+	return patternSelf.value == value
 }
-func (self RegexPatternDef) Matches(value interface{}) bool {
+
+// Matches Match the given value by the pattern
+func (patternSelf RegexPatternDef) Matches(value interface{}) bool {
 	if value == nil || reflect.TypeOf(value).Kind() != reflect.String {
 		return false
 	}
 
-	matches, err := regexp.MatchString(self.pattern, (value).(string))
+	matches, err := regexp.MatchString(patternSelf.pattern, (value).(string))
 	if err == nil && matches {
 		return true
 	}
 
 	return false
 }
-func (self OtherwisePatternDef) Matches(value interface{}) bool {
+
+// Matches Match the given value by the pattern
+func (patternSelf OtherwisePatternDef) Matches(value interface{}) bool {
 	return true
 }
 
-func (self KindPatternDef) Apply(value interface{}) interface{} {
-	return self.effect(value)
+// Apply Evaluate the result by its given effect function
+func (patternSelf KindPatternDef) Apply(value interface{}) interface{} {
+	return patternSelf.effect(value)
 }
-func (self CompTypePatternDef) Apply(value interface{}) interface{} {
-	return self.effect(value)
+
+// Apply Evaluate the result by its given effect function
+func (patternSelf CompTypePatternDef) Apply(value interface{}) interface{} {
+	return patternSelf.effect(value)
 }
-func (self EqualPatternDef) Apply(value interface{}) interface{} {
-	return self.effect(value)
+
+// Apply Evaluate the result by its given effect function
+func (patternSelf EqualPatternDef) Apply(value interface{}) interface{} {
+	return patternSelf.effect(value)
 }
-func (self RegexPatternDef) Apply(value interface{}) interface{} {
-	return self.effect(value)
+
+// Apply Evaluate the result by its given effect function
+func (patternSelf RegexPatternDef) Apply(value interface{}) interface{} {
+	return patternSelf.effect(value)
 }
-func (self OtherwisePatternDef) Apply(value interface{}) interface{} {
-	return self.effect(value)
+
+// Apply Evaluate the result by its given effect function
+func (patternSelf OtherwisePatternDef) Apply(value interface{}) interface{} {
+	return patternSelf.effect(value)
 }
 
 func DefPattern(patterns ...Pattern) PatternMatching {
 	return PatternMatching{patterns: patterns}
 }
 
+// InCaseOfKind In case of its Kind matches the given one
 func InCaseOfKind(kind reflect.Kind, effect fnObj) Pattern {
 	return KindPatternDef{kind: kind, effect: effect}
 }
+
+// InCaseOfSumType In case of its SumType matches the given one
 func InCaseOfSumType(compType CompType, effect fnObj) Pattern {
 	return CompTypePatternDef{compType: compType, effect: effect}
 }
+
+// InCaseOfEqual In case of its value is equal to the given one
 func InCaseOfEqual(value interface{}, effect fnObj) Pattern {
 	return EqualPatternDef{value: value, effect: effect}
 }
+
+// InCaseOfRegex In case of the given regex rule matches its value
 func InCaseOfRegex(pattern string, effect fnObj) Pattern {
 	return RegexPatternDef{pattern: pattern, effect: effect}
 }
+
+// Otherwise In case of the other patterns didn't match it
 func Otherwise(effect fnObj) Pattern {
 	return OtherwisePatternDef{effect: effect}
 }
@@ -205,8 +241,8 @@ type ProductType struct {
 type NilTypeDef struct {
 }
 
-func (self SumType) Matches(value ...interface{}) bool {
-	for _, compType := range self.compTypes {
+func (typeSelf SumType) Matches(value ...interface{}) bool {
+	for _, compType := range typeSelf.compTypes {
 		if compType.Matches(value...) {
 			return true
 		}
@@ -214,18 +250,18 @@ func (self SumType) Matches(value ...interface{}) bool {
 
 	return false
 }
-func (self ProductType) Matches(value ...interface{}) bool {
-	if len(value) != len(self.kinds) {
+func (typeSelf ProductType) Matches(value ...interface{}) bool {
+	if len(value) != len(typeSelf.kinds) {
 		return false
 	}
 
 	matches := true
 	for i, v := range value {
-		matches = matches && self.kinds[i] == Maybe.Just(v).Kind()
+		matches = matches && typeSelf.kinds[i] == Maybe.Just(v).Kind()
 	}
 	return matches
 }
-func (self NilTypeDef) Matches(value ...interface{}) bool {
+func (typeSelf NilTypeDef) Matches(value ...interface{}) bool {
 	if len(value) != 1 {
 		return false
 	}

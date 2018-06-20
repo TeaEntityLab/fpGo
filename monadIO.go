@@ -1,46 +1,59 @@
 package fpGo
 
+// MonadIODef MonadIO inspired by Rx/Observable
 type MonadIODef struct {
 	effect func() interface{}
 
 	obOn  *HandlerDef
 	subOn *HandlerDef
 }
+
+// Subscription the delegation/callback of MonadIO/Publisher
 type Subscription struct {
 	OnNext func(interface{})
 }
 
-func (self MonadIODef) Just(in interface{}) *MonadIODef {
+// Just New MonadIO by a given value
+func (monadIOSelf MonadIODef) Just(in interface{}) *MonadIODef {
 	return &MonadIODef{effect: func() interface{} {
 		return in
 	}}
 }
-func (self *MonadIODef) New(effect func() interface{}) *MonadIODef {
+
+// New New MonadIO by effect function
+func (monadIOSelf *MonadIODef) New(effect func() interface{}) *MonadIODef {
 	return &MonadIODef{effect: effect}
 }
 
-func (self *MonadIODef) FlatMap(fn func(interface{}) *MonadIODef) *MonadIODef {
+// FlatMap FlatMap the MonadIO by function
+func (monadIOSelf *MonadIODef) FlatMap(fn func(interface{}) *MonadIODef) *MonadIODef {
 
 	return &MonadIODef{effect: func() interface{} {
-		next := fn(self.doEffect())
+		next := fn(monadIOSelf.doEffect())
 		return next.doEffect()
 	}}
 
 }
-func (self *MonadIODef) Subscribe(s Subscription) *Subscription {
-	obOn := self.obOn
-	subOn := self.subOn
-	return self.doSubscribe(&s, obOn, subOn)
+
+// Subscribe Subscribe the MonadIO by Subscription
+func (monadIOSelf *MonadIODef) Subscribe(s Subscription) *Subscription {
+	obOn := monadIOSelf.obOn
+	subOn := monadIOSelf.subOn
+	return monadIOSelf.doSubscribe(&s, obOn, subOn)
 }
-func (self *MonadIODef) SubscribeOn(h *HandlerDef) *MonadIODef {
-	self.subOn = h
-	return self
+
+// SubscribeOn Subscribe the MonadIO on the specific Handler
+func (monadIOSelf *MonadIODef) SubscribeOn(h *HandlerDef) *MonadIODef {
+	monadIOSelf.subOn = h
+	return monadIOSelf
 }
-func (self *MonadIODef) ObserveOn(h *HandlerDef) *MonadIODef {
-	self.obOn = h
-	return self
+
+// ObserveOn Observe the MonadIO on the specific Handler
+func (monadIOSelf *MonadIODef) ObserveOn(h *HandlerDef) *MonadIODef {
+	monadIOSelf.obOn = h
+	return monadIOSelf
 }
-func (self *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, subOn *HandlerDef) *Subscription {
+func (monadIOSelf *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, subOn *HandlerDef) *Subscription {
 
 	if s.OnNext != nil {
 		var result interface{}
@@ -49,7 +62,7 @@ func (self *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, subOn *Ha
 			s.OnNext(result)
 		}
 		doOb := func() {
-			result = self.doEffect()
+			result = monadIOSelf.doEffect()
 
 			if subOn != nil {
 				subOn.Post(doSub)
@@ -66,8 +79,9 @@ func (self *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, subOn *Ha
 
 	return s
 }
-func (self *MonadIODef) doEffect() interface{} {
-	return self.effect()
+func (monadIOSelf *MonadIODef) doEffect() interface{} {
+	return monadIOSelf.effect()
 }
 
+// MonadIO MonadIO utils instance
 var MonadIO MonadIODef

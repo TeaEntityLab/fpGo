@@ -4,138 +4,171 @@ import (
 	"sort"
 )
 
+// StreamDef Stream inspired by Collection utils
 type StreamDef struct {
 	list []interface{}
 }
 
-func (self *StreamDef) FromArrayMaybe(old []MaybeDef) *StreamDef {
+// FromArrayMaybe FromArrayMaybe New Stream instance from a Maybe array
+func (streamSelf *StreamDef) FromArrayMaybe(old []MaybeDef) *StreamDef {
 	new := make([]interface{}, len(old))
 	for i, v := range old {
 		var item interface{} = v
 		new[i] = item
 	}
 
-	return self.FromArray(new)
+	return streamSelf.FromArray(new)
 }
-func (self *StreamDef) FromArrayString(old []string) *StreamDef {
+
+// FromArrayString New Stream instance from a string array
+func (streamSelf *StreamDef) FromArrayString(old []string) *StreamDef {
 	new := make([]interface{}, len(old))
 	for i, v := range old {
 		var item interface{} = v
 		new[i] = item
 	}
 
-	return self.FromArray(new)
+	return streamSelf.FromArray(new)
 }
-func (self *StreamDef) FromArrayBool(old []bool) *StreamDef {
+
+// FromArrayBool New Stream instance from a bool array
+func (streamSelf *StreamDef) FromArrayBool(old []bool) *StreamDef {
 	new := make([]interface{}, len(old))
 	for i, v := range old {
 		var item interface{} = v
 		new[i] = item
 	}
 
-	return self.FromArray(new)
+	return streamSelf.FromArray(new)
 }
-func (self *StreamDef) FromArrayInt(old []int) *StreamDef {
+
+// FromArrayInt New Stream instance from an int array
+func (streamSelf *StreamDef) FromArrayInt(old []int) *StreamDef {
 	new := make([]interface{}, len(old))
 	for i, v := range old {
 		var item interface{} = v
 		new[i] = item
 	}
 
-	return self.FromArray(new)
+	return streamSelf.FromArray(new)
 }
-func (self *StreamDef) FromArrayInt32(old []int32) *StreamDef {
+
+// FromArrayInt32 New Stream instance from an int32 array
+func (streamSelf *StreamDef) FromArrayInt32(old []int32) *StreamDef {
 	new := make([]interface{}, len(old))
 	for i, v := range old {
 		var item interface{} = v
 		new[i] = item
 	}
 
-	return self.FromArray(new)
+	return streamSelf.FromArray(new)
 }
-func (self *StreamDef) FromArrayInt64(old []int64) *StreamDef {
+
+// FromArrayInt64 New Stream instance from an int64 array
+func (streamSelf *StreamDef) FromArrayInt64(old []int64) *StreamDef {
 	new := make([]interface{}, len(old))
 	for i, v := range old {
 		var item interface{} = v
 		new[i] = item
 	}
 
-	return self.FromArray(new)
+	return streamSelf.FromArray(new)
 }
-func (self *StreamDef) FromArrayFloat32(old []float32) *StreamDef {
+
+// FromArrayFloat32 New Stream instance from a float32 array
+func (streamSelf *StreamDef) FromArrayFloat32(old []float32) *StreamDef {
 	new := make([]interface{}, len(old))
 	for i, v := range old {
 		var item interface{} = v
 		new[i] = item
 	}
 
-	return self.FromArray(new)
+	return streamSelf.FromArray(new)
 }
-func (self *StreamDef) FromArrayFloat64(old []float64) *StreamDef {
+
+// FromArrayFloat64 New Stream instance from a float64 array
+func (streamSelf *StreamDef) FromArrayFloat64(old []float64) *StreamDef {
 	new := make([]interface{}, len(old))
 	for i, v := range old {
 		var item interface{} = v
 		new[i] = item
 	}
 
-	return self.FromArray(new)
+	return streamSelf.FromArray(new)
 }
-func (self *StreamDef) FromArray(list []interface{}) *StreamDef {
+
+// FromArray New Stream instance from an interface{} array
+func (streamSelf *StreamDef) FromArray(list []interface{}) *StreamDef {
 	return &StreamDef{list: list}
 }
-func (self *StreamDef) ToArray() []interface{} {
-	return self.list
+
+// ToArray Convert Stream to slice
+func (streamSelf *StreamDef) ToArray() []interface{} {
+	return streamSelf.list
 }
 
-func (self *StreamDef) Map(fn func(int) interface{}) *StreamDef {
+// Map Map all items of Stream by function
+func (streamSelf *StreamDef) Map(fn func(int) interface{}) *StreamDef {
 
-	var list = make([]interface{}, self.Len())
+	var list = make([]interface{}, streamSelf.Len())
 
-	for i, _ := range self.list {
+	for i := range streamSelf.list {
 		list[i] = fn(i)
 	}
 
 	return &StreamDef{list: list}
 }
-func (self *StreamDef) Filter(fn func(int) bool) *StreamDef {
 
-	var list = make([]interface{}, self.Len())
+// Filter Filter items of Stream by function
+func (streamSelf *StreamDef) Filter(fn func(int) bool) *StreamDef {
+
+	var list = make([]interface{}, streamSelf.Len())
 
 	var newLen = 0
 
-	for i, _ := range self.list {
+	for i := range streamSelf.list {
 		if fn(i) {
-			newLen += 1
-			list[newLen-1] = self.list[i]
+			newLen++
+			list[newLen-1] = streamSelf.list[i]
 		}
 	}
 
 	return &StreamDef{list: list[:newLen]}
 }
-func (self *StreamDef) Distinct() *StreamDef {
-	return self.Filter(func(i int) bool {
-		return self.list[i] != nil
+
+// Distinct Filter not nil items and return a new Stream instance
+func (streamSelf *StreamDef) Distinct() *StreamDef {
+	return streamSelf.Filter(func(i int) bool {
+		return Maybe.Just(streamSelf.list[i]).IsPresent()
 	})
 }
-func (self *StreamDef) Append(item interface{}) *StreamDef {
-	self.list = append(self.list, item)
-	return self
+
+// Append Append an item into Stream
+func (streamSelf *StreamDef) Append(item interface{}) *StreamDef {
+	streamSelf.list = append(streamSelf.list, item)
+	return streamSelf
 }
-func (self *StreamDef) Remove(index int) *StreamDef {
-	if index >= 0 && index < self.Len() {
-		self.list = append(self.list[:index], self.list[index+1:]...)
+
+// Remove Remove an item by its index
+func (streamSelf *StreamDef) Remove(index int) *StreamDef {
+	if index >= 0 && index < streamSelf.Len() {
+		streamSelf.list = append(streamSelf.list[:index], streamSelf.list[index+1:]...)
 	}
-	return self
+	return streamSelf
 }
-func (self *StreamDef) Len() int {
-	return len(self.list)
+
+// Len Get length of Stream
+func (streamSelf *StreamDef) Len() int {
+	return len(streamSelf.list)
 }
-func (self *StreamDef) Extend(stream *StreamDef) *StreamDef {
+
+// Extend Extend Stream by an another Stream
+func (streamSelf *StreamDef) Extend(stream *StreamDef) *StreamDef {
 	if stream == nil {
-		return self
+		return streamSelf
 	}
 
-	var mine = self.list
+	var mine = streamSelf.list
 	var mineLen = len(mine)
 	var target = stream.ToArray()
 	var targetLen = len(target)
@@ -147,17 +180,21 @@ func (self *StreamDef) Extend(stream *StreamDef) *StreamDef {
 	for j, item := range target {
 		new[mineLen+j] = item
 	}
-	self.list = new
+	streamSelf.list = new
 
-	return self
-}
-func (self *StreamDef) Sort(fn func(i, j int) bool) *StreamDef {
-	sort.Slice(self.list, fn)
-	return self
+	return streamSelf
 }
 
-func (self *StreamDef) Get(i int) interface{} {
-	return self.list[i]
+// Sort Sort Stream items by function
+func (streamSelf *StreamDef) Sort(fn func(i, j int) bool) *StreamDef {
+	sort.Slice(streamSelf.list, fn)
+	return streamSelf
 }
 
+// Get Get an item of Stream by its index
+func (streamSelf *StreamDef) Get(i int) interface{} {
+	return streamSelf.list[i]
+}
+
+// Stream Stream utils instance
 var Stream StreamDef
