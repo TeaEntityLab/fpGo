@@ -10,22 +10,27 @@ import (
 type fnObj func(interface{}) interface{}
 
 // Compose Compose the functions from right to left (Math: f(g(x)) Compose: Compose(f, g)(x))
-func Compose(fnList ...fnObj) func(interface{}) interface{} {
-	return func(s interface{}) interface{} {
+func Compose(fnList ...func(...interface{}) []interface{}) func(...interface{}) []interface{} {
+	return func(s ...interface{}) []interface{} {
 		f := fnList[0]
 		nextFnList := fnList[1:]
 
 		if len(fnList) == 1 {
-			return f(s)
+			return f(s...)
 		}
 
-		return f(Compose(nextFnList...)(s))
+		return f(Compose(nextFnList...)(s...)...)
 	}
 }
 
 // PtrOf Return Ptr of a value
 func PtrOf(v interface{}) *interface{} {
 	return &v
+}
+
+// SliceOf Return Ptr of a value
+func SliceOf(args ...interface{}) []interface{} {
+	return args
 }
 
 // CurryDef Curry inspired by Currying in Java ways

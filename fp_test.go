@@ -11,39 +11,39 @@ import (
 func TestCompose(t *testing.T) {
 	var expectedinteger int
 
-	var fn01 = func(obj interface{}) interface{} {
-		val, _ := Maybe.Just(obj).ToInt()
-		return (val + 1)
+	var fn01 = func(args ...interface{}) []interface{} {
+		val, _ := Maybe.Just(args[0]).ToInt()
+		return SliceOf(val + 1)
 	}
-	var fn02 = func(obj interface{}) interface{} {
-		val, _ := Maybe.Just(obj).ToInt()
-		return (val + 2)
+	var fn02 = func(args ...interface{}) []interface{} {
+		val, _ := Maybe.Just(args[0]).ToInt()
+		return SliceOf(val + 2)
 	}
-	var fn03 = func(obj interface{}) interface{} {
-		val, _ := Maybe.Just(obj).ToInt()
-		return (val + 3)
+	var fn03 = func(args ...interface{}) []interface{} {
+		val, _ := Maybe.Just(args[0]).ToInt()
+		return SliceOf(val + 3)
 	}
 
 	expectedinteger = 1
-	assert.Equal(t, expectedinteger, Compose(fn01)((0)))
+	assert.Equal(t, expectedinteger, Compose(fn01)((0))[0])
 
 	expectedinteger = 2
-	assert.Equal(t, expectedinteger, Compose(fn02)((0)))
+	assert.Equal(t, expectedinteger, Compose(fn02)((0))[0])
 
 	expectedinteger = 3
-	assert.Equal(t, expectedinteger, Compose(fn03)((0)))
+	assert.Equal(t, expectedinteger, Compose(fn03)((0))[0])
 
 	expectedinteger = 3
-	assert.Equal(t, expectedinteger, Compose(fn01, fn02)((0)))
+	assert.Equal(t, expectedinteger, Compose(fn01, fn02)((0))[0])
 
 	expectedinteger = 4
-	assert.Equal(t, expectedinteger, Compose(fn01, fn03)((0)))
+	assert.Equal(t, expectedinteger, Compose(fn01, fn03)((0))[0])
 
 	expectedinteger = 5
-	assert.Equal(t, expectedinteger, Compose(fn02, fn03)((0)))
+	assert.Equal(t, expectedinteger, Compose(fn02, fn03)((0))[0])
 
 	expectedinteger = 6
-	assert.Equal(t, expectedinteger, Compose(fn01, fn02, fn03)((0)))
+	assert.Equal(t, expectedinteger, Compose(fn01, fn02, fn03)((0))[0])
 }
 
 func TestCurry(t *testing.T) {

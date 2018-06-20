@@ -134,19 +134,19 @@ fmt.Println(tempString) // tempString would be "1234"
 Example:
 
 ```go
-var fn01 = func(obj interface{}) interface{} {
-  val, _ := Maybe.Just(obj).ToInt()
-  return (val + 1)
+var fn01 = func(args ...interface{}) []interface{} {
+  val, _ := Maybe.Just(args[0]).ToInt()
+  return SliceOf(val + 1)
 }
-var fn02 = func(obj interface{}) interface{} {
-  val, _ := Maybe.Just(obj).ToInt()
-  return (val + 2)
+var fn02 = func(args ...interface{}) []interface{} {
+  val, _ := Maybe.Just(args[0]).ToInt()
+  return SliceOf(val + 2)
 }
-var fn03 = func(obj interface{}) interface{} {
-  val, _ := Maybe.Just(obj).ToInt()
-  return (val + 3)
+var fn03 = func(args ...interface{}) []interface{} {
+  val, _ := Maybe.Just(args[0]).ToInt()
+  return SliceOf(val + 3)
 }
 
 // Result would be 6
-result := Compose(fn01, fn02, fn03)((0))
+result := Compose(fn01, fn02, fn03)((0))[0]
 ```
