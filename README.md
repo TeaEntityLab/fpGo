@@ -1,6 +1,8 @@
 # fpGo
 
 [![tag](https://img.shields.io/github/tag/TeaEntityLab/fpGo.svg)](https://github.com/TeaEntityLab/fpGo)
+[![Go Report Card](https://goreportcard.com/badge/github.com/TeaEntityLab/fpGo)](https://goreportcard.com/report/github.com/TeaEntityLab/fpGo)
+[![GoDoc](https://godoc.org/github.com/TeaEntityLab/fpGo?status.svg)](https://godoc.org/github.com/TeaEntityLab/fpGo)
 
 [![license](https://img.shields.io/github/license/TeaEntityLab/fpGo.svg?style=social&label=License)](https://github.com/TeaEntityLab/fpGo)
 [![stars](https://img.shields.io/github/stars/TeaEntityLab/fpGo.svg?style=social&label=Stars)](https://github.com/TeaEntityLab/fpGo)
