@@ -28,7 +28,7 @@ func PtrOf(v interface{}) *interface{} {
 	return &v
 }
 
-// SliceOf Return Slice of a value
+// SliceOf Return Slice of varags
 func SliceOf(args ...interface{}) []interface{} {
 	return args
 }
