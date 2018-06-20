@@ -138,7 +138,7 @@ func (patternMatchingSelf PatternMatching) MatchFor(inValue interface{}) interfa
 
 // Matches Match the given value by the pattern
 func (patternSelf KindPatternDef) Matches(value interface{}) bool {
-	if value == nil {
+	if Maybe.Just(value).IsNil() {
 		return false
 	}
 
@@ -147,7 +147,7 @@ func (patternSelf KindPatternDef) Matches(value interface{}) bool {
 
 // Matches Match the given value by the pattern
 func (patternSelf CompTypePatternDef) Matches(value interface{}) bool {
-	if value != nil && reflect.TypeOf(value).Kind() == reflect.TypeOf(CompData{}).Kind() {
+	if Maybe.Just(value).IsPresent() && reflect.TypeOf(value).Kind() == reflect.TypeOf(CompData{}).Kind() {
 		return MatchCompType(patternSelf.compType, (value).(CompData))
 	}
 
@@ -161,7 +161,7 @@ func (patternSelf EqualPatternDef) Matches(value interface{}) bool {
 
 // Matches Match the given value by the pattern
 func (patternSelf RegexPatternDef) Matches(value interface{}) bool {
-	if value == nil || reflect.TypeOf(value).Kind() != reflect.String {
+	if Maybe.Just(value).IsNil() || reflect.TypeOf(value).Kind() != reflect.String {
 		return false
 	}
 
