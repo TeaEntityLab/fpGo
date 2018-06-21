@@ -1,5 +1,5 @@
-hash: 85ffd0867f8b9541d9e63535336f4272078f8642d824dd103dd1bec95fbd90ac
-updated: 2018-05-29T14:01:59.289497+08:00
+hash: 0aebc1ed7582a040e53d5d36208730bce6cd2a994ca4cc52cc210f325f7c288a
+updated: 2018-06-21T16:49:36.094642+08:00
 imports: []
 testImports:
 - name: github.com/davecgh/go-spew
@@ -11,6 +11,6 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 12b6f73e6084dad08a7c6e575284b177ecafbc71
+  version: f35b8ab0b5a2cef36673838d662e249dd9c94686
   subpackages:
   - assert
