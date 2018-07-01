@@ -20,9 +20,9 @@ Thus I implemented fpGo. I hope you would like it :)
 
 # Features
 
-* Optional
+* Optional/Maybe
 
-* Maybe
+* Monad, Rx-like
 
 * Publisher
 
