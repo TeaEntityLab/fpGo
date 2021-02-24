@@ -1,4 +1,4 @@
-package fpGo
+package fpgo
 
 import (
 	"testing"

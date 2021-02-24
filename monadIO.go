@@ -1,4 +1,4 @@
-package fpGo
+package fpgo
 
 // MonadIODef MonadIO inspired by Rx/Observable
 type MonadIODef struct {

@@ -1,4 +1,4 @@
-package fpGo
+package fpgo
 
 // HandlerDef Handler inspired by Android/WebWorker
 type HandlerDef struct {
