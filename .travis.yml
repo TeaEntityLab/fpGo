@@ -3,8 +3,8 @@ language: go
 
 go:
   - "1.x"
-  - "1.11"
-  - "1.14.x"
+  - "1.13"
+  - "1.16.x"
   - master
 
 install:
