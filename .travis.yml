@@ -5,10 +5,20 @@ go:
   - "1.x"
   - "1.13"
   - "1.16.x"
+  - tip
   - master
+
+before_install:
+  - go get -t -v ./...
 
 install:
   - go get -v github.com/stretchr/testify
+
+script:
+  - go test -race -coverprofile=coverage.txt -covermode=atomic
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
 
 matrix:
   fast_finish: true
