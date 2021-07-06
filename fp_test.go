@@ -11,16 +11,16 @@ import (
 func TestCompose(t *testing.T) {
 	var expectedinteger int
 
-	var fn01 = func(args ...interface{}) []interface{} {
-		val, _ := Maybe.Just(args[0]).ToInt()
+	var fn01 = func(args ...int) []int {
+		val := args[0]
 		return SliceOf(val + 1)
 	}
-	var fn02 = func(args ...interface{}) []interface{} {
-		val, _ := Maybe.Just(args[0]).ToInt()
+	var fn02 = func(args ...int) []int {
+		val := args[0]
 		return SliceOf(val + 2)
 	}
-	var fn03 = func(args ...interface{}) []interface{} {
-		val, _ := Maybe.Just(args[0]).ToInt()
+	var fn03 = func(args ...int) []int {
+		val := args[0]
 		return SliceOf(val + 3)
 	}
 
@@ -44,6 +44,9 @@ func TestCompose(t *testing.T) {
 
 	expectedinteger = 6
 	assert.Equal(t, expectedinteger, Compose(fn01, fn02, fn03)((0))[0])
+
+	expectedinteger = 6
+	assert.Equal(t, expectedinteger, Pipe(fn01, fn02, fn03)((0))[0])
 }
 
 func TestCurry(t *testing.T) {

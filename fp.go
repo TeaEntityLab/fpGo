@@ -10,8 +10,8 @@ import (
 type fnObj func(interface{}) interface{}
 
 // Compose Compose the functions from right to left (Math: f(g(x)) Compose: Compose(f, g)(x))
-func Compose(fnList ...func(...interface{}) []interface{}) func(...interface{}) []interface{} {
-	return func(s ...interface{}) []interface{} {
+func Compose[T any](fnList ...func(...T) []T) func(...T) []T {
+	return func(s ...T) []T {
 		f := fnList[0]
 		nextFnList := fnList[1:]
 
@@ -23,13 +23,39 @@ func Compose(fnList ...func(...interface{}) []interface{}) func(...interface{}) 
 	}
 }
 
+// Pipe Pipe the functions from left to right
+func Pipe[T any](fnList ...func(...T) []T) func(...T) []T {
+	return func(s ...T) []T {
+
+		lastIndex := len(fnList) - 1
+		f := fnList[lastIndex]
+		nextFnList := fnList[:lastIndex]
+
+		if len(fnList) == 1 {
+			return f(s...)
+		}
+
+		return f(Compose(nextFnList...)(s...)...)
+	}
+}
+
+// Map Map the values to the function from left to right
+func Map[T any](fn func(T) T, values ...T) []T {
+	result := make([]T, len(values))
+	for i, val := range values {
+		result[i] = fn(val)
+	}
+
+	return result
+}
+
 // PtrOf Return Ptr of a value
-func PtrOf(v interface{}) *interface{} {
+func PtrOf[T any](v T) *T {
 	return &v
 }
 
 // SliceOf Return Slice of varargs
-func SliceOf(args ...interface{}) []interface{} {
+func SliceOf[T any](args ...T) []T {
 	return args
 }
 

@@ -136,16 +136,16 @@ fmt.Println(tempString) // tempString would be "1234"
 Example:
 
 ```go
-var fn01 = func(args ...interface{}) []interface{} {
-  val, _ := Maybe.Just(args[0]).ToInt()
+var fn01 = func(args ...int) []int {
+  val := args[0]
   return SliceOf(val + 1)
 }
-var fn02 = func(args ...interface{}) []interface{} {
-  val, _ := Maybe.Just(args[0]).ToInt()
+var fn02 = func(args ...int) []int {
+  val := args[0]
   return SliceOf(val + 2)
 }
-var fn03 = func(args ...interface{}) []interface{} {
-  val, _ := Maybe.Just(args[0]).ToInt()
+var fn03 = func(args ...int) []int {
+  val := args[0]
   return SliceOf(val + 3)
 }
 
