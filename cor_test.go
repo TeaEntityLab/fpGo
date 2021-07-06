@@ -50,7 +50,7 @@ func TestCorYield(t *testing.T) {
 		v, _ = Maybe.Just(self.Yield()).ToInt()
 		actualInt = v + 1
 
-		v, _ = Maybe.Just(self.YieldFromIO(MonadIO.Just(1).ObserveOn(&Handler))).ToInt()
+		v, _ = Maybe.Just(self.YieldFromIO(MonadIO.Just(1).ObserveOn(Handler.GetDefault()))).ToInt()
 		logMessage(self, "s", 5)
 		actualInt += v
 		logMessage(self, "s", 6)
@@ -104,7 +104,9 @@ func TestCorDoNotation(t *testing.T) {
 		logMessage(self, "Do Notation", "v", v)
 		logMessage(self, "Do Notation", "result", result)
 
-		v, _ = Maybe.Just(self.YieldFromIO(MonadIO.Just(1).ObserveOn(&Handler))).ToInt()
+		h := Handler.New()
+		defer h.Close()
+		v, _ = Maybe.Just(self.YieldFromIO(MonadIO.Just(1).ObserveOn(h))).ToInt()
 		result += v
 
 		logMessage(self, "Do Notation", "result", result)

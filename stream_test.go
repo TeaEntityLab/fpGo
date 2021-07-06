@@ -95,13 +95,55 @@ func TestFromArrayMapReduce(t *testing.T) {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "14916", tempString)
+
+	s = Stream.FromArrayBool([]bool{true, false, true, false})
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Maybe.Just(v).ToMaybe().ToString()
+	}
+	assert.Equal(t, "truefalsetruefalse", tempString)
+
+	s = Stream.FromArrayByte([]byte{1, 2, 3, 4})
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Maybe.Just(v).ToMaybe().ToString()
+	}
+	assert.Equal(t, "1234", tempString)
+
+	s = Stream.FromArrayInt8([]int8{1, 2, 3, 4})
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Maybe.Just(v).ToMaybe().ToString()
+	}
+	assert.Equal(t, "1234", tempString)
+
+	s = Stream.FromArrayInt16([]int16{1, 2, 3, 4})
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Maybe.Just(v).ToMaybe().ToString()
+	}
+	assert.Equal(t, "1234", tempString)
+
+	s = Stream.FromArrayInt32([]int32{1, 2, 3, 4})
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Maybe.Just(v).ToMaybe().ToString()
+	}
+	assert.Equal(t, "1234", tempString)
+
+	s = Stream.FromArrayInt64([]int64{1, 2, 3, 4})
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Maybe.Just(v).ToMaybe().ToString()
+	}
+	assert.Equal(t, "1234", tempString)
 }
 
 func TestFilter(t *testing.T) {
 	var s *StreamDef
 	var tempString string
 
-	s = Stream.FromArrayInt([]int{}).Append(1).Extend(Stream.FromArrayInt([]int{2, 3, 4})).Extend(Stream.FromArray([]interface{}{nil}))
+	s = Stream.FromArrayInt([]int{}).Append(1).Extend(Stream.FromArrayInt([]int{2, 3, 4})).Extend(Stream.FromArray([]interface{}{nil})).Extend(nil)
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()

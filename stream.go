@@ -53,6 +53,39 @@ func (streamSelf *StreamDef) FromArrayInt(old []int) *StreamDef {
 	return streamSelf.FromArray(new)
 }
 
+// FromArrayByte New Stream instance from an int8 array
+func (streamSelf *StreamDef) FromArrayByte(old []byte) *StreamDef {
+	new := make([]interface{}, len(old))
+	for i, v := range old {
+		var item interface{} = v
+		new[i] = item
+	}
+
+	return streamSelf.FromArray(new)
+}
+
+// FromArrayInt8 New Stream instance from an int8 array
+func (streamSelf *StreamDef) FromArrayInt8(old []int8) *StreamDef {
+	new := make([]interface{}, len(old))
+	for i, v := range old {
+		var item interface{} = v
+		new[i] = item
+	}
+
+	return streamSelf.FromArray(new)
+}
+
+// FromArrayInt16 New Stream instance from an int16 array
+func (streamSelf *StreamDef) FromArrayInt16(old []int16) *StreamDef {
+	new := make([]interface{}, len(old))
+	for i, v := range old {
+		var item interface{} = v
+		new[i] = item
+	}
+
+	return streamSelf.FromArray(new)
+}
+
 // FromArrayInt32 New Stream instance from an int32 array
 func (streamSelf *StreamDef) FromArrayInt32(old []int32) *StreamDef {
 	new := make([]interface{}, len(old))
