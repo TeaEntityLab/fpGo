@@ -49,8 +49,18 @@ func Map[T any, R any](fn func(T) R, values ...T) []R {
 	return result
 }
 
+// MapIndexed Map the values to the function from left to right
+func MapIndexed[T any, R any](fn func(T, int) R, values ...T) []R {
+	result := make([]R, len(values))
+	for i, val := range values {
+		result[i] = fn(val, i)
+	}
+
+	return result
+}
+
 // Reduce Reduce the values from left to right(func(memo,val), starting value, slice)
-func Reduce[T any](fn func(T, T) T, memo T, in ...T) T {
+func Reduce[T any, R any](fn func(R, T) R, memo R, in ...T) R {
 
 	for i := 0; i < len(in); i++ {
 		memo = fn(memo, in[i])
@@ -59,7 +69,17 @@ func Reduce[T any](fn func(T, T) T, memo T, in ...T) T {
 	return memo
 }
 
-//Filter Filter the values by the given predicate function (slice, predicate func)
+// ReduceIndexed Reduce the values from left to right(func(memo,val,index), starting value, slice)
+func ReduceIndexed[T any, R any](fn func(R, T, int) R, memo R, in ...T) R {
+
+	for i := 0; i < len(in); i++ {
+		memo = fn(memo, in[i], i)
+	}
+
+	return memo
+}
+
+//Filter Filter the values by the given predicate function (predicate func, slice)
 func Filter[T any](fn func(T) bool, in ...T) []T {
 	out := make([]T, 0, len(in))
 
@@ -72,6 +92,13 @@ func Filter[T any](fn func(T) bool, in ...T) []T {
 	}
 
 	return out
+}
+
+//Reject Reject the values by the given predicate function (predicate func, slice)
+func Reject[T any](fn func(T) bool, in ...T) []T {
+	return Filter(func (val T) bool {
+		return !fn(val)
+	}, in...)
 }
 
 // PtrOf Return Ptr of a value
