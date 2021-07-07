@@ -16,8 +16,8 @@ func TestFromArrayMapReduce(t *testing.T) {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
-	s = s.Map(func(index int) interface{} {
-		var val = Maybe.Just(s.Get(index)).ToMaybe().ToString()
+	s = s.Map(func(item interface{}, index int) interface{} {
+		var val = Maybe.Just(item).ToMaybe().ToString()
 		var result interface{} = "v" + val
 		return result
 	})
@@ -33,8 +33,8 @@ func TestFromArrayMapReduce(t *testing.T) {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
-	s2 = s2.Map(func(index int) string {
-		var val = Maybe.Just(s2.Get(index)).ToString()
+	s2 = s2.Map(func(item string, index int) string {
+		var val = Maybe.Just(item).ToString()
 		var result string = "v" + val
 		return result
 	})
@@ -50,8 +50,8 @@ func TestFromArrayMapReduce(t *testing.T) {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
-	s = s.Map(func(index int) interface{} {
-		var val, _ = Maybe.Just(s.Get(index)).ToInt()
+	s = s.Map(func(item interface{}, index int) interface{} {
+		var val, _ = Maybe.Just(item).ToInt()
 		var result interface{} = val * val
 		return result
 	})
@@ -67,8 +67,8 @@ func TestFromArrayMapReduce(t *testing.T) {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
-	s = s.Map(func(index int) interface{} {
-		var val, _ = Maybe.Just(s.Get(index)).ToFloat32()
+	s = s.Map(func(item interface{}, index int) interface{} {
+		var val, _ = Maybe.Just(item).ToFloat32()
 		var result interface{} = val * val
 		return result
 	})
@@ -85,8 +85,8 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = s.Map(func(index int) interface{} {
-		var val, _ = Maybe.Just(s.Get(index)).ToFloat64()
+	s = s.Map(func(item interface{}, index int) interface{} {
+		var val, _ = Maybe.Just(item).ToFloat64()
 		var result interface{} = val * val
 		return result
 	})
@@ -156,8 +156,8 @@ func TestFilter(t *testing.T) {
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = s.Filter(func(index int) bool {
-		var val, err = Maybe.Just(s.Get(index)).ToInt()
+	s = s.Filter(func(item interface{}, index int) bool {
+		var val, err = Maybe.Just(item).ToInt()
 
 		return err == nil && val > 1 && val < 4
 	})

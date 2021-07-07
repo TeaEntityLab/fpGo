@@ -34,39 +34,25 @@ func (streamSelf *StreamDef[T]) ToArray() []T {
 }
 
 // Map Map all items of Stream by function
-func (streamSelf *StreamDef[T]) Map(fn func(int) T) *StreamDef[T] {
+func (streamSelf *StreamDef[T]) Map(fn func(T, int) T) *StreamDef[T] {
 
-	var list = make(StreamDef[T], streamSelf.Len())
+	var result = StreamFromArray(MapIndexed(fn, (streamSelf.ToArray())...))
 
-	for i := range *streamSelf {
-		list[i] = fn(i)
-	}
-
-	return &list
+	return result
 }
 
 // Filter Filter items of Stream by function
-func (streamSelf *StreamDef[T]) Filter(fn func(int) bool) *StreamDef[T] {
+func (streamSelf *StreamDef[T]) Filter(fn func(T, int) bool) *StreamDef[T] {
 
-	var list = make(StreamDef[T], streamSelf.Len())
+	var result = StreamFromArray(Filter(fn, (streamSelf.ToArray())...))
 
-	var newLen = 0
-
-	for i := range *streamSelf {
-		if fn(i) {
-			newLen++
-			list[newLen-1] = (*streamSelf)[i]
-		}
-	}
-
-	result := list[:newLen]
-	return &result
+	return result
 }
 
 // Distinct Filter not nil items and return a new Stream instance
 func (streamSelf *StreamDef[T]) Distinct() *StreamDef[T] {
-	return streamSelf.Filter(func(i int) bool {
-		return Maybe.Just((*streamSelf)[i]).IsPresent()
+	return streamSelf.Filter(func(val T, i int) bool {
+		return Maybe.Just(val).IsPresent()
 	})
 }
 

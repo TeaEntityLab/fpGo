@@ -23,6 +23,11 @@ func Compose[T any](fnList ...func(...T) []T) func(...T) []T {
 	}
 }
 
+// ComposeInterface Compose the functions from right to left (Math: f(g(x)) Compose: Compose(f, g)(x))
+func ComposeInterface(fnList ...func(...interface{}) []interface{}) func(...interface{}) []interface{} {
+	return Compose(fnList...)
+}
+
 // Pipe Pipe the functions from left to right
 func Pipe[T any](fnList ...func(...T) []T) func(...T) []T {
 	return func(s ...T) []T {
@@ -37,6 +42,11 @@ func Pipe[T any](fnList ...func(...T) []T) func(...T) []T {
 
 		return f(Compose(nextFnList...)(s...)...)
 	}
+}
+
+// PipeInterface Pipe the functions from left to right
+func PipeInterface(fnList ...func(...interface{}) []interface{}) func(...interface{}) []interface{} {
+	return Pipe(fnList...)
 }
 
 // Map Map the values to the function from left to right
@@ -80,24 +90,27 @@ func ReduceIndexed[T any, R any](fn func(R, T, int) R, memo R, in ...T) R {
 }
 
 //Filter Filter the values by the given predicate function (predicate func, slice)
-func Filter[T any](fn func(T) bool, in ...T) []T {
-	out := make([]T, 0, len(in))
+func Filter[T any](fn func(T, int) bool, in ...T) []T {
+	var list = make([]T, len(in))
 
-	for i := 0; i < len(in); i++ {
-		current := in[i]
+	var newLen = 0
 
-		if fn(current) {
-			out = append(out, current)
+	for i := range in {
+		if fn(in[i], i) {
+			newLen++
+			list[newLen-1] = in[i]
 		}
 	}
 
-	return out
+	result := list[:newLen]
+
+	return result
 }
 
 //Reject Reject the values by the given predicate function (predicate func, slice)
-func Reject[T any](fn func(T) bool, in ...T) []T {
-	return Filter(func (val T) bool {
-		return !fn(val)
+func Reject[T any](fn func(T, int) bool, in ...T) []T {
+	return Filter(func (val T, i int) bool {
+		return !fn(val, i)
 	}, in...)
 }
 
