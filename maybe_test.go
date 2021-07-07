@@ -69,7 +69,7 @@ func TestClone(t *testing.T) {
 
 	iptr = &i
 	m = Just(iptr)
-	assert.Equal(t, 1, **CloneTo(m, iptr2).ToPtr())
+	assert.Equal(t, 1, *CloneTo(m, interface{}(iptr2)).ToPtr())
 	assert.Equal(t, 1, *iptr2)
 }
 

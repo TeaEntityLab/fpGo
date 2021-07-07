@@ -13,7 +13,12 @@ type MaybeDef[T any] struct {
 }
 
 // Just New Maybe by a given value
-func Just[T any](in T) MaybeDef[T] {
+func Just(in interface{}) MaybeDef[interface{}] {
+	return JustGenerics(in)
+}
+
+// JustGenerics New Maybe by a given value
+func JustGenerics[T any](in T) MaybeDef[T] {
 	return MaybeDef[T]{ref: in}
 }
 
@@ -29,8 +34,8 @@ func (maybeSelf MaybeDef[T]) Or(or T) T {
 // CloneTo Clone the Ptr target to an another Ptr target
 func CloneTo[T any](maybeSelf MaybeDef[T], dest T) MaybeDef[T] {
 	if maybeSelf.IsNil() {
-		// return Just(nil)
-		return Just(maybeSelf.ref)
+		// return JustGenerics(nil)
+		return JustGenerics(maybeSelf.ref)
 	}
 
 	x := reflect.ValueOf(maybeSelf.ref)
@@ -40,11 +45,11 @@ func CloneTo[T any](maybeSelf MaybeDef[T], dest T) MaybeDef[T] {
 		starY := y.Elem()
 		starY.Set(starX)
 		reflect.ValueOf(dest).Elem().Set(y.Elem())
-		return Just(dest)
+		return JustGenerics(dest)
 	}
 	dest = x.Interface().(T)
 
-	return Just(dest)
+	return JustGenerics(dest)
 }
 
 // Clone Clone Maybe object & its wrapped value

@@ -7,15 +7,25 @@ import (
 // StreamDef Stream inspired by Collection utils
 type StreamDef[T any] []T
 
-// StreamFrom New Stream instance from an T array
+// StreamFrom New Stream instance from a T array
 func StreamFrom[T any](list ...T) *StreamDef[T] {
 	return StreamFromArray(list)
 }
 
-// StreamFromArray New Stream instance from an T array
+// StreamFromArray New Stream instance from a T array
 func StreamFromArray[T any](list []T) *StreamDef[T] {
 	result := StreamDef[T](list)
 	return &result
+}
+
+// StreamFromInterface New Stream instance from an array
+func StreamFromInterface(list ...interface{}) *StreamDef[interface{}] {
+	return StreamFromArray(list)
+}
+
+// StreamFromArrayInterface New Stream instance from an array
+func StreamFromArrayInterface(list []interface{}) *StreamDef[interface{}] {
+	return StreamFromArray(list)
 }
 
 // ToArray Convert Stream to slice
