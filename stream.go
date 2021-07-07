@@ -66,7 +66,7 @@ func (streamSelf *StreamDef[T]) Filter(fn func(int) bool) *StreamDef[T] {
 // Distinct Filter not nil items and return a new Stream instance
 func (streamSelf *StreamDef[T]) Distinct() *StreamDef[T] {
 	return streamSelf.Filter(func(i int) bool {
-		return Just((*streamSelf)[i]).IsPresent()
+		return Maybe.Just((*streamSelf)[i]).IsPresent()
 	})
 }
 
@@ -125,5 +125,5 @@ func (streamSelf *StreamDef[T]) Get(i int) T {
 	return (*streamSelf)[i]
 }
 
-// Stream Stream utils instance
+// // Stream Stream utils instance
 // var Stream StreamDef[interface{}]

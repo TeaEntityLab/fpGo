@@ -27,46 +27,51 @@ func (atomBoolSelf *AtomBool) Get() bool {
 }
 
 // CorOp Cor Yield Operation/Delegation/Callback
-type CorOp struct {
-	cor *CorDef
-	val interface{}
+type CorOp[T any] struct {
+	cor *CorDef[T]
+	val T
 }
 
 // CorDef Cor Coroutine inspired by Python/Ecmascript/Lua
-type CorDef struct {
+type CorDef[T any] struct {
 	isStarted AtomBool
 	isClosed  AtomBool
 	closedM   sync.Mutex
 
-	opCh     *chan *CorOp
-	resultCh *chan interface{}
+	opCh     *chan *CorOp[T]
+	resultCh *chan T
 
 	effect func()
 }
 
 // New New a Cor instance
-func (corSelf *CorDef) New(effect func()) *CorDef {
-	opCh := make(chan *CorOp, 5)
-	resultCh := make(chan interface{}, 5)
-	cor := &CorDef{effect: effect, opCh: &opCh, resultCh: &resultCh, isStarted: AtomBool{flag: 0}}
+func (corSelf *CorDef[T]) New(effect func()) *CorDef[interface{}] {
+	return CorNewGenerics[interface{}](effect)
+}
+
+// New New a Cor instance
+func CorNewGenerics[T any](effect func()) *CorDef[T] {
+	opCh := make(chan *CorOp[T], 5)
+	resultCh := make(chan T, 5)
+	cor := &CorDef[T]{effect: effect, opCh: &opCh, resultCh: &resultCh, isStarted: AtomBool{flag: 0}}
 	return cor
 }
 
 // NewAndStart New a Cor instance and start it immediately
-func (corSelf *CorDef) NewAndStart(effect func()) *CorDef {
-	cor := corSelf.New(effect)
+func (corSelf *CorDef[T]) NewAndStart(effect func()) *CorDef[T] {
+	cor := CorNewGenerics[T](effect)
 	cor.Start()
 	return cor
 }
 
 // DoNotation Do Notation by function (inspired by Haskell one)
-func (corSelf *CorDef) DoNotation(effect func(*CorDef) interface{}) interface{} {
-	var result interface{}
+func (corSelf *CorDef[T]) DoNotation(effect func(*CorDef[T]) T) T {
+	var result T
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	var cor *CorDef
-	cor = corSelf.New(func() {
+	var cor *CorDef[T]
+	cor = CorNewGenerics[T](func() {
 		result = effect(cor)
 		wg.Done()
 	})
@@ -77,7 +82,7 @@ func (corSelf *CorDef) DoNotation(effect func(*CorDef) interface{}) interface{} 
 }
 
 // StartWithVal Start the Cor with an initial value
-func (corSelf *CorDef) StartWithVal(in interface{}) {
+func (corSelf *CorDef[T]) StartWithVal(in T) {
 	if corSelf.IsDone() || corSelf.isStarted.Get() {
 		return
 	}
@@ -87,7 +92,7 @@ func (corSelf *CorDef) StartWithVal(in interface{}) {
 }
 
 // Start Start the Cor
-func (corSelf *CorDef) Start() {
+func (corSelf *CorDef[T]) Start() {
 	if corSelf.IsDone() || corSelf.isStarted.Get() {
 		return
 	}
@@ -99,19 +104,19 @@ func (corSelf *CorDef) Start() {
 	}()
 }
 
-// Yield Yield back(nil)
-func (corSelf *CorDef) Yield() interface{} {
-	return corSelf.YieldRef(nil)
-}
+// // Yield Yield back(nil)
+// func (corSelf *CorDef[T]) Yield() T {
+// 	return corSelf.YieldRef(nil)
+// }
 
 // YieldRef Yield a value
-func (corSelf *CorDef) YieldRef(out interface{}) interface{} {
-	var result interface{}
+func (corSelf *CorDef[T]) YieldRef(out T) T {
+	var result T
 	if corSelf.IsDone() {
 		return result
 	}
 
-	var op *CorOp
+	var op *CorOp[T]
 	var more bool
 	// fmt.Println(corSelf, "Wait for", "op")
 	op, more = <-*corSelf.opCh
@@ -129,8 +134,8 @@ func (corSelf *CorDef) YieldRef(out interface{}) interface{} {
 }
 
 // YieldFrom Yield from a given Cor
-func (corSelf *CorDef) YieldFrom(target *CorDef, in interface{}) interface{} {
-	var result interface{}
+func (corSelf *CorDef[T]) YieldFrom(target *CorDef[T], in T) T {
+	var result T
 	if corSelf.IsDone() {
 		return result
 	}
@@ -143,24 +148,24 @@ func (corSelf *CorDef) YieldFrom(target *CorDef, in interface{}) interface{} {
 
 	return result
 }
-func (corSelf *CorDef) receive(cor *CorDef, in interface{}) {
+func (corSelf *CorDef[T]) receive(cor *CorDef[T], in T) {
 	corSelf.doCloseSafe(func() {
 		if corSelf.opCh != nil {
 			// fmt.Println(corSelf, "Wait for", "receive", cor, in)
-			*(corSelf.opCh) <- &CorOp{cor: cor, val: in}
+			*(corSelf.opCh) <- &CorOp[T]{cor: cor, val: in}
 			// fmt.Println(corSelf, "Wait for", "receive", "done")
 		}
 	})
 }
 
 // YieldFromIO Yield from a given MonadIO
-func (corSelf *CorDef) YieldFromIO(target *MonadIODef) interface{} {
-	var result interface{}
+func (corSelf *CorDef[T]) YieldFromIO(target *MonadIODef[T]) T {
+	var result T
 
 	var wg sync.WaitGroup
 	wg.Add(1)
-	target.SubscribeOn(nil).Subscribe(Subscription{
-		OnNext: func(in interface{}) {
+	target.SubscribeOn(nil).Subscribe(Subscription[T]{
+		OnNext: func(in T) {
 			result = in
 			wg.Done()
 		},
@@ -171,15 +176,15 @@ func (corSelf *CorDef) YieldFromIO(target *MonadIODef) interface{} {
 }
 
 // IsDone Is the Cor done
-func (corSelf *CorDef) IsDone() bool {
+func (corSelf *CorDef[T]) IsDone() bool {
 	return corSelf.isClosed.Get()
 }
 
 // IsStarted Is the Cor started
-func (corSelf *CorDef) IsStarted() bool {
+func (corSelf *CorDef[T]) IsStarted() bool {
 	return corSelf.isStarted.Get()
 }
-func (corSelf *CorDef) close() {
+func (corSelf *CorDef[T]) close() {
 	corSelf.isClosed.Set(true)
 
 	corSelf.closedM.Lock()
@@ -191,7 +196,7 @@ func (corSelf *CorDef) close() {
 	}
 	corSelf.closedM.Unlock()
 }
-func (corSelf *CorDef) doCloseSafe(fn func()) {
+func (corSelf *CorDef[T]) doCloseSafe(fn func()) {
 	if corSelf.IsDone() {
 		return
 	}
@@ -201,4 +206,4 @@ func (corSelf *CorDef) doCloseSafe(fn func()) {
 }
 
 // Cor Cor utils instance
-var Cor CorDef
+var Cor CorDef[interface{}]

@@ -1,34 +1,39 @@
 package fpgo
 
 // MonadIODef MonadIO inspired by Rx/Observable
-type MonadIODef struct {
-	effect func() interface{}
+type MonadIODef[T any] struct {
+	effect func() T
 
 	obOn  *HandlerDef
 	subOn *HandlerDef
 }
 
 // Subscription the delegation/callback of MonadIO/Publisher
-type Subscription struct {
-	OnNext func(interface{})
+type Subscription[T any] struct {
+	OnNext func(T)
 }
 
 // Just New MonadIO by a given value
-func (monadIOSelf MonadIODef) Just(in interface{}) *MonadIODef {
-	return &MonadIODef{effect: func() interface{} {
+func (monadIOSelf MonadIODef[T]) Just(in interface{}) *MonadIODef[interface{}] {
+	return MonadIOJustGenerics(in)
+}
+
+// MonadIOJustGenerics New MonadIO by a given value
+func MonadIOJustGenerics[T any](in T) *MonadIODef[T] {
+	return &MonadIODef[T]{effect: func() T {
 		return in
 	}}
 }
 
 // New New MonadIO by effect function
-func (monadIOSelf *MonadIODef) New(effect func() interface{}) *MonadIODef {
-	return &MonadIODef{effect: effect}
+func (monadIOSelf *MonadIODef[T]) New(effect func() T) *MonadIODef[T] {
+	return &MonadIODef[T]{effect: effect}
 }
 
 // FlatMap FlatMap the MonadIO by function
-func (monadIOSelf *MonadIODef) FlatMap(fn func(interface{}) *MonadIODef) *MonadIODef {
+func (monadIOSelf *MonadIODef[T]) FlatMap(fn func(T) *MonadIODef[T]) *MonadIODef[T] {
 
-	return &MonadIODef{effect: func() interface{} {
+	return &MonadIODef[T]{effect: func() T {
 		next := fn(monadIOSelf.doEffect())
 		return next.doEffect()
 	}}
@@ -36,27 +41,27 @@ func (monadIOSelf *MonadIODef) FlatMap(fn func(interface{}) *MonadIODef) *MonadI
 }
 
 // Subscribe Subscribe the MonadIO by Subscription
-func (monadIOSelf *MonadIODef) Subscribe(s Subscription) *Subscription {
+func (monadIOSelf *MonadIODef[T]) Subscribe(s Subscription[T]) *Subscription[T] {
 	obOn := monadIOSelf.obOn
 	subOn := monadIOSelf.subOn
 	return monadIOSelf.doSubscribe(&s, obOn, subOn)
 }
 
 // SubscribeOn Subscribe the MonadIO on the specific Handler
-func (monadIOSelf *MonadIODef) SubscribeOn(h *HandlerDef) *MonadIODef {
+func (monadIOSelf *MonadIODef[T]) SubscribeOn(h *HandlerDef) *MonadIODef[T] {
 	monadIOSelf.subOn = h
 	return monadIOSelf
 }
 
 // ObserveOn Observe the MonadIO on the specific Handler
-func (monadIOSelf *MonadIODef) ObserveOn(h *HandlerDef) *MonadIODef {
+func (monadIOSelf *MonadIODef[T]) ObserveOn(h *HandlerDef) *MonadIODef[T] {
 	monadIOSelf.obOn = h
 	return monadIOSelf
 }
-func (monadIOSelf *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, subOn *HandlerDef) *Subscription {
+func (monadIOSelf *MonadIODef[T]) doSubscribe(s *Subscription[T], obOn *HandlerDef, subOn *HandlerDef) *Subscription[T] {
 
 	if s.OnNext != nil {
-		var result interface{}
+		var result T
 
 		doSub := func() {
 			s.OnNext(result)
@@ -79,9 +84,9 @@ func (monadIOSelf *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, su
 
 	return s
 }
-func (monadIOSelf *MonadIODef) doEffect() interface{} {
+func (monadIOSelf *MonadIODef[T]) doEffect() T {
 	return monadIOSelf.effect()
 }
 
 // MonadIO MonadIO utils instance
-var MonadIO MonadIODef
+var MonadIO MonadIODef[interface{}]

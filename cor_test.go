@@ -18,25 +18,25 @@ func logMessage(args ...interface{}) {
 func TestCorYield(t *testing.T) {
 	var expectedInt int
 	var actualInt = 0
-	var testee *CorDef
+	var testee *CorDef[interface{}]
 	var wg sync.WaitGroup
 
 	expectedInt = 5
 	actualInt = 0
 	wg.Add(1)
 	// Cor c1
-	var c1 *CorDef
+	var c1 *CorDef[interface{}]
 	c1 = Cor.New(func() {
 		self := c1
 
 		logMessage(self, "c1 effect")
-		initVal := self.Yield()
+		initVal := self.YieldRef(nil)
 		logMessage(self, "c1 initVal", initVal)
-		v, _ := Just(initVal).ToInt()
+		v, _ := Maybe.Just(initVal).ToInt()
 		// v := 0
 		receive := self.YieldRef((v + 1))
 		logMessage(self, "c1 yield initVal+1 & receive", receive)
-		logMessage(self, "c1", self.Yield())
+		logMessage(self, "c1", self.YieldRef(nil))
 	})
 	// Testee
 	testee = Cor.New(func() {
@@ -47,17 +47,17 @@ func TestCorYield(t *testing.T) {
 
 		logMessage(self, "cor", "initialized")
 
-		v, _ = Just(self.Yield()).ToInt()
+		v, _ = Maybe.Just(self.YieldRef(nil)).ToInt()
 		actualInt = v + 1
 
-		v, _ = Just(self.YieldFromIO(MonadIO.Just(1).ObserveOn(Handler.GetDefault()))).ToInt()
+		v, _ = Maybe.Just(self.YieldFromIO(MonadIO.Just(1).ObserveOn(Handler.GetDefault()))).ToInt()
 		logMessage(self, "s", 5)
 		actualInt += v
 		logMessage(self, "s", 6)
 
 		logMessage(self, "c1", c1.IsDone())
 		logMessage(self, "c1", c1.IsStarted())
-		m = Just(self.YieldFrom(c1, nil)).ToMaybe()
+		m = Maybe.Just(self.YieldFrom(c1, nil)).ToMaybe()
 		logMessage(self, "c1", c1.IsDone())
 
 		logMessage(m)
@@ -83,16 +83,16 @@ func TestCorDoNotation(t *testing.T) {
 
 	expectedInt = 3
 	// Cor c1
-	var c1 *CorDef
+	var c1 *CorDef[interface{}]
 	c1 = Cor.NewAndStart(func() {
 		self := c1
 
 		val := self.YieldRef((1))
-		Just(val).ToInt()
+		Maybe.Just(val).ToInt()
 		logMessage(self, "c1 val", val)
 	})
 	// Testee
-	actual = Cor.DoNotation(func(self *CorDef) interface{} {
+	actual = Cor.DoNotation(func(self *CorDef[interface{}]) interface{} {
 		logMessage(self, "Do Notation", "init")
 
 		var result int
@@ -106,12 +106,12 @@ func TestCorDoNotation(t *testing.T) {
 
 		h := Handler.New()
 		defer h.Close()
-		v, _ = Just(self.YieldFromIO(MonadIO.Just(1).ObserveOn(h))).ToInt()
+		v, _ = Maybe.Just(self.YieldFromIO(MonadIO.Just(1).ObserveOn(h))).ToInt()
 		result += v
 
 		logMessage(self, "Do Notation", "result", result)
 
-		m = Just(self.YieldFrom(c1, nil)).ToMaybe()
+		m = Maybe.Just(self.YieldFrom(c1, nil)).ToMaybe()
 
 		v, _ = m.ToInt()
 		result += v

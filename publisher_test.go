@@ -7,7 +7,7 @@ import (
 )
 
 func TestPublisher(t *testing.T) {
-	var s *Subscription
+	var s *Subscription[interface{}]
 	p := Publisher.New()
 	p2 := p
 
@@ -18,10 +18,10 @@ func TestPublisher(t *testing.T) {
 
 	actual = 0
 	expected = 0
-	s = p.Subscribe(Subscription{
+	s = p.Subscribe(Subscription[interface{}]{
 		OnNext: func(in interface{}) {
 			// fmt.Println(*in)
-			actual, _ = Just(in).ToInt()
+			actual, _ = Maybe.Just(in).ToInt()
 		},
 	})
 	assert.Equal(t, expected, actual)
@@ -40,15 +40,15 @@ func TestPublisher(t *testing.T) {
 
 	p = Publisher.New()
 	p2 = p.Map(func(in interface{}) interface{} {
-		v, _ := Just(in).ToInt()
+		v, _ := Maybe.Just(in).ToInt()
 		return (v + 2)
 	}).Map(func(in interface{}) interface{} {
-		v, _ := Just(in).ToInt()
+		v, _ := Maybe.Just(in).ToInt()
 		return (v + 3)
 	})
-	s = p2.Subscribe(Subscription{
+	s = p2.Subscribe(Subscription[interface{}]{
 		OnNext: func(in interface{}) {
-			actual, _ = Just(in).ToInt()
+			actual, _ = Maybe.Just(in).ToInt()
 		},
 	})
 	actual = 0

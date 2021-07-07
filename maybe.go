@@ -13,7 +13,7 @@ type MaybeDef[T any] struct {
 }
 
 // Just New Maybe by a given value
-func Just(in interface{}) MaybeDef[interface{}] {
+func (maybeSelf MaybeDef[T]) Just(in interface{}) MaybeDef[interface{}] {
 	return JustGenerics(in)
 }
 

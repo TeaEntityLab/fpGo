@@ -57,13 +57,13 @@ func TestCurry(t *testing.T) {
 		result := 0
 		if len(args) == 3 {
 			var v int
-			v, _ = Just(args[0]).ToInt()
+			v, _ = Maybe.Just(args[0]).ToInt()
 			// fmt.Println(v)
 			result += v
-			v, _ = Just(args[1]).ToInt()
+			v, _ = Maybe.Just(args[1]).ToInt()
 			// fmt.Println(v)
 			result += v
-			v, _ = Just(args[2]).ToInt()
+			v, _ = Maybe.Just(args[2]).ToInt()
 			// fmt.Println(v)
 			result += v
 

@@ -176,7 +176,7 @@ type OtherwisePatternDef struct {
 func (patternMatchingSelf PatternMatching) MatchFor(inValue interface{}) interface{} {
 	for _, pattern := range patternMatchingSelf.patterns {
 		value := inValue
-		maybe := Just(inValue)
+		maybe := Maybe.Just(inValue)
 		if maybe.IsKind(reflect.Ptr) {
 			ptr := maybe.ToPtr()
 			if reflect.TypeOf(*ptr).Kind() == (reflect.TypeOf(CompData{}).Kind()) {
@@ -194,7 +194,7 @@ func (patternMatchingSelf PatternMatching) MatchFor(inValue interface{}) interfa
 
 // Matches Match the given value by the pattern
 func (patternSelf KindPatternDef) Matches(value interface{}) bool {
-	if Just(value).IsNil() {
+	if Maybe.Just(value).IsNil() {
 		return false
 	}
 
@@ -203,7 +203,7 @@ func (patternSelf KindPatternDef) Matches(value interface{}) bool {
 
 // Matches Match the given value by the pattern
 func (patternSelf CompTypePatternDef) Matches(value interface{}) bool {
-	if Just(value).IsPresent() && reflect.TypeOf(value).Kind() == reflect.TypeOf(CompData{}).Kind() {
+	if Maybe.Just(value).IsPresent() && reflect.TypeOf(value).Kind() == reflect.TypeOf(CompData{}).Kind() {
 		return MatchCompType(patternSelf.compType, (value).(CompData))
 	}
 
@@ -217,7 +217,7 @@ func (patternSelf EqualPatternDef) Matches(value interface{}) bool {
 
 // Matches Match the given value by the pattern
 func (patternSelf RegexPatternDef) Matches(value interface{}) bool {
-	if Just(value).IsNil() || reflect.TypeOf(value).Kind() != reflect.String {
+	if Maybe.Just(value).IsNil() || reflect.TypeOf(value).Kind() != reflect.String {
 		return false
 	}
 
@@ -340,7 +340,7 @@ func (typeSelf ProductType) Matches(value ...interface{}) bool {
 
 	matches := true
 	for i, v := range value {
-		matches = matches && typeSelf.kinds[i] == Just(v).Kind()
+		matches = matches && typeSelf.kinds[i] == Maybe.Just(v).Kind()
 	}
 	return matches
 }
@@ -351,7 +351,7 @@ func (typeSelf NilTypeDef) Matches(value ...interface{}) bool {
 		return false
 	}
 
-	return Just(value[0]).IsNil()
+	return Maybe.Just(value[0]).IsNil()
 }
 
 // DefSum Define the SumType by CompType list

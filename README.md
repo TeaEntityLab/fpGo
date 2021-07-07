@@ -51,30 +51,30 @@ var orVal int
 var boolVal bool
 
 // IsPresent(), IsNil()
-m = Just(1)
+m = Maybe.Just(1)
 boolVal = m.IsPresent() // true
 boolVal = m.IsNil() // false
-m = Just(nil)
+m = Maybe.Just(nil)
 boolVal = m.IsPresent() // false
 boolVal = m.IsNil() // true
 
 // Or()
-m = Just(1)
+m = Maybe.Just(1)
 fmt.Println((m.Or(3))) // 1
-m = Just(nil)
+m = Maybe.Just(nil)
 fmt.Println((m.Or(3))) // 3
 
 // Let()
 var letVal int
 letVal = 1
-m = Just(1)
+m = Maybe.Just(1)
 m.Let(func() {
   letVal = 2
 })
 fmt.Println(letVal) // letVal would be 2
 
 letVal = 1
-m = Just(nil)
+m = Maybe.Just(nil)
 m.Let(func() {
   letVal = 3
 })
@@ -92,19 +92,19 @@ m = MonadIO.Just(1)
 actualInt = 0
 m.Subscribe(Subscription{
   OnNext: func(in interface{}) {
-    actualInt, _ = Just(in).ToInt()
+    actualInt, _ = Maybe.Just(in).ToInt()
   },
 })
 fmt.Println(actualInt) // actualInt would be 1
 
 m = MonadIO.Just(1).FlatMap(func(in interface{}) *MonadIODef {
-  v, _ := Just(in).ToInt()
+  v, _ := Maybe.Just(in).ToInt()
   return MonadIO.Just(v + 1)
 })
 actualInt = 0
 m.Subscribe(Subscription{
   OnNext: func(in interface{}) {
-    actualInt, _ = Just(in).ToInt()
+    actualInt, _ = Maybe.Just(in).ToInt()
   },
 })
 fmt.Println(actualInt) // actualInt would be 2
@@ -120,13 +120,13 @@ var tempString = ""
 s = StreamFromArray([]interface{}{}).Append(1).Extend(StreamFromArray([]interface{}{2, 3, 4})).Extend(StreamFromArray([]interface{}{nil}))
 tempString = ""
 for _, v := range s.ToArray() {
-  tempString += Just(v).ToMaybe().ToString()
+  tempString += Maybe.Just(v).ToMaybe().ToString()
 }
 fmt.Println(tempString) // tempString would be "1234<nil>"
 s = s.Distinct()
 tempString = ""
 for _, v := range s.ToArray() {
-  tempString += Just(v).ToMaybe().ToString()
+  tempString += Maybe.Just(v).ToMaybe().ToString()
 }
 fmt.Println(tempString) // tempString would be "1234"
 ```
