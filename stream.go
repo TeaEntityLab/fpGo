@@ -172,7 +172,7 @@ func (streamSelf *StreamDef) Filter(fn func(int) bool) *StreamDef {
 // Distinct Filter not nil items and return a new Stream instance
 func (streamSelf *StreamDef) Distinct() *StreamDef {
 	return streamSelf.Filter(func(i int) bool {
-		return Maybe.Just(streamSelf.list[i]).IsPresent()
+		return Just(streamSelf.list[i]).IsPresent()
 	})
 }
 
