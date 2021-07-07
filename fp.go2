@@ -40,8 +40,8 @@ func Pipe[T any](fnList ...func(...T) []T) func(...T) []T {
 }
 
 // Map Map the values to the function from left to right
-func Map[T any](fn func(T) T, values ...T) []T {
-	result := make([]T, len(values))
+func Map[T any, R any](fn func(T) R, values ...T) []R {
+	result := make([]R, len(values))
 	for i, val := range values {
 		result[i] = fn(val)
 	}
