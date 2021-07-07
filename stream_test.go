@@ -10,7 +10,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	var s *StreamDef
 	var tempString string
 
-	s = Stream.FromArrayMaybe([]MaybeDef{Just("1"), Just("2"), Just("3"), Just("4")})
+	s = StreamFromArray([]MaybeDef{Just("1"), Just("2"), Just("3"), Just("4")})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
@@ -28,7 +28,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	assert.Equal(t, "v1v2v3v4", tempString)
 	tempString = ""
 
-	s = Stream.FromArrayString([]string{"1", "2", "3", "4"})
+	s = StreamFromArray([]string{"1", "2", "3", "4"})
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
 	}
@@ -44,7 +44,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "v1v2v3v4", tempString)
 
-	s = Stream.FromArrayInt([]int{1, 2, 3, 4})
+	s = StreamFromArray([]int{1, 2, 3, 4})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
@@ -61,7 +61,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "14916", tempString)
 
-	s = Stream.FromArrayFloat32([]float32{1, 2, 3, 4})
+	s = StreamFromArray([]float32{1, 2, 3, 4})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
@@ -78,7 +78,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "14916", tempString)
 
-	s = Stream.FromArrayFloat64([]float64{1, 2, 3, 4})
+	s = StreamFromArray([]float64{1, 2, 3, 4})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
@@ -96,42 +96,42 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "14916", tempString)
 
-	s = Stream.FromArrayBool([]bool{true, false, true, false})
+	s = StreamFromArray([]bool{true, false, true, false})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "truefalsetruefalse", tempString)
 
-	s = Stream.FromArrayByte([]byte{1, 2, 3, 4})
+	s = StreamFromArray([]byte{1, 2, 3, 4})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = Stream.FromArrayInt8([]int8{1, 2, 3, 4})
+	s = StreamFromArray([]int8{1, 2, 3, 4})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = Stream.FromArrayInt16([]int16{1, 2, 3, 4})
+	s = StreamFromArray([]int16{1, 2, 3, 4})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = Stream.FromArrayInt32([]int32{1, 2, 3, 4})
+	s = StreamFromArray([]int32{1, 2, 3, 4})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = Stream.FromArrayInt64([]int64{1, 2, 3, 4})
+	s = StreamFromArray([]int64{1, 2, 3, 4})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
@@ -143,7 +143,7 @@ func TestFilter(t *testing.T) {
 	var s *StreamDef
 	var tempString string
 
-	s = Stream.FromArrayInt([]int{}).Append(1).Extend(Stream.FromArrayInt([]int{2, 3, 4})).Extend(Stream.FromArray([]interface{}{nil})).Extend(nil)
+	s = StreamFromArray([]interface{}{}).Append(1).Extend(StreamFromArray([]interface{}{2, 3, 4})).Extend(StreamFromArray([]interface{}{nil})).Extend(nil)
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()
@@ -172,7 +172,7 @@ func TestSort(t *testing.T) {
 	var s *StreamDef
 	var tempString string
 
-	s = Stream.FromArrayInt([]int{11}).Extend(Stream.FromArrayInt([]int{2, 3, 4, 5})).Remove(4)
+	s = StreamFromArray([]int{11}).Extend(StreamFromArray([]int{2, 3, 4, 5})).Remove(4)
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Just(v).ToMaybe().ToString()

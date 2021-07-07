@@ -117,7 +117,7 @@ Example:
 var s *StreamDef
 var tempString = ""
 
-s = Stream.FromArrayInt([]int{}).Append(1).Extend(Stream.FromArrayInt([]int{2, 3, 4})).Extend(Stream.FromArray([]interface{}{nil}))
+s = StreamFromArray([]interface{}{}).Append(1).Extend(StreamFromArray([]interface{}{2, 3, 4})).Extend(StreamFromArray([]interface{}{nil}))
 tempString = ""
 for _, v := range s.ToArray() {
   tempString += Just(v).ToMaybe().ToString()
