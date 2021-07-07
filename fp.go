@@ -49,6 +49,31 @@ func Map[T any](fn func(T) T, values ...T) []T {
 	return result
 }
 
+// Reduce Reduce the values from left to right(func(memo,val), starting value, slice)
+func Reduce[T any](fn func(T, T) T, memo T, in ...T) T {
+
+	for i := 0; i < len(in); i++ {
+		memo = fn(memo, in[i])
+	}
+
+	return memo
+}
+
+//Filter Filter the values by the given predicate function (slice, predicate func)
+func Filter[T any](fn func(T) bool, in ...T) []T {
+	out := make([]T, 0, len(in))
+
+	for i := 0; i < len(in); i++ {
+		current := in[i]
+
+		if fn(current) {
+			out = append(out, current)
+		}
+	}
+
+	return out
+}
+
 // PtrOf Return Ptr of a value
 func PtrOf[T any](v T) *T {
 	return &v

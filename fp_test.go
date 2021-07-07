@@ -47,6 +47,9 @@ func TestCompose(t *testing.T) {
 
 	expectedinteger = 6
 	assert.Equal(t, expectedinteger, Pipe(fn01, fn02, fn03)((0))[0])
+
+	expectedinteger = -10
+	assert.Equal(t, expectedinteger, Reduce(func(a, b int) int { return a - b }, 0, Map(func(a int) int { return a + 1 }, Filter(func(a int) bool { return a >= 0 }, -1, 0, 1, 2, 3)...)...))
 }
 
 func TestCurry(t *testing.T) {
