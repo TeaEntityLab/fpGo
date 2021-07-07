@@ -46,7 +46,7 @@ Thus I implemented fpGo. I hope you would like it :)
 ## Optional (IsPresent/IsNil, Or, Let)
 
 ```go
-var m MaybeDef
+var m MaybeDef[interface{}]
 var orVal int
 var boolVal bool
 
@@ -85,24 +85,24 @@ fmt.Println(letVal) // letVal would be still 1
 
 Example:
 ```go
-var m *MonadIODef
+var m *MonadIODef[interface{}]
 var actualInt int
 
 m = MonadIO.Just(1)
 actualInt = 0
-m.Subscribe(Subscription{
+m.Subscribe(Subscription[interface{}]{
   OnNext: func(in interface{}) {
     actualInt, _ = Maybe.Just(in).ToInt()
   },
 })
 fmt.Println(actualInt) // actualInt would be 1
 
-m = MonadIO.Just(1).FlatMap(func(in interface{}) *MonadIODef {
+m = MonadIO.Just(1).FlatMap(func(in interface{}) *MonadIODef[interface{}] {
   v, _ := Maybe.Just(in).ToInt()
   return MonadIO.Just(v + 1)
 })
 actualInt = 0
-m.Subscribe(Subscription{
+m.Subscribe(Subscription[interface{}]{
   OnNext: func(in interface{}) {
     actualInt, _ = Maybe.Just(in).ToInt()
   },
@@ -114,10 +114,10 @@ fmt.Println(actualInt) // actualInt would be 2
 
 Example:
 ```go
-var s *StreamDef
+var s *StreamDef[interface{}]
 var tempString = ""
 
-s = StreamFromArray([]interface{}{}).Append(1).Extend(StreamFromArray([]interface{}{2, 3, 4})).Extend(StreamFromArray([]interface{}{nil}))
+s = StreamFromArray([]interface{}{}).Append(1).Extend(StreamFromInterface(2, 3, 4)).Extend(StreamFromArray([]interface{}{nil}))
 tempString = ""
 for _, v := range s.ToArray() {
   tempString += Maybe.Just(v).ToMaybe().ToString()
