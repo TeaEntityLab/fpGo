@@ -43,7 +43,7 @@ func TestCorYield(t *testing.T) {
 		self := testee
 
 		var v int
-		var m MaybeDef
+		var m MaybeDef[interface{}]
 
 		logMessage(self, "cor", "initialized")
 
@@ -97,7 +97,7 @@ func TestCorDoNotation(t *testing.T) {
 
 		var result int
 		v := 0
-		var m MaybeDef
+		var m MaybeDef[interface{}]
 
 		result = v + 1
 

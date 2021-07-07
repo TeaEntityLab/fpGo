@@ -116,7 +116,7 @@ func (streamSelf *StreamDef[T]) Extend(stream *StreamDef[T]) *StreamDef[T] {
 
 // Sort Sort Stream items by function
 func (streamSelf *StreamDef[T]) Sort(fn func(i, j int) bool) *StreamDef[T] {
-	sort.Slice(streamSelf, fn)
+	sort.Slice(*streamSelf, fn)
 	return streamSelf
 }
 

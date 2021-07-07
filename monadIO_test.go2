@@ -7,12 +7,12 @@ import (
 )
 
 func TestMonadIO(t *testing.T) {
-	var m *MonadIODef
+	var m *MonadIODef[interface{}]
 	var actualInt int
 
 	m = MonadIO.Just(1)
 	actualInt = 0
-	m.Subscribe(Subscription{
+	m.Subscribe(Subscription[interface{}]{
 		OnNext: func(in interface{}) {
 			actualInt, _ = Maybe.Just(in).ToInt()
 		},
