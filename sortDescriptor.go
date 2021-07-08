@@ -5,7 +5,7 @@ import (
 )
 
 type SortDescriptor interface {
-	TransformedBy() TransformerFunctor // Use this for go2go temporarily
+	Transformer
 
 	IsAscending() bool
 	SetAscending(bool)
