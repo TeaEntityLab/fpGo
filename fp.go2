@@ -10,9 +10,15 @@ import (
 
 type fnObj func(interface{}) interface{}
 
-type Transformer[T any, R any] func(T) R
+type Transformer[T any, R any] interface {
+	TransformedBy() TransformerFunctor[T, R]
+}
+type TransformerFunctor[T any, R any] func(T) R
 type Predicate[T any] func(T) bool
 type Comparator[T any] func(T, T) bool
+type Comparable[T any] interface {
+	CompareTo(T) int
+}
 
 // Compose Compose the functions from right to left (Math: f(g(x)) Compose: Compose(f, g)(x))
 func Compose[T any](fnList ...func(...T) []T) func(...T) []T {
@@ -55,7 +61,7 @@ func PipeInterface(fnList ...func(...interface{}) []interface{}) func(...interfa
 }
 
 // Map Map the values to the function from left to right
-func Map[T any, R any](fn Transformer[T, R], values ...T) []R {
+func Map[T any, R any](fn TransformerFunctor[T, R], values ...T) []R {
 	result := make([]R, len(values))
 	for i, val := range values {
 		result[i] = fn(val)
@@ -155,17 +161,15 @@ func Concat[T any](mine []T, slices ...[]T) []T {
 	return newOne
 }
 
-// Sort Sort items by Comparator(this func will generate a new slice)
-func Sort[T any](fn Comparator[T], input ...T) []T {
-	result := input
+// SortSlice Sort items by Comparator
+func SortSlice[T any](fn Comparator[T], input ...T) []T {
+	Sort(fn, input)
 
-	SortSlice(fn, result)
-
-	return result
+	return input
 }
 
 // Sort Sort items by Comparator
-func SortSlice[T any](fn Comparator[T], input []T) {
+func Sort[T any](fn Comparator[T], input []T) {
 	sort.SliceStable(input, func(previous int, next int) bool {
 		return fn(input[previous], input[next])
 	})

@@ -136,7 +136,7 @@ func (streamSelf *StreamDef[T]) SortByIndex(fn func(a, b int) bool) *StreamDef[T
 
 // Sort Sort Stream items by Comparator
 func (streamSelf *StreamDef[T]) Sort(fn Comparator[T]) *StreamDef[T] {
-	SortSlice(fn, *streamSelf)
+	Sort(fn, *streamSelf)
 	return streamSelf
 }
 
