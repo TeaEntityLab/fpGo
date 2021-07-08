@@ -4,10 +4,21 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"sync"
 )
 
 type fnObj func(interface{}) interface{}
+
+type Transformer interface {
+	TransformedBy() TransformerFunctor
+}
+type TransformerFunctor func(interface{}) interface{}
+type Predicate func(interface{}) bool
+type Comparator func(interface{}, interface{}) bool
+type Comparable interface {
+	CompareTo(interface{}) int
+}
 
 // Compose Compose the functions from right to left (Math: f(g(x)) Compose: Compose(f, g)(x))
 func Compose(fnList ...func(...interface{}) []interface{}) func(...interface{}) []interface{} {
@@ -21,6 +32,137 @@ func Compose(fnList ...func(...interface{}) []interface{}) func(...interface{}) 
 
 		return f(Compose(nextFnList...)(s...)...)
 	}
+}
+
+// Pipe Pipe the functions from left to right
+func Pipe(fnList ...func(...interface{}) []interface{}) func(...interface{}) []interface{} {
+	return func(s ...interface{}) []interface{} {
+
+		lastIndex := len(fnList) - 1
+		f := fnList[lastIndex]
+		nextFnList := fnList[:lastIndex]
+
+		if len(fnList) == 1 {
+			return f(s...)
+		}
+
+		return f(Compose(nextFnList...)(s...)...)
+	}
+}
+
+// Map Map the values to the function from left to right
+func Map(fn TransformerFunctor, values ...interface{}) []interface{} {
+	result := make([]interface{}, len(values))
+	for i, val := range values {
+		result[i] = fn(val)
+	}
+
+	return result
+}
+
+// MapIndexed Map the values to the function from left to right
+func MapIndexed(fn func(interface{}, int) interface{}, values ...interface{}) []interface{} {
+	result := make([]interface{}, len(values))
+	for i, val := range values {
+		result[i] = fn(val, i)
+	}
+
+	return result
+}
+
+// Reduce Reduce the values from left to right(func(memo,val), starting value, slice)
+func Reduce(fn func(interface{}, interface{}) interface{}, memo interface{}, input ...interface{}) interface{} {
+
+	for i := 0; i < len(input); i++ {
+		memo = fn(memo, input[i])
+	}
+
+	return memo
+}
+
+// ReduceIndexed Reduce the values from left to right(func(memo,val,index), starting value, slice)
+func ReduceIndexed(fn func(interface{}, interface{}, int) interface{}, memo interface{}, input ...interface{}) interface{} {
+
+	for i := 0; i < len(input); i++ {
+		memo = fn(memo, input[i], i)
+	}
+
+	return memo
+}
+
+// Filter Filter the values by the given predicate function (predicate func, slice)
+func Filter(fn func(interface{}, int) bool, input ...interface{}) []interface{} {
+	var list = make([]interface{}, len(input))
+
+	var newLen = 0
+
+	for i := range input {
+		if fn(input[i], i) {
+			newLen++
+			list[newLen-1] = input[i]
+		}
+	}
+
+	result := list[:newLen]
+
+	return result
+}
+
+// Reject Reject the values by the given predicate function (predicate func, slice)
+func Reject(fn func(interface{}, int) bool, input ...interface{}) []interface{} {
+	return Filter(func(val interface{}, i int) bool {
+		return !fn(val, i)
+	}, input...)
+}
+
+// Concat Concat slices
+func Concat(mine []interface{}, slices ...[]interface{}) []interface{} {
+	var mineLen = len(mine)
+	var totalLen = mineLen
+
+	for _, slice := range slices {
+		if slice == nil {
+			continue
+		}
+
+		var targetLen = len(slice)
+		totalLen += targetLen
+	}
+	var newOne = make([]interface{}, totalLen)
+
+	for i, item := range mine {
+		newOne[i] = item
+	}
+	totalIndex := mineLen
+
+	for _, slice := range slices {
+		if slice == nil {
+			continue
+		}
+
+		var target = slice
+		var targetLen = len(target)
+		for j, item := range target {
+			newOne[totalIndex+j] = item
+		}
+		totalIndex += targetLen
+	}
+
+	return newOne
+}
+
+// SortSlice Sort items by Comparator
+func SortSlice(fn Comparator, input ...interface{}) []interface{} {
+	Sort(fn, input)
+
+	return input
+}
+
+// Sort Sort items by Comparator
+func Sort(fn Comparator, input []interface{}) {
+	sort.SliceStable(input, func(previous int, next int) bool {
+		return fn(input[previous], input[next])
+	})
 }
 
 // PtrOf Return Ptr of a value

@@ -44,6 +44,33 @@ func TestCompose(t *testing.T) {
 
 	expectedinteger = 6
 	assert.Equal(t, expectedinteger, Compose(fn01, fn02, fn03)((0))[0])
+
+	expectedinteger = 6
+	assert.Equal(t, expectedinteger, Pipe(fn01, fn02, fn03)((0))[0])
+
+}
+
+func TestFPFunctions(t *testing.T) {
+	expectedinteger := 0
+
+	expectedinteger = -10
+	assert.Equal(t, expectedinteger, Reduce(func(a, b interface{}) interface{} {
+		aVal, _ := Maybe.Just(a).ToInt()
+		bVal, _ := Maybe.Just(b).ToInt()
+		return aVal - bVal
+	}, 0, Map(func(a interface{}) interface{} {
+		v, _ := Maybe.Just(a).ToInt()
+		return (v + 1)
+	}, Filter(func(a interface{}, i int) bool {
+		v, _ := Maybe.Just(a).ToInt()
+		return v >= 0
+	}, -1, 0, 1, 2, 3)...)...))
+
+	assert.Equal(t, []interface{}{1, 2, 3, 4, 5}, SortSlice(func(a, b interface{}) bool {
+		aVal, _ := Maybe.Just(a).ToInt()
+		bVal, _ := Maybe.Just(b).ToInt()
+		return bVal-aVal > 0
+	}, 1, 4, 5, 2, 3))
 }
 
 func TestCurry(t *testing.T) {

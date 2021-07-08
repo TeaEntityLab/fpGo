@@ -141,44 +141,31 @@ func (streamSelf *StreamDef) ToArray() []interface{} {
 }
 
 // Map Map all items of Stream by function
-func (streamSelf *StreamDef) Map(fn func(int) interface{}) *StreamDef {
+func (streamSelf *StreamDef) Map(fn func(interface{}, int) interface{}) *StreamDef {
 
-	var list = make([]interface{}, streamSelf.Len())
+	var result = Stream.FromArray(MapIndexed(fn, (streamSelf.list)...))
 
-	for i := range streamSelf.list {
-		list[i] = fn(i)
-	}
-
-	return &StreamDef{list: list}
+	return result
 }
 
 // Filter Filter items of Stream by function
-func (streamSelf *StreamDef) Filter(fn func(int) bool) *StreamDef {
+func (streamSelf *StreamDef) Filter(fn func(interface{}, int) bool) *StreamDef {
 
-	var list = make([]interface{}, streamSelf.Len())
+	var result = Stream.FromArray(Filter(fn, (streamSelf.list)...))
 
-	var newLen = 0
-
-	for i := range streamSelf.list {
-		if fn(i) {
-			newLen++
-			list[newLen-1] = streamSelf.list[i]
-		}
-	}
-
-	return &StreamDef{list: list[:newLen]}
+	return result
 }
 
 // Distinct Filter not nil items and return a new Stream instance
 func (streamSelf *StreamDef) Distinct() *StreamDef {
-	return streamSelf.Filter(func(i int) bool {
-		return Maybe.Just(streamSelf.list[i]).IsPresent()
+	return streamSelf.Filter(func(val interface{}, i int) bool {
+		return Maybe.Just(val).IsPresent()
 	})
 }
 
 // Append Append an item into Stream
-func (streamSelf *StreamDef) Append(item interface{}) *StreamDef {
-	streamSelf.list = append(streamSelf.list, item)
+func (streamSelf *StreamDef) Append(item ...interface{}) *StreamDef {
+	streamSelf.list = append(streamSelf.list, item...)
 	return streamSelf
 }
 
@@ -195,32 +182,65 @@ func (streamSelf *StreamDef) Len() int {
 	return len(streamSelf.list)
 }
 
-// Extend Extend Stream by an another Stream
-func (streamSelf *StreamDef) Extend(stream *StreamDef) *StreamDef {
-	if stream == nil {
+// Concat Concat Stream by another slices
+func (streamSelf *StreamDef) Concat(slices ...[]interface{}) *StreamDef {
+	if len(slices) == 0 {
+		return streamSelf
+	}
+
+	return Stream.FromArray(Concat(streamSelf.ToArray(), slices...))
+}
+
+// Extend Extend Stream by another Stream(s)
+func (streamSelf *StreamDef) Extend(streams ...*StreamDef) *StreamDef {
+	if len(streams) == 0 {
 		return streamSelf
 	}
 
 	var mine = streamSelf.list
 	var mineLen = len(mine)
-	var target = stream.ToArray()
-	var targetLen = len(target)
+	var totalLen = mineLen
 
-	var new = make([]interface{}, mineLen+targetLen)
+	for _, stream := range streams {
+		if stream == nil {
+			continue
+		}
+
+		var targetLen = len(stream.list)
+		totalLen += targetLen
+	}
+	var newOne = make([]interface{}, totalLen)
+
 	for i, item := range mine {
-		new[i] = item
+		newOne[i] = item
 	}
-	for j, item := range target {
-		new[mineLen+j] = item
-	}
-	streamSelf.list = new
+	totalIndex := mineLen
 
+	for _, stream := range streams {
+		if stream == nil {
+			continue
+		}
+
+		var target = stream.list
+		var targetLen = len(target)
+		for j, item := range target {
+			newOne[totalIndex+j] = item
+		}
+		totalIndex += targetLen
+	}
+
+	return Stream.FromArray(newOne)
+}
+
+// SortByIndex Sort Stream items by function(index, index) bool
+func (streamSelf *StreamDef) SortByIndex(fn func(a, b int) bool) *StreamDef {
+	sort.SliceStable(streamSelf.list, fn)
 	return streamSelf
 }
 
-// Sort Sort Stream items by function
-func (streamSelf *StreamDef) Sort(fn func(i, j int) bool) *StreamDef {
-	sort.Slice(streamSelf.list, fn)
+// Sort Sort Stream items by Comparator
+func (streamSelf *StreamDef) Sort(fn Comparator) *StreamDef {
+	Sort(fn, streamSelf.list)
 	return streamSelf
 }
 
