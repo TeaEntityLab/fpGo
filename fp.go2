@@ -4,10 +4,15 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"sort"
 	"sync"
 )
 
 type fnObj func(interface{}) interface{}
+
+type Transformer[T any, R any] func(T) R
+type Predicate[T any] func(T) bool
+type Comparator[T any] func(T, T) bool
 
 // Compose Compose the functions from right to left (Math: f(g(x)) Compose: Compose(f, g)(x))
 func Compose[T any](fnList ...func(...T) []T) func(...T) []T {
@@ -50,7 +55,7 @@ func PipeInterface(fnList ...func(...interface{}) []interface{}) func(...interfa
 }
 
 // Map Map the values to the function from left to right
-func Map[T any, R any](fn func(T) R, values ...T) []R {
+func Map[T any, R any](fn Transformer[T, R], values ...T) []R {
 	result := make([]R, len(values))
 	for i, val := range values {
 		result[i] = fn(val)
@@ -148,6 +153,22 @@ func Concat[T any](mine []T, slices ...[]T) []T {
 	}
 
 	return newOne
+}
+
+// Sort Sort items by Comparator(this func will generate a new slice)
+func Sort[T any](fn Comparator[T], input ...T) []T {
+	result := input
+
+	SortSlice(fn, result)
+
+	return result
+}
+
+// Sort Sort items by Comparator
+func SortSlice[T any](fn Comparator[T], input []T) {
+	sort.SliceStable(input, func(previous int, next int) bool {
+		return fn(input[previous], input[next])
+	})
 }
 
 // PtrOf Return Ptr of a value

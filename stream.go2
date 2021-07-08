@@ -128,9 +128,15 @@ func (streamSelf *StreamDef[T]) Extend(streams ...*StreamDef[T]) *StreamDef[T] {
 	return &newOne
 }
 
-// Sort Sort Stream items by function
-func (streamSelf *StreamDef[T]) Sort(fn func(i, j int) bool) *StreamDef[T] {
-	sort.Slice(*streamSelf, fn)
+// SortByIndex Sort Stream items by function(index, index) bool
+func (streamSelf *StreamDef[T]) SortByIndex(fn func(a, b int) bool) *StreamDef[T] {
+	sort.SliceStable(*streamSelf, fn)
+	return streamSelf
+}
+
+// Sort Sort Stream items by Comparator
+func (streamSelf *StreamDef[T]) Sort(fn Comparator[T]) *StreamDef[T] {
+	SortSlice(fn, *streamSelf)
 	return streamSelf
 }
 

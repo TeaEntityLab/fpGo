@@ -186,9 +186,9 @@ func TestSort(t *testing.T) {
 	}
 	assert.Equal(t, "11234", tempString)
 
-	s = s.Sort(func(i, j int) bool {
-		var vali, _ = Maybe.Just(s.Get(i)).ToInt()
-		var valj, _ = Maybe.Just(s.Get(j)).ToInt()
+	s = s.Sort(func(iVal, jVal interface{}) bool {
+		var vali, _ = Maybe.Just(iVal).ToInt()
+		var valj, _ = Maybe.Just(jVal).ToInt()
 		return vali < valj
 	})
 	tempString = ""
