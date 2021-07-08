@@ -4,6 +4,7 @@ import (
 	"reflect"
 )
 
+// SortDescriptor Define a Transformer Pattern SortDescriptor
 type SortDescriptor interface {
 	Transformer
 
@@ -11,6 +12,7 @@ type SortDescriptor interface {
 	SetAscending(bool)
 }
 
+// SortedListBySortDescriptors Sort items by sortDescriptors and return value
 func SortedListBySortDescriptors(sortDescriptors []SortDescriptor, input ...interface{}) []interface{} {
 	result := append(input[:0:0], input...)
 	SortBySortDescriptors(sortDescriptors, result)
@@ -18,6 +20,7 @@ func SortedListBySortDescriptors(sortDescriptors []SortDescriptor, input ...inte
 	return result
 }
 
+// SortBySortDescriptors Sort items by sortDescriptors
 func SortBySortDescriptors(sortDescriptors []SortDescriptor, input []interface{}) {
 	Sort(func(item1 interface{}, item2 interface{}) bool {
 		return _compareBySortDescriptors(item1, item2, sortDescriptors, 0) >= 0
@@ -39,16 +42,16 @@ func _compareBySortDescriptors(item1 interface{}, item2 interface{}, sortDescrip
 	if key1 != nil && key2 == nil {
 		if descriptor.IsAscending() {
 			return 1
-		} else {
-			return -1
 		}
+
+		return -1
 	}
 	if key1 == nil && key2 != nil {
 		if descriptor.IsAscending() {
 			return -1
-		} else {
-			return 1
 		}
+
+		return 1
 	}
 	if result == 0 && _hasNextDescriptor(sortDescriptors, descriptorIndex) {
 		return _compareBySortDescriptors(item1, item2, sortDescriptors, descriptorIndex+1)
@@ -63,6 +66,7 @@ func _hasNextDescriptor(sortDescriptors []SortDescriptor, index int) bool {
 
 // SimpleSortDescriptor
 
+// NewSimpleSortDescriptor Generate a new SimpleSortDescriptor by TransformerFunctor & asceding(true)/descending(false)
 func NewSimpleSortDescriptor(transformFn TransformerFunctor, ascending bool) SimpleSortDescriptor {
 	return SimpleSortDescriptor{
 		transformFn: transformFn,
@@ -70,6 +74,7 @@ func NewSimpleSortDescriptor(transformFn TransformerFunctor, ascending bool) Sim
 	}
 }
 
+// SimpleSortDescriptor SimpleSortDescriptor implemented by TransformerFunctor
 type SimpleSortDescriptor struct {
 	ascending bool
 
@@ -93,6 +98,7 @@ func (descriptor SimpleSortDescriptor) TransformedBy() TransformerFunctor {
 
 // FieldSortDescriptor
 
+// NewFieldSortDescriptor Generate a new FieldSortDescriptor by FieldName & asceding(true)/descending(false)
 func NewFieldSortDescriptor(fieldName string, ascending bool) FieldSortDescriptor {
 	return FieldSortDescriptor{
 		SimpleSortDescriptor: SimpleSortDescriptor{
@@ -103,6 +109,7 @@ func NewFieldSortDescriptor(fieldName string, ascending bool) FieldSortDescripto
 	}
 }
 
+// FieldSortDescriptor FieldSortDescriptor implemented by Reflection(by FieldName)
 type FieldSortDescriptor struct {
 	SimpleSortDescriptor
 
@@ -131,10 +138,12 @@ func (descriptor FieldSortDescriptor) TransformedBy() TransformerFunctor {
 
 // SortDescriptorsBuilder
 
+// NewSortDescriptorsBuilder Generate a new SortDescriptorsBuilder
 func NewSortDescriptorsBuilder() SortDescriptorsBuilder {
 	return SortDescriptorsBuilder{}
 }
 
+// SortDescriptorsBuilder SortDescriptorsBuilder for composing SortDescriptor list and sorting data
 type SortDescriptorsBuilder []SortDescriptor
 
 // ThenWithTransformerFunctor Use TransformerFunctor as a SortDescriptor

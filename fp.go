@@ -10,12 +10,21 @@ import (
 
 type fnObj func(interface{}) interface{}
 
+// Transformer Define Transformer Pattern interface
 type Transformer interface {
 	TransformedBy() TransformerFunctor
 }
+
+// TransformerFunctor Functor of Transform
 type TransformerFunctor func(interface{}) interface{}
+
+// Predicate Predicate Functor
 type Predicate func(interface{}) bool
+
+// Comparator Comparator Functor
 type Comparator func(interface{}, interface{}) bool
+
+// Comparable Comparable interface able to be compared
 type Comparable interface {
 	CompareTo(interface{}) int
 }
