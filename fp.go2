@@ -70,35 +70,35 @@ func MapIndexed[T any, R any](fn func(T, int) R, values ...T) []R {
 }
 
 // Reduce Reduce the values from left to right(func(memo,val), starting value, slice)
-func Reduce[T any, R any](fn func(R, T) R, memo R, in ...T) R {
+func Reduce[T any, R any](fn func(R, T) R, memo R, input ...T) R {
 
-	for i := 0; i < len(in); i++ {
-		memo = fn(memo, in[i])
+	for i := 0; i < len(input); i++ {
+		memo = fn(memo, input[i])
 	}
 
 	return memo
 }
 
 // ReduceIndexed Reduce the values from left to right(func(memo,val,index), starting value, slice)
-func ReduceIndexed[T any, R any](fn func(R, T, int) R, memo R, in ...T) R {
+func ReduceIndexed[T any, R any](fn func(R, T, int) R, memo R, input ...T) R {
 
-	for i := 0; i < len(in); i++ {
-		memo = fn(memo, in[i], i)
+	for i := 0; i < len(input); i++ {
+		memo = fn(memo, input[i], i)
 	}
 
 	return memo
 }
 
-//Filter Filter the values by the given predicate function (predicate func, slice)
-func Filter[T any](fn func(T, int) bool, in ...T) []T {
-	var list = make([]T, len(in))
+// Filter Filter the values by the given predicate function (predicate func, slice)
+func Filter[T any](fn func(T, int) bool, input ...T) []T {
+	var list = make([]T, len(input))
 
 	var newLen = 0
 
-	for i := range in {
-		if fn(in[i], i) {
+	for i := range input {
+		if fn(input[i], i) {
 			newLen++
-			list[newLen-1] = in[i]
+			list[newLen-1] = input[i]
 		}
 	}
 
@@ -107,11 +107,47 @@ func Filter[T any](fn func(T, int) bool, in ...T) []T {
 	return result
 }
 
-//Reject Reject the values by the given predicate function (predicate func, slice)
-func Reject[T any](fn func(T, int) bool, in ...T) []T {
+// Reject Reject the values by the given predicate function (predicate func, slice)
+func Reject[T any](fn func(T, int) bool, input ...T) []T {
 	return Filter(func (val T, i int) bool {
 		return !fn(val, i)
-	}, in...)
+	}, input...)
+}
+
+// Concat Concat slices
+func Concat[T any](mine []T, slices ...[]T) []T {
+	var mineLen = len(mine)
+	var totalLen = mineLen
+
+	for _, slice := range(slices) {
+		if slice == nil {
+			continue
+		}
+
+		var targetLen = len(slice)
+		totalLen += targetLen
+	}
+	var newOne = make([]T, totalLen)
+
+	for i, item := range mine {
+		newOne[i] = item
+	}
+	totalIndex := mineLen
+
+	for _, slice := range(slices) {
+		if slice == nil {
+			continue
+		}
+
+		var target = slice
+		var targetLen = len(target)
+		for j, item := range target {
+			newOne[totalIndex+j] = item
+		}
+		totalIndex += targetLen
+	}
+
+	return newOne
 }
 
 // PtrOf Return Ptr of a value

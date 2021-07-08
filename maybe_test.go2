@@ -64,7 +64,7 @@ func TestClone(t *testing.T) {
 
 	iptr = nil
 	m = Maybe.Just(iptr)
-	// assert.Equal(t, nil, m.Clone().Unwrap())
+	assert.Equal(t, nil, m.Clone().UnwrapInterface())
 	assert.Equal(t, true, m.IsNil())
 	assert.Equal(t, 2, *iptr2)
 

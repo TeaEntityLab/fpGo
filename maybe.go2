@@ -335,6 +335,15 @@ func (maybeSelf MaybeDef[T]) Unwrap() T {
 	return maybeSelf.ref
 }
 
+// UnwrapInterface Unwrap the wrapped value of Maybe as interface{}
+func (maybeSelf MaybeDef[T]) UnwrapInterface() interface{} {
+	if maybeSelf.IsNil() {
+		return nil
+	}
+
+	return maybeSelf.ref
+}
+
 // IsPresent Check is it present(not nil)
 func (maybeSelf MaybeDef[T]) IsPresent() bool {
 	return !(maybeSelf.IsNil())

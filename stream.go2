@@ -36,7 +36,7 @@ func (streamSelf *StreamDef[T]) ToArray() []T {
 // Map Map all items of Stream by function
 func (streamSelf *StreamDef[T]) Map(fn func(T, int) T) *StreamDef[T] {
 
-	var result = StreamFromArray(MapIndexed(fn, (streamSelf.ToArray())...))
+	var result = StreamFromArray(MapIndexed(fn, (*streamSelf)...))
 
 	return result
 }
@@ -44,7 +44,7 @@ func (streamSelf *StreamDef[T]) Map(fn func(T, int) T) *StreamDef[T] {
 // Filter Filter items of Stream by function
 func (streamSelf *StreamDef[T]) Filter(fn func(T, int) bool) *StreamDef[T] {
 
-	var result = StreamFromArray(Filter(fn, (streamSelf.ToArray())...))
+	var result = StreamFromArray(Filter(fn, (*streamSelf)...))
 
 	return result
 }
@@ -57,8 +57,8 @@ func (streamSelf *StreamDef[T]) Distinct() *StreamDef[T] {
 }
 
 // Append Append an item into Stream
-func (streamSelf *StreamDef[T]) Append(item T) *StreamDef[T] {
-	result := StreamDef[T](append(*streamSelf, item))
+func (streamSelf *StreamDef[T]) Append(item ...T) *StreamDef[T] {
+	result := StreamDef[T](append(*streamSelf, item...))
 	return &result
 }
 
@@ -68,7 +68,7 @@ func (streamSelf *StreamDef[T]) Remove(index int) *StreamDef[T] {
 	if index >= 0 && index < streamSelf.Len() {
 		result = append((*streamSelf)[:index], (*streamSelf)[index+1:]...)
 	} else {
-		result = *streamSelf
+		return streamSelf
 	}
 	return &result
 }
@@ -78,26 +78,54 @@ func (streamSelf *StreamDef[T]) Len() int {
 	return len(*streamSelf)
 }
 
-// Extend Extend Stream by an another Stream
-func (streamSelf *StreamDef[T]) Extend(stream *StreamDef[T]) *StreamDef[T] {
-	if stream == nil {
+// Concat Concat Stream by another slices
+func (streamSelf *StreamDef[T]) Concat(slices ...[]T) *StreamDef[T] {
+	if len(slices) == 0 {
+		return streamSelf
+	}
+
+	return StreamFromArray(Concat(streamSelf.ToArray(), slices...))
+}
+
+// Extend Extend Stream by another Stream(s)
+func (streamSelf *StreamDef[T]) Extend(streams ...*StreamDef[T]) *StreamDef[T] {
+	if len(streams) == 0 {
 		return streamSelf
 	}
 
 	var mine = *streamSelf
 	var mineLen = len(mine)
-	var target = stream.ToArray()
-	var targetLen = len(target)
+	var totalLen = mineLen
 
-	var new = make(StreamDef[T], mineLen+targetLen)
+	for _, stream := range(streams) {
+		if stream == nil {
+			continue
+		}
+
+		var targetLen = len(*stream)
+		totalLen += targetLen
+	}
+	var newOne = make(StreamDef[T], totalLen)
+
 	for i, item := range mine {
-		new[i] = item
+		newOne[i] = item
 	}
-	for j, item := range target {
-		new[mineLen+j] = item
+	totalIndex := mineLen
+
+	for _, stream := range(streams) {
+		if stream == nil {
+			continue
+		}
+
+		var target = *stream
+		var targetLen = len(target)
+		for j, item := range target {
+			newOne[totalIndex+j] = item
+		}
+		totalIndex += targetLen
 	}
 
-	return &new
+	return &newOne
 }
 
 // Sort Sort Stream items by function
