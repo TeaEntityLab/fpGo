@@ -179,6 +179,13 @@ func TestSort(t *testing.T) {
 	}
 	assert.Equal(t, "11234", tempString)
 
+	s = Stream.FromArrayInt([]int{11}).Concat([]interface{}{2, 3, 4, 5}).Remove(4)
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Maybe.Just(v).ToMaybe().ToString()
+	}
+	assert.Equal(t, "11234", tempString)
+
 	s = s.SortByIndex(func(i, j int) bool {
 		var vali, _ = Maybe.Just(s.Get(i)).ToInt()
 		var valj, _ = Maybe.Just(s.Get(j)).ToInt()
