@@ -232,24 +232,29 @@ func SliceOf[T any](args ...T) []T {
 }
 
 // CurryDef Curry inspired by Currying in Java ways
-type CurryDef struct {
-	fn     func(c *CurryDef, args ...interface{}) interface{}
-	result interface{}
+type CurryDef[T any, R any] struct {
+	fn     func(c *CurryDef[T, R], args ...T) R
+	result R
 	isDone AtomBool
 
 	callM sync.Mutex
-	args  []interface{}
+	args  []T
 }
 
-// New New Curry instance by function
-func (currySelf *CurryDef) New(fn func(c *CurryDef, args ...interface{}) interface{}) *CurryDef {
-	c := &CurryDef{fn: fn}
+// CurryNew New Curry instance by function
+func CurryNew(fn func(c *CurryDef[interface{}, interface{}], args ...interface{}) interface{}) *CurryDef[interface{}, interface{}] {
+	return CurryNewGenerics(fn)
+}
+
+// CurryNewGenerics New Curry instance by function
+func CurryNewGenerics[T any, R any](fn func(c *CurryDef[T, R], args ...T) R) *CurryDef[T, R] {
+	c := &CurryDef[T, R]{fn: fn}
 
 	return c
 }
 
 // Call Call the currying function by partial or all args
-func (currySelf *CurryDef) Call(args ...interface{}) *CurryDef {
+func (currySelf *CurryDef[T, R]) Call(args ...T) *CurryDef[T, R] {
 	currySelf.callM.Lock()
 	if !currySelf.isDone.Get() {
 		currySelf.args = append(currySelf.args, args...)
@@ -260,22 +265,22 @@ func (currySelf *CurryDef) Call(args ...interface{}) *CurryDef {
 }
 
 // MarkDone Mark the currying is done(let others know it)
-func (currySelf *CurryDef) MarkDone() {
+func (currySelf *CurryDef[T, R]) MarkDone() {
 	currySelf.isDone.Set(true)
 }
 
 // IsDone Is the currying done
-func (currySelf *CurryDef) IsDone() bool {
+func (currySelf *CurryDef[T, R]) IsDone() bool {
 	return currySelf.isDone.Get()
 }
 
 // Result Get the result value of currying
-func (currySelf *CurryDef) Result() interface{} {
+func (currySelf *CurryDef[T, R]) Result() R {
 	return currySelf.result
 }
 
 // Curry Curry utils instance
-var Curry CurryDef
+var Curry CurryDef[interface{}, interface{}]
 
 // PatternMatching
 

@@ -82,7 +82,7 @@ func TestFPFunctions(t *testing.T) {
 }
 
 func TestCurry(t *testing.T) {
-	c := Curry.New(func(c *CurryDef, args ...interface{}) interface{} {
+	c := CurryNew(func(c *CurryDef[interface{}, interface{}], args ...interface{}) interface{} {
 		result := 0
 		if len(args) == 3 {
 			var v int
