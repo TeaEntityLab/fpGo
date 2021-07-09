@@ -2,7 +2,38 @@ package fpgo
 
 import (
 	"reflect"
+	"strings"
 )
+
+// NewComparableNumeric Generate a Numeric Comparable for Comparator
+func NewComparableNumeric[T Numeric](val T) ComparableNumeric[T] {
+	return ComparableNumeric[T]{
+		Val: val,
+	}
+}
+// ComparableNumeric A Numeric Comparable for Comparator
+type ComparableNumeric[T Numeric] struct {
+	Val T
+}
+// CompareTo Compare with an another object
+func (obj ComparableNumeric[T]) CompareTo(input interface{}) int {
+	return CompareToNumeric(obj.Val, input.(ComparableNumeric[T]).Val)
+}
+
+// NewComparableString Generate a String Comparable for Comparator
+func NewComparableString(val string) ComparableString {
+	return ComparableString{
+		Val: val,
+	}
+}
+// ComparableString A String Comparable for Comparator
+type ComparableString struct {
+	Val string
+}
+// CompareTo Compare with an another object
+func (obj ComparableString) CompareTo(input interface{}) int {
+	return strings.Compare(string(obj.Val), string(input.(ComparableString).Val))
+}
 
 // SortDescriptor Define a Transformer Pattern SortDescriptor
 type SortDescriptor[T any] interface {
