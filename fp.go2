@@ -205,13 +205,9 @@ func Sort[T any](fn Comparator[T], input []T) {
 
 // Trampoline Trampoline
 func Trampoline[T any](fn func(...T) ([]T, bool, error), input ...T) ([]T, error) {
-	result, isDone, err := fn(input...)
-	if err != nil {
-		return nil, err
-	}
-	if isDone {
-		return result, err
-	}
+	result := input
+	var isDone bool
+	var err error
 
 	for {
 		result, isDone, err = fn(result...)
@@ -219,7 +215,7 @@ func Trampoline[T any](fn func(...T) ([]T, bool, error), input ...T) ([]T, error
 			return nil, err
 		}
 		if isDone {
-			return result, err
+			break
 		}
 	}
 	return result, err
