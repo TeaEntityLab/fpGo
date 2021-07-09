@@ -203,6 +203,28 @@ func Sort[T any](fn Comparator[T], input []T) {
 	})
 }
 
+// Trampoline Trampoline
+func Trampoline[T any](fn func(...T) ([]T, bool, error), input ...T) ([]T, error) {
+	result, isDone, err := fn(input...)
+	if err != nil {
+		return nil, err
+	}
+	if isDone {
+		return result, err
+	}
+
+	for {
+		result, isDone, err = fn(result...)
+		if err != nil {
+			return nil, err
+		}
+		if isDone {
+			return result, err
+		}
+	}
+	return result, err
+}
+
 // PtrOf Return Ptr of a value
 func PtrOf[T any](v T) *T {
 	return &v
