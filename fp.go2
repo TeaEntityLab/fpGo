@@ -279,8 +279,8 @@ func (currySelf *CurryDef[T, R]) Result() R {
 	return currySelf.result
 }
 
-// Curry Curry utils instance
-var Curry CurryDef[interface{}, interface{}]
+// // Curry Curry utils instance
+// var Curry CurryDef[interface{}, interface{}]
 
 // PatternMatching
 
