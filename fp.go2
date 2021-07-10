@@ -8,6 +8,13 @@ import (
 	"sync"
 )
 
+/**
+Special thanks
+* fp functions(Dedupe/Difference/Distinct/IsDistinct/DropEq/Drop/DropLast/DropWhile/IsEqual/IsEqualMap/Every/Exists/Intersection/Keys/Values/Max/Min/MinMax/Merge/IsNeg/IsPos/PMap/pMapPreserveOrder/pMapNoOrder/Range/Reverse/Set/Some/Subset/Superset/Take/TakeLast/Union/IsZero/Zip/GroupBy/UniqBy/Flatten/Prepend/Partition/Tail/Head/SplitEvery)
+	*	Credit: https://github.com/logic-building/functional-go
+	* Credit: https://github.com/achannarasappa/pneumatic
+**/
+
 type fnObj func(interface{}) interface{}
 
 // Transformer Define Transformer Pattern interface
@@ -20,6 +27,8 @@ type TransformerFunctor[T any, R any] func(T) R
 
 // Predicate Predicate Functor
 type Predicate[T any] func(T) bool
+// PredicateErr Predicate Functor
+type PredicateErr[T any] func(T, int) (bool, error)
 
 // Comparator Comparator Functor
 type Comparator[T any] func(T, T) bool
@@ -36,16 +45,30 @@ type Numeric interface {
 		uint8, uint16, uint32, uint64,
 		float32, float64
 }
-// CompareToNumeric A general Compare function for Numeric
-func CompareToNumeric[T Numeric](a, b T) int {
-	result := b - a
-	if result > 0 {
+
+// Ordered Define Ordered types for Generics
+type Ordered interface {
+    type int,
+		int8, int16, int32, int64,
+		uint8, uint16, uint32, uint64,
+		uintptr,
+		string,
+		float32, float64
+}
+// CompareToOrdered A general Compare function for Ordered
+func CompareToOrdered[T Ordered](a, b T) int {
+	if b > a {
 		return 1
-	} else if result < 0 {
+	} else if b < a {
 		return -1
 	}
 
 	return 0
+}
+
+type PMapOption struct {
+	FixedPool   int // number of goroutines
+	RandomOrder bool
 }
 
 // Compose Compose the functions from right to left (Math: f(g(x)) Compose: Compose(f, g)(x))
@@ -203,6 +226,838 @@ func Sort[T any](fn Comparator[T], input []T) {
 	})
 }
 
+// Dedupe Returns a new list removing consecutive duplicates in list.
+func Dedupe[T comparable](list ...T) []T {
+	var newList []T
+
+	lenList := len(list)
+	for i := 0; i < lenList; i++ {
+		if i+1 < lenList && list[i] == list[i+1] {
+			continue
+		}
+		newList = append(newList, list[i])
+	}
+	return newList
+}
+
+// Difference returns a set that is the first set without elements of the remaining sets
+// repeated value within list parameter will be ignored
+func Difference[T comparable](arrList ...[]T) []T {
+	if arrList == nil {
+		return make([]T, 0)
+	}
+
+	resultMap := make(map[T]struct{})
+	if len(arrList) == 1 {
+		var newList []T
+		for i := 0; i < len(arrList[0]); i++ {
+			_, ok := resultMap[arrList[0][i]]
+			if !ok {
+				newList = append(newList, arrList[0][i])
+				resultMap[arrList[0][i]] = struct{}{}
+			}
+		}
+		return newList
+	}
+
+	var newList []T
+	// 1st loop iterates items in 1st array
+	// 2nd loop iterates all the rest of the arrays
+	// 3rd loop iterates items in the rest of the arrays
+	for i := 0; i < len(arrList[0]); i++ {
+
+		matchCount := 0
+		for j := 1; j < len(arrList); j++ {
+			for _, v := range arrList[j] {
+				// compare every items in 1st array to every items in the rest of the arrays
+				if arrList[0][i] == v {
+					matchCount++
+					break
+				}
+			}
+		}
+		if matchCount == 0 {
+			_, ok := resultMap[arrList[0][i]]
+			if !ok {
+				newList = append(newList, arrList[0][i])
+				resultMap[arrList[0][i]] = struct{}{}
+			}
+		}
+	}
+	return newList
+}
+
+// Distinct removes duplicates.
+//
+// Example
+// 	list := []int{8, 2, 8, 0, 2, 0}
+// 	Distinct(list...) // returns [8, 2, 0]
+func Distinct[T comparable](list ...T) []T {
+	var newList []T
+	s := make(map[T]struct{}, len(list))
+	for _, v := range list {
+		if _, ok := s[v]; ok {
+			continue
+		}
+		s[v] = struct{}{}
+		newList = append(newList, v)
+	}
+	return newList
+}
+
+// IsDistinct returns true if no two of the arguments are =
+func IsDistinct[T comparable](list ...T) bool {
+	if len(list) == 0 {
+		return false
+	}
+
+	s := make(map[T]bool)
+	for _, v := range list {
+		if _, ok := s[v]; ok {
+			return false
+		}
+		s[v] = true
+	}
+	return true
+}
+
+// DropEq returns a new list after dropping the given item
+//
+// Example:
+// 	DropEq(1, 1, 2, 3, 1) // returns [2, 3]
+func DropEq[T comparable](num T, list ...T) []T {
+	var newList []T
+	for _, v := range list {
+		if v != num {
+			newList = append(newList, v)
+		}
+	}
+	return newList
+}
+
+// Drop drops N item(s) from the list and returns new list.
+// Returns empty list if there is only one item in the list or list empty
+func Drop[T any](count int, list ...T) []T {
+	if count <=0 {
+	return list
+	}
+
+	if count >= len(list) {
+	return make([]T, 0)
+	}
+
+	return list[count:]
+}
+
+// DropLast drops last N item(s) from the list and returns new list.
+// Returns empty list if there is only one item in the list or list empty
+func DropLast[T any](count int, list ...T) []T {
+	listLen := len(list)
+
+	if listLen == 0 || count >= listLen {
+		return make([]T, 0)
+	}
+
+	return list[:(listLen-count)]
+}
+
+// DropWhile drops the items from the list as long as condition satisfies.
+//
+// Takes two inputs
+//	1. Function: takes one input and returns boolean
+//	2. list
+//
+// Returns:
+// 	New List.
+//  Empty list if either one of arguments or both of them are nil
+//
+// Example: Drops even number. Returns the remaining items once odd number is found in the list.
+//	DropWhile(isEven, 4, 2, 3, 4, 5) // Returns [3, 4, 5]
+//
+//	func isEven(num int) bool {
+//		return num%2 == 0
+//	}
+func DropWhile[T any](f Predicate[T], list ...T) []T {
+	if f == nil {
+		return make([]T, 0)
+	}
+	var newList []T
+	for i, v := range list {
+		if !f(v) {
+			listLen := len(list)
+			newList = make([]T, listLen-i)
+			j := 0
+			for i < listLen {
+				newList[j] = list[i]
+				i++
+				j++
+			}
+			return newList
+		}
+	}
+	return newList
+}
+
+// IsEqual Returns true if both list are equal else returns false
+func IsEqual[T comparable](list1, list2 []T) bool {
+	len1 := len(list1)
+	len2 := len(list2)
+
+	if len1 == 0 || len2 == 0 || len1 != len2 {
+		return false
+	}
+
+	for i := 0; i < len1; i++ {
+		if list1[i] != list2[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// IsEqualMap Returns true if both maps are equal else returns false
+func IsEqualMap[T comparable, R comparable](map1, map2 map[T]R) bool {
+	len1 := len(map1)
+	len2 := len(map2)
+
+	if len1 == 0 || len2 == 0 || len1 != len2 {
+		return false
+	}
+
+	for k1, v1 := range map1 {
+		found := false
+		for k2, v2 := range map2 {
+			if k1 == k2 && v1 == v2 {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+// // IsEven Returns true if n is even
+// func IsEven[T Numeric](v T) bool {
+// 	return v%2 == 0
+// }
+//
+// // IsOdd Returns true if n is odd
+// func IsOdd[T Numeric](v T) bool {
+// 	return v%2 != 0
+// }
+
+// Every returns true if supplied function returns logical true for every item in the list
+//
+// Example:
+//	Every(even, 8, 2, 10, 4) // Returns true
+//
+//	func isEven(num int) bool {
+//		return num%2 == 0
+//	}
+//
+// Every(even) // Returns false
+// Every(nil) // Returns false
+func Every[T any](f Predicate[T], list ...T) bool {
+	if f == nil || len(list) == 0 {
+		return false
+	}
+	for _, v := range list {
+		if !f(v) {
+			return false
+		}
+	}
+	return true
+}
+
+// Exists checks if given item exists in the list
+//
+// Example:
+//	Exists(8, 8, 2, 10, 4) // Returns true
+//	Exists(8) // Returns false
+func Exists[T comparable](num T, list ...T) bool {
+	for _, v := range list {
+		if v == num {
+			return true
+		}
+	}
+	return false
+}
+
+// Intersection return a set that is the intersection of the input sets
+// repeated value within list parameter will be ignored
+func Intersection[T comparable](arrList ...[]T) []T {
+	if arrList == nil {
+		return make([]T, 0)
+	}
+
+	resultMap := make(map[T]struct{})
+	if len(arrList) == 1 {
+		var newList []T
+		for i := 0; i < len(arrList[0]); i++ {
+			_, ok := resultMap[arrList[0][i]]
+			if !ok {
+				newList = append(newList, arrList[0][i])
+				resultMap[arrList[0][i]] = struct{}{}
+			}
+		}
+		return newList
+	}
+
+	var newList []T
+	// 1st loop iterates items in 1st array
+	// 2nd loop iterates all the rest of the arrays
+	// 3rd loop iterates items in the rest of the arrays
+	for i := 0; i < len(arrList[0]); i++ {
+
+		matchCount := 0
+		for j := 1; j < len(arrList); j++ {
+			for _, v := range arrList[j] {
+				// compare every items in 1st array to every items in the rest of the arrays
+				if arrList[0][i] == v {
+					matchCount++
+					break
+				}
+			}
+		}
+		if matchCount == len(arrList)-1 {
+			_, ok := resultMap[arrList[0][i]]
+			if !ok {
+				newList = append(newList, arrList[0][i])
+				resultMap[arrList[0][i]] = struct{}{}
+			}
+		}
+	}
+	return newList
+}
+
+// Keys returns a slice of map's keys
+func Keys[T comparable, R any](m map[T]R) []T {
+	keys := make([]T, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+	return keys
+}
+
+// Values returns a slice of map's values
+func Values[T comparable, R any](m map[T]R) []R {
+	keys := make([]R, len(m))
+	i := 0
+	for _, v := range m {
+		keys[i] = v
+		i++
+	}
+	return keys
+}
+
+// Max returns max item from the list.
+// Return 0 if the list is either empty or nil
+func Max[T Numeric](list ...T) T {
+	if list == nil || len(list) == 0 {
+		return 0
+	}
+	result := list[0]
+	for _, v := range list {
+		if v > result {
+			result = v
+		}
+	}
+	return result
+}
+
+// Min returns min item from the list.
+// Return 0 if the list is either empty or nil
+func Min[T Numeric](list ...T) T {
+	if list == nil || len(list) == 0 {
+		return 0
+	}
+	result := list[0]
+	for _, v := range list {
+		if v > result {
+			result = v
+		}
+	}
+	return result
+}
+
+// MinMax returns min and max items from the list.
+// Return 0,0 if the list is either empty or nil
+func MinMax[T Numeric](list []T) (T, T) {
+	if list == nil || len(list) == 0 {
+		return 0, 0
+	}
+	min := list[0]
+	max := list[0]
+
+	for _, v := range list {
+		if v < min {
+			min = v
+		} else if v > max {
+			max = v
+		}
+	}
+	return min, max
+}
+
+// Merge takes two inputs: map[T]R and map[T]R and merge two maps and returns a new map[T]R.
+func Merge[T comparable, R any](map1, map2 map[T]R) map[T]R {
+	if map1 == nil && map2 == nil {
+		return map[T]R{}
+	}
+
+	newMap := make(map[T]R)
+
+	if map1 == nil {
+		for k, v := range map2 {
+			newMap[k] = v
+		}
+		return newMap
+	}
+
+	if map2 == nil {
+		for k, v := range map1 {
+			newMap[k] = v
+		}
+		return newMap
+	}
+
+	for k, v := range map1 {
+		newMap[k] = v
+	}
+
+	for k, v := range map2 {
+		newMap[k] = v
+	}
+
+	return newMap
+}
+
+// IsNeg Returns true if num is less than zero, else false
+func IsNeg[T Numeric](v T) bool {
+	if v < 0 {
+		return true
+	}
+	return false
+}
+
+// IsPos Returns true if num is great than zero, else false
+func IsPos[T Numeric](v T) bool {
+	if v > 0 {
+		return true
+	}
+	return false
+}
+
+// PMap applies the function(1st argument) on each item in the list and returns a new list.
+//  Order of new list is guaranteed. This feature can be disabled by passing: PMapOption{RandomOrder: true} to gain performance
+//  Run in parallel. no_of_goroutines = no_of_items_in_list or 3rd argument can be passed to fix the number of goroutines.
+//
+// Takes 3 inputs. 3rd argument is option
+//  1. Function - takes 1 input
+//  2. List
+//  3. optional argument - PMapOption{FixedPool: <some_number>}
+func PMap[T any](f func(T) T, list []T, option *PMapOption) []T {
+	if f == nil {
+		return make([]T, 0)
+	}
+
+	var worker = len(list)
+	if option != nil {
+		if option.FixedPool > 0 && option.FixedPool < worker {
+			worker = option.FixedPool
+		}
+
+		if option.RandomOrder == true {
+			return pMapNoOrder(f, list, worker)
+		}
+	}
+
+	return pMapPreserveOrder(f, list, worker)
+}
+
+func pMapPreserveOrder[T any](f func(T) T, list []T, worker int) []T {
+	chJobs := make(chan map[int]T, len(list))
+	go func() {
+		for i, v := range list {
+			chJobs <- map[int]T{i: v}
+		}
+		close(chJobs)
+	}()
+
+	chResult := make(chan map[int]T, worker/3)
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < worker; i++ {
+		wg.Add(1)
+
+		go func(chResult chan map[int]T, chJobs chan map[int]T) {
+			defer wg.Done()
+
+			for m := range chJobs {
+				for k, v := range m {
+					chResult <- map[int]T{k: f(v)}
+				}
+			}
+		}(chResult, chJobs)
+	}
+
+	// This will wait for the workers to complete their job and then close the channel
+	go func() {
+		wg.Wait()
+		close(chResult)
+	}()
+
+	newListMap := make(map[int]T, len(list))
+	newList := make([]T, len(list))
+
+	for m := range chResult {
+		for k, v := range m {
+			newListMap[k] = v
+		}
+	}
+
+	for i := 0; i < len(list); i++ {
+		newList[i] = newListMap[i]
+	}
+
+	return newList
+}
+
+func pMapNoOrder[T any](f func(T) T, list []T, worker int) []T {
+	chJobs := make(chan T, len(list))
+	go func() {
+		for _, v := range list {
+			chJobs <- v
+		}
+		close(chJobs)
+	}()
+
+	chResult := make(chan T, worker/3)
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < worker; i++ {
+		wg.Add(1)
+
+		go func(chResult chan T, chJobs chan T) {
+			defer wg.Done()
+
+			for v := range chJobs {
+				chResult <- f(v)
+			}
+		}(chResult, chJobs)
+	}
+
+	// This will wait for the workers to complete their job and then close the channel
+	go func() {
+		wg.Wait()
+		close(chResult)
+	}()
+
+	newList := make([]T, len(list))
+	i := 0
+
+	for v := range chResult {
+		newList[i] = v
+		i++
+	}
+
+	return newList
+}
+
+// Range returns a list of range between lower and upper value
+//
+// Takes 3 inputs
+//	1. lower limit
+//	2. Upper limit
+//	3. Hops (optional)
+//
+// Returns
+//	List of range between lower and upper value
+//	Empty list if 3rd argument is either 0 or negative number
+//
+// Example:
+//	Range(-2, 2) // Returns: [-2, -1, 0, 1]
+//	Range(0, 2) // Returns: [0, 1]
+//	Range(3, 7, 2) // Returns: [3, 5]
+func Range[T Numeric](lower, higher T, hops ...T) []T {
+	hop := T(1)
+	if len(hops) > 0 {
+		if hops[0] <= 0 {
+			return make([]T, 0)
+		}
+		hop = hops[0]
+	}
+
+	if lower >= higher {
+		return make([]T, 0)
+	}
+
+	var l []T
+	for _, v := 0, lower; v < higher; v += hop {
+		l = append(l, v)
+	}
+	return l
+}
+
+// Reverse reverse the list
+func Reverse[T any](list ...T) []T {
+	newList := make([]T, len(list))
+	for i := 0; i < len(list); i++ {
+		newList[i] = list[len(list)-(i+1)]
+	}
+	return newList
+}
+
+// Set returns a set of the distinct elements of coll.
+func Set[T comparable](list []T) []T {
+	if len(list) == 0 {
+		return make([]T, 0)
+	}
+
+	return Distinct(list...)
+}
+
+// Some finds item in the list based on supplied function.
+//
+// Takes 2 input:
+//	1. Function
+//	2. List
+//
+// Returns:
+//	bool.
+//	True if condition satisfies, else false
+//
+// Example:
+//	Some(isEven, 8, 2, 10, 4) // Returns true
+//	Some(isEven, 1, 3, 5, 7) // Returns false
+//	Some(nil) // Returns false
+//
+//	func isEven(num int) bool {
+//		return num%2 == 0
+//	}
+func Some[T any](f Predicate[T], list ...T) bool {
+	if f == nil {
+		return false
+	}
+	for _, v := range list {
+		if f(v) {
+			return true
+		}
+	}
+	return false
+}
+
+// Subset returns true or false by checking if set1 is a subset of set2
+// repeated value within list parameter will be ignored
+func Subset[T comparable](list1, list2 []T) bool {
+	if list1 == nil || len(list1) == 0 || list2 == nil || len(list2) == 0 {
+		return false
+	}
+
+	resultMap := make(map[T]struct{})
+	for i := 0; i < len(list1); i++ {
+		_, ok := resultMap[list1[i]]
+		if !ok {
+			found := false
+			resultMap[list1[i]] = struct{}{}
+			for j := 0; j < len(list2); j++ {
+				if list1[i] == list2[j] {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// Superset returns true or false by checking if set1 is a superset of set2
+// repeated value within list parameter will be ignored
+func Superset(list1, list2 []int) bool {
+	return Subset(list2, list1)
+}
+
+// Take returns the first n elements of the slice
+func Take[T any](count int, list ...T) []T {
+	if count >= len(list) || count <=0 {
+		return list
+	}
+
+	return list[:count]
+}
+
+// TakeLast returns the last n elements of the slice
+func TakeLast[T any](count int, list ...T) []T {
+	listLen := len(list)
+
+	if count >= listLen || count <=0 {
+		return list
+	}
+
+	return list[(listLen-count):]
+}
+
+// Union return a set that is the union of the input sets
+// repeated value within list parameter will be ignored
+func Union[T comparable](arrList ...[]T) []T {
+	resultMap := make(map[T]struct{})
+	for _, arr := range arrList {
+		for _, v := range arr {
+			resultMap[v] = struct{}{}
+		}
+	}
+
+	result := make([]T, len(resultMap))
+	i := 0
+	for k := range resultMap {
+		result[i] = k
+		i++
+	}
+	return result
+}
+
+// IsZero Returns true if num is zero, else false
+func IsZero[T Numeric](v T) bool {
+	if v == 0 {
+		return true
+	}
+	return false
+}
+
+// Zip takes two inputs: first list of type: []T, second list of type: []T.
+// Then it merges two list and returns a new map of type: map[T]R
+func Zip[T comparable, R any](list1 []T, list2 []R) map[T]R {
+	newMap := make(map[T]R)
+
+	len1 := len(list1)
+	len2 := len(list2)
+
+	if len1 == 0 || len2 == 0 {
+		return newMap
+	}
+
+	minLen := len1
+	if len2 < minLen {
+		minLen = len2
+	}
+
+	for i := 0; i < minLen; i++ {
+		newMap[list1[i]] = list2[i]
+	}
+
+	return newMap
+}
+
+// GroupBy creates a map where the key is a group identifier and the value is a slice with the elements that have the same identifer
+func GroupBy[T any, R comparable](grouper TransformerFunctor[T, R], list ...T) map[R][]T {
+	var id R
+	result := make(map[R][]T)
+	for _, v := range list {
+		id = grouper(v)
+		result[id] = append(result[id], v)
+	}
+	return result
+}
+
+// UniqBy returns a slice of only unique values based on a comparable identifier
+func UniqBy[T any, R comparable](identify TransformerFunctor[T, R], list ...T) []T {
+	var id R
+	result := make([]T, 0)
+	identifiers := make(map[R]bool)
+	for _, v := range list {
+		id = identify(v)
+		if _, ok := identifiers[id]; !ok {
+			identifiers[id] = true
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+// Flatten creates a new slice where one level of nested elements are unnested
+func Flatten[T any](list ...[]T) []T {
+
+	result := make([]T, 0)
+
+	for _, v := range list {
+		result = append(result, v...)
+	}
+
+	return result
+}
+
+// Prepend returns the slice with the additional element added to the beggining
+func Prepend[T any](element T, list []T) []T {
+	return append([]T{element}, list...)
+}
+
+// Partition splits elements into two groups - one where the predicate is satisfied and one where the predicate is not
+func Partition[T any](predicate Predicate[T], list ...T) [][]T {
+	resultTrue := make([]T, 0)
+	resultFalse := make([]T, 0)
+	for _, v := range list {
+		if predicate(v) {
+			resultTrue = append(resultTrue, v)
+		} else {
+			resultFalse = append(resultFalse, v)
+		}
+	}
+	return [][]T{resultTrue, resultFalse}
+}
+
+// Tail returns the input slice with all elements except the first element
+func Tail[T any](list ...T) []T {
+	return Drop(1, list...)
+}
+
+// Head returns first element of a slice
+func Head[T any](list ...T) T {
+	var result T
+
+	if len(list) <= 0 {
+		return result
+	}
+
+	result = list[:1][0]
+
+	return result
+}
+
+// SplitEvery returns elements in equal length slices
+func SplitEvery[T any](size int, list ...T)  [][]T {
+	if size <= 0 || len(list) <= 1 {
+		return [][]T{list}
+	}
+
+	result := make([][]T, 0)
+	currentGroup := make([]T, 0)
+	for i, v := range list {
+		if len(currentGroup) < size {
+			currentGroup = append(currentGroup, v)
+		} else {
+			result = append(result, currentGroup)
+			currentGroup = []T{v}
+		}
+
+		if (i + 1) >= len(list) {
+			result = append(result, currentGroup)
+		}
+	}
+
+	return result
+}
+
 // Trampoline Trampoline
 func Trampoline[T any](fn func(...T) ([]T, bool, error), input ...T) ([]T, error) {
 	result := input
@@ -219,6 +1074,15 @@ func Trampoline[T any](fn func(...T) ([]T, bool, error), input ...T) ([]T, error
 		}
 	}
 	return result, err
+}
+
+// DuplicateSlice Return a new Slice
+func DuplicateSlice[T any](list []T) []T {
+	if len(list) > 0 {
+		return append(list[:0:0], list...)
+	}
+
+	return make([]T, 0)
 }
 
 // PtrOf Return Ptr of a value

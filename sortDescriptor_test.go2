@@ -30,7 +30,7 @@ func TestSortDescriptor(t *testing.T) {
 	}
 	objects = NewSortDescriptorsBuilder[TestCustomObject]().
 		ThenWithTransformerFunctor(func (obj TestCustomObject) Comparable[interface{}] {
-			return NewComparableNumeric(obj.Age)
+			return NewComparableOrdered(obj.Age)
 		}, false).
 		ThenWithFieldName("Name", true).
 		ToSortedList(objects...)

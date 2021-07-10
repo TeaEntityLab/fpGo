@@ -5,19 +5,19 @@ import (
 	"strings"
 )
 
-// NewComparableNumeric Generate a Numeric Comparable for Comparator
-func NewComparableNumeric[T Numeric](val T) ComparableNumeric[T] {
-	return ComparableNumeric[T]{
+// NewComparableOrdered Generate a Ordered Comparable for Comparator
+func NewComparableOrdered[T Ordered](val T) ComparableOrdered[T] {
+	return ComparableOrdered[T]{
 		Val: val,
 	}
 }
-// ComparableNumeric A Numeric Comparable for Comparator
-type ComparableNumeric[T Numeric] struct {
+// ComparableOrdered A Ordered Comparable for Comparator
+type ComparableOrdered[T Ordered] struct {
 	Val T
 }
 // CompareTo Compare with an another object
-func (obj ComparableNumeric[T]) CompareTo(input interface{}) int {
-	return CompareToNumeric(obj.Val, input.(ComparableNumeric[T]).Val)
+func (obj ComparableOrdered[T]) CompareTo(input interface{}) int {
+	return CompareToOrdered(obj.Val, input.(ComparableOrdered[T]).Val)
 }
 
 // NewComparableString Generate a String Comparable for Comparator
