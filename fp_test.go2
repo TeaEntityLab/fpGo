@@ -86,9 +86,9 @@ func TestFPFunctions(t *testing.T) {
 			1, 1, 2, 2, 3, 3, 3, 3, 3,
 		),
 	)
-	assert.Equal(t, []int{3, 2}, Pipe[int](
+	assert.Equal(t, []int{3, 2, 1}, Pipe[int](
 		CurryParam1[int, []int, int](DropLast[int], 1), Reverse[int], SortOrdered[int], Dedupe[int])(
-			3, 2, 1,
+			1, 1, 2, 2, 3, 3, 3, 3, 3,
 		),
 	)
 	assert.Equal(t, []int{1, 2, 3}, Dedupe(1, 1, 2, 2, 3, 3, 3, 3, 3))
