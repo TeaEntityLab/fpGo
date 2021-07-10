@@ -1104,7 +1104,44 @@ func SliceOf[T any](args ...T) []T {
 	return args
 }
 
-// CurryParam1 Curry for 1 Params (for currying general fp functions simply)
+// MakeVariadicParam1 MakeVariadic for 1 Param (for compose() general fp functions simply)
+func MakeVariadicParam1[T any, R any](fn func (T) R) func (...T) R {
+	return func (args ...T) R {
+		return fn(args[0])
+	}
+}
+// MakeVariadicParam2 MakeVariadic for 2 Params (for compose() general fp functions simply)
+func MakeVariadicParam2[T any, R any](fn func (T, T) R) func (...T) R {
+	return func (args ...T) R {
+		return fn(args[0], args[1])
+	}
+}
+// MakeVariadicParam3 MakeVariadic for 3 Params (for compose() general fp functions simply)
+func MakeVariadicParam3[T any, R any](fn func (T, T, T) R) func (...T) R {
+	return func (args ...T) R {
+		return fn(args[0], args[1], args[2])
+	}
+}
+// MakeVariadicParam4 MakeVariadic for 4 Params (for compose() general fp functions simply)
+func MakeVariadicParam4[T any, R any](fn func (T, T, T, T) R) func (...T) R {
+	return func (args ...T) R {
+		return fn(args[0], args[1], args[2], args[3])
+	}
+}
+// MakeVariadicParam5 MakeVariadic for 5 Params (for compose() general fp functions simply)
+func MakeVariadicParam5[T any, R any](fn func (T, T, T, T, T) R) func (...T) R {
+	return func (args ...T) R {
+		return fn(args[0], args[1], args[2], args[3], args[4])
+	}
+}
+// MakeVariadicParam6 MakeVariadic for 6 Params (for compose() general fp functions simply)
+func MakeVariadicParam6[T any, R any](fn func (T, T, T, T, T, T) R) func (...T) R {
+	return func (args ...T) R {
+		return fn(args[0], args[1], args[2], args[3], args[4], args[5])
+	}
+}
+
+// CurryParam1 Curry for 1 Param (for currying general fp functions simply)
 func CurryParam1[T any, R any, A any](fn func (A, ...T) R, a A) func (...T) R {
 	return func (args ...T) R {
 		return fn(a, args...)

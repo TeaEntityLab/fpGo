@@ -60,6 +60,7 @@ func TestFPFunctions(t *testing.T) {
 
 	var actualInt int
 	var actualInt2 int
+	var actualMap map[int]int
 
 	fib := func (n int) int {
 
@@ -115,7 +116,9 @@ func TestFPFunctions(t *testing.T) {
 	assert.Equal(t, 1, Min(2, 1, 2, 1, 3, 1, 2, 1))
 	actualInt, actualInt2 = MinMax(2, 1, 2, 1, 3, 1, 2, 1)
 	assert.Equal(t, []int{1, 3}, []int{actualInt, actualInt2})
-	//Merge
+	actualMap = Merge(map[int]int{2:11, 5:11, 1:12},map[int]int{41:1, 42:1, 43:2})
+	assert.Equal(t, []int{1, 2, 5, 41, 42, 43}, SortOrdered(Keys(actualMap)...))
+	assert.Equal(t, []int{1, 1, 2, 11, 11, 12}, SortOrdered(Values(actualMap)...))
 	//IsNeg
 	//IsPos
 	//PMap
