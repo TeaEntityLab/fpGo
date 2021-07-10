@@ -219,6 +219,15 @@ func SortSlice[T any](fn Comparator[T], input ...T) []T {
 	return input
 }
 
+// SortOrdered Sort items by Comparator
+func SortOrdered[T Ordered](input ...T) []T {
+	Sort(func (a, b T) bool {
+	return CompareToOrdered(a, b) > 0
+	}, input)
+
+	return input
+}
+
 // Sort Sort items by Comparator
 func Sort[T any](fn Comparator[T], input []T) {
 	sort.SliceStable(input, func(previous int, next int) bool {
@@ -579,7 +588,7 @@ func Min[T Numeric](list ...T) T {
 	}
 	result := list[0]
 	for _, v := range list {
-		if v > result {
+		if v < result {
 			result = v
 		}
 	}
@@ -588,7 +597,7 @@ func Min[T Numeric](list ...T) T {
 
 // MinMax returns min and max items from the list.
 // Return 0,0 if the list is either empty or nil
-func MinMax[T Numeric](list []T) (T, T) {
+func MinMax[T Numeric](list ...T) (T, T) {
 	if list == nil || len(list) == 0 {
 		return 0, 0
 	}
@@ -1093,6 +1102,43 @@ func PtrOf[T any](v T) *T {
 // SliceOf Return Slice of varargs
 func SliceOf[T any](args ...T) []T {
 	return args
+}
+
+// CurryParam1 Curry for 1 Params (for currying general fp functions simply)
+func CurryParam1[T any, R any, A any](fn func (A, ...T) R, a A) func (...T) R {
+	return func (args ...T) R {
+		return fn(a, args...)
+	}
+}
+// CurryParam2 Curry for 2 Params (for currying general fp functions simply)
+func CurryParam2[T any, R any, A any, B any](fn func (A, B, ...T) R, a A, b B) func (...T) R {
+	return func (args ...T) R {
+		return fn(a, b, args...)
+	}
+}
+// CurryParam3 Curry for 3 Params (for currying general fp functions simply)
+func CurryParam3[T any, R any, A any, B any, C any](fn func (A, B, C, ...T) R, a A, b B, c C) func (...T) R {
+	return func (args ...T) R {
+		return fn(a, b, c, args...)
+	}
+}
+// CurryParam4 Curry for 4 Params (for currying general fp functions simply)
+func CurryParam4[T any, R any, A any, B any, C any, D any](fn func (A, B, C, D, ...T) R, a A, b B, c C, d D) func (...T) R {
+	return func (args ...T) R {
+		return fn(a, b, c, d, args...)
+	}
+}
+// CurryParam5 Curry for 5 Params (for currying general fp functions simply)
+func CurryParam5[T any, R any, A any, B any, C any, D any, E any](fn func (A, B, C, D, E, ...T) R, a A, b B, c C, d D, e E) func (...T) R {
+	return func (args ...T) R {
+		return fn(a, b, c, d, e, args...)
+	}
+}
+// CurryParam6 Curry for 6 Params (for currying general fp functions simply)
+func CurryParam6[T any, R any, A any, B any, C any, D any, E any, F any](fn func (A, B, C, D, E, F, ...T) R, a A, b B, c C, d D, e E, f F) func (...T) R {
+	return func (args ...T) R {
+		return fn(a, b, c, d, e, f, args...)
+	}
 }
 
 // CurryDef Curry inspired by Currying in Java ways
