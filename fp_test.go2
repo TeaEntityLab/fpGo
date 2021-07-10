@@ -86,13 +86,17 @@ func TestFPFunctions(t *testing.T) {
 	assert.Equal(t, true, IsDistinct(1, 2, 3))
 	assert.Equal(t, false, IsDistinct(1, 1, 2, 1, 3, 1, 2, 1))
 	assert.Equal(t, []int{2, 3, 2}, DropEq(1, 1, 1, 2, 1, 3, 1, 2, 1))
-	//Drop
-	//DropLast
-	//DropWhile
-	//IsEqual
-	//IsEqualMap
-	//Every
-	//Exists
+	assert.Equal(t, []int{1, 2, 1}, Drop(5, 1, 1, 2, 1, 3, 1, 2, 1))
+	assert.Equal(t, []int{1, 1, 2}, DropLast(5, 1, 1, 2, 1, 3, 1, 2, 1))
+	assert.Equal(t, []int{3, 1, 2, 1}, DropWhile(func (a int) bool { return a < 3 }, 1, 1, 2, 1, 3, 1, 2, 1))
+	assert.Equal(t, true, IsEqual([]int{1, 1, 2},[]int{1, 1, 2}))
+	assert.Equal(t, false, IsEqual([]int{1, 1, 2},[]int{1, 1, 3}))
+	assert.Equal(t, true, IsEqualMap(map[int]int{2:1, 3:1, 1:2},map[int]int{1:2, 2:1, 3:1}))
+	assert.Equal(t, false, IsEqualMap(map[int]int{2:1, 3:1, 1:2},map[int]int{1:1, 2:1, 3:2}))
+	assert.Equal(t, true, Every(func (a int) bool { return a % 2 == 0 }, 8, 2, 10, 4))
+	assert.Equal(t, false, Every(func (a int) bool { return a % 2 == 0 }, 8, 3, 10, 4))
+	assert.Equal(t, true, Exists(10, 8, 3, 10, 4))
+	assert.Equal(t, false, Exists(9, 8, 3, 10, 4))
 	//Intersection
 	//Keys
 	//Values
