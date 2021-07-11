@@ -674,9 +674,9 @@ func IsPos[T Numeric](v T) bool {
 //  1. Function - takes 1 input
 //  2. List
 //  3. optional argument - PMapOption{FixedPool: <some_number>}
-func PMap[T any](f func(T) T, list []T, option *PMapOption) []T {
+func PMap[T any, R any](f TransformerFunctor[T, R], list []T, option *PMapOption) []R {
 	if f == nil {
-		return make([]T, 0)
+		return make([]R, 0)
 	}
 
 	var worker = len(list)
@@ -693,7 +693,7 @@ func PMap[T any](f func(T) T, list []T, option *PMapOption) []T {
 	return pMapPreserveOrder(f, list, worker)
 }
 
-func pMapPreserveOrder[T any](f func(T) T, list []T, worker int) []T {
+func pMapPreserveOrder[T any, R any](f TransformerFunctor[T, R], list []T, worker int) []R {
 	chJobs := make(chan map[int]T, len(list))
 	go func() {
 		for i, v := range list {
@@ -702,19 +702,19 @@ func pMapPreserveOrder[T any](f func(T) T, list []T, worker int) []T {
 		close(chJobs)
 	}()
 
-	chResult := make(chan map[int]T, worker/3)
+	chResult := make(chan map[int]R, worker/3)
 
 	var wg sync.WaitGroup
 
 	for i := 0; i < worker; i++ {
 		wg.Add(1)
 
-		go func(chResult chan map[int]T, chJobs chan map[int]T) {
+		go func(chResult chan map[int]R, chJobs chan map[int]T) {
 			defer wg.Done()
 
 			for m := range chJobs {
 				for k, v := range m {
-					chResult <- map[int]T{k: f(v)}
+					chResult <- map[int]R{k: f(v)}
 				}
 			}
 		}(chResult, chJobs)
@@ -726,8 +726,8 @@ func pMapPreserveOrder[T any](f func(T) T, list []T, worker int) []T {
 		close(chResult)
 	}()
 
-	newListMap := make(map[int]T, len(list))
-	newList := make([]T, len(list))
+	newListMap := make(map[int]R, len(list))
+	newList := make([]R, len(list))
 
 	for m := range chResult {
 		for k, v := range m {
@@ -742,7 +742,7 @@ func pMapPreserveOrder[T any](f func(T) T, list []T, worker int) []T {
 	return newList
 }
 
-func pMapNoOrder[T any](f func(T) T, list []T, worker int) []T {
+func pMapNoOrder[T any, R any](f TransformerFunctor[T, R], list []T, worker int) []R {
 	chJobs := make(chan T, len(list))
 	go func() {
 		for _, v := range list {
@@ -751,14 +751,14 @@ func pMapNoOrder[T any](f func(T) T, list []T, worker int) []T {
 		close(chJobs)
 	}()
 
-	chResult := make(chan T, worker/3)
+	chResult := make(chan R, worker/3)
 
 	var wg sync.WaitGroup
 
 	for i := 0; i < worker; i++ {
 		wg.Add(1)
 
-		go func(chResult chan T, chJobs chan T) {
+		go func(chResult chan R, chJobs chan T) {
 			defer wg.Done()
 
 			for v := range chJobs {
@@ -773,7 +773,7 @@ func pMapNoOrder[T any](f func(T) T, list []T, worker int) []T {
 		close(chResult)
 	}()
 
-	newList := make([]T, len(list))
+	newList := make([]R, len(list))
 	i := 0
 
 	for v := range chResult {
