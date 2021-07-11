@@ -25,6 +25,9 @@ type Transformer[T any, R any] interface {
 // TransformerFunctor Functor of Transform
 type TransformerFunctor[T any, R any] func(T) R
 
+// ReducerFunctor Functor for Reduce
+type ReducerFunctor[T any, R any] func(R, T) R
+
 // Predicate Predicate Functor
 type Predicate[T any] func(T) bool
 // PredicateErr Predicate Functor
@@ -132,7 +135,7 @@ func MapIndexed[T any, R any](fn func(T, int) R, values ...T) []R {
 }
 
 // Reduce Reduce the values from left to right(func(memo,val), starting value, slice)
-func Reduce[T any, R any](fn func(R, T) R, memo R, input ...T) R {
+func Reduce[T any, R any](fn ReducerFunctor[T, R], memo R, input ...T) R {
 
 	for i := 0; i < len(input); i++ {
 		memo = fn(memo, input[i])
@@ -999,11 +1002,11 @@ func Flatten[T any](list ...[]T) []T {
 
 	result := make([]T, 0)
 
-	for _, v := range list {
-		result = append(result, v...)
-	}
+	// for _, v := range list {
+	// 	result = append(result, v...)
+	// }
 
-	return result
+	return Concat(result, list...)
 }
 
 // Prepend returns the slice with the additional element added to the beggining
@@ -1102,6 +1105,17 @@ func PtrOf[T any](v T) *T {
 // SliceOf Return Slice of varargs
 func SliceOf[T any](args ...T) []T {
 	return args
+}
+
+// MakeNumericReturn1 Make Numeric 1 value Return (for compose() general fp functions simply)
+func MakeNumericReturn1[T any, R Numeric](fn func (...T) bool) func (...T) []R {
+	return func (args ...T) []R {
+		if fn(args...) {
+			return SliceOf(R(1))
+		}
+
+		return SliceOf(R(0))
+	}
 }
 
 // MakeVariadicParam1 MakeVariadic for 1 Param (for compose() general fp functions simply)
