@@ -10,7 +10,7 @@ import (
 
 /**
 Special thanks
-* fp functions(Dedupe/Difference/Distinct/IsDistinct/DropEq/Drop/DropLast/DropWhile/IsEqual/IsEqualMap/Every/Exists/Intersection/Keys/Values/Max/Min/MinMax/Merge/IsNeg/IsPos/PMap/Range/Reverse/Set/Some/Subset/Superset/Take/TakeLast/Union/IsZero/Zip/GroupBy/UniqBy/Flatten/Prepend/Partition/Tail/Head/SplitEvery)
+* fp functions(Dedupe/Difference/Distinct/IsDistinct/DropEq/Drop/DropLast/DropWhile/IsEqual/IsEqualMap/Every/Exists/Intersection/Keys/Values/Max/Min/MinMax/Merge/IsNeg/IsPos/PMap/Range/Reverse/Set/Some/IsSubset/IsSuperset/Take/TakeLast/Union/IsZero/Zip/GroupBy/UniqBy/Flatten/Prepend/Partition/Tail/Head/SplitEvery)
 	*	Credit: https://github.com/logic-building/functional-go
 	* Credit: https://github.com/achannarasappa/pneumatic
 **/
@@ -867,9 +867,9 @@ func Some[T any](f Predicate[T], list ...T) bool {
 	return false
 }
 
-// Subset returns true or false by checking if set1 is a subset of set2
+// IsSubset returns true or false by checking if set1 is a subset of set2
 // repeated value within list parameter will be ignored
-func Subset[T comparable](list1, list2 []T) bool {
+func IsSubset[T comparable](list1, list2 []T) bool {
 	if list1 == nil || len(list1) == 0 || list2 == nil || len(list2) == 0 {
 		return false
 	}
@@ -894,10 +894,10 @@ func Subset[T comparable](list1, list2 []T) bool {
 	return true
 }
 
-// Superset returns true or false by checking if set1 is a superset of set2
+// IsSuperset returns true or false by checking if set1 is a superset of set2
 // repeated value within list parameter will be ignored
-func Superset(list1, list2 []int) bool {
-	return Subset(list2, list1)
+func IsSuperset(list1, list2 []int) bool {
+	return IsSubset(list2, list1)
 }
 
 // Take returns the first n elements of the slice
