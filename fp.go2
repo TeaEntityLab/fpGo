@@ -10,7 +10,7 @@ import (
 
 /**
 Special thanks
-* fp functions(Dedupe/Difference/Distinct/IsDistinct/DropEq/Drop/DropLast/DropWhile/IsEqual/IsEqualMap/Every/Exists/Intersection/Keys/Values/Max/Min/MinMax/Merge/IsNeg/IsPos/PMap/Range/Reverse/Set/Some/IsSubset/IsSuperset/Take/TakeLast/Union/IsZero/Zip/GroupBy/UniqBy/Flatten/Prepend/Partition/Tail/Head/SplitEvery)
+* fp functions(Dedupe/Difference/Distinct/IsDistinct/DropEq/Drop/DropLast/DropWhile/IsEqual/IsEqualMap/Every/Exists/Intersection/Keys/Values/Max/Min/MinMax/Merge/IsNeg/IsPos/PMap/Range/Reverse/Minus/Some/IsSubset/IsSuperset/Take/TakeLast/Union/IsZero/Zip/GroupBy/UniqBy/Flatten/Prepend/Partition/Tail/Head/SplitEvery)
 	*	Credit: https://github.com/logic-building/functional-go
 	* Credit: https://github.com/achannarasappa/pneumatic
 **/
@@ -505,45 +505,47 @@ func Exists[T comparable](num T, list ...T) bool {
 
 // Intersection return a set that is the intersection of the input sets
 // repeated value within list parameter will be ignored
-func Intersection[T comparable](arrList ...[]T) []T {
-	if arrList == nil {
+func Intersection[T comparable](inputList ...[]T) []T {
+	inputLen := len(inputList)
+	if inputList == nil {
 		return make([]T, 0)
 	}
 
-	resultMap := make(map[T]interface{})
-	if len(arrList) == 1 {
+	if inputLen == 1 {
+		resultMap := make(map[T]interface{}, len(inputList[0]))
 		var newList []T
-		for i := 0; i < len(arrList[0]); i++ {
-			_, ok := resultMap[arrList[0][i]]
+		for i := 0; i < len(inputList[0]); i++ {
+			_, ok := resultMap[inputList[0][i]]
 			if !ok {
-				newList = append(newList, arrList[0][i])
-				resultMap[arrList[0][i]] = true
+				newList = append(newList, inputList[0][i])
+				resultMap[inputList[0][i]] = true
 			}
 		}
 		return newList
 	}
 
+	resultMap := make(map[T]interface{})
 	var newList []T
 	// 1st loop iterates items in 1st array
 	// 2nd loop iterates all the rest of the arrays
 	// 3rd loop iterates items in the rest of the arrays
-	for i := 0; i < len(arrList[0]); i++ {
+	for i := 0; i < len(inputList[0]); i++ {
 
 		matchCount := 0
-		for j := 1; j < len(arrList); j++ {
-			for _, v := range arrList[j] {
+		for j := 1; j < inputLen; j++ {
+			for _, v := range inputList[j] {
 				// compare every items in 1st array to every items in the rest of the arrays
-				if arrList[0][i] == v {
+				if inputList[0][i] == v {
 					matchCount++
 					break
 				}
 			}
 		}
-		if matchCount == len(arrList)-1 {
-			_, ok := resultMap[arrList[0][i]]
+		if matchCount == inputLen-1 {
+			_, ok := resultMap[inputList[0][i]]
 			if !ok {
-				newList = append(newList, arrList[0][i])
-				resultMap[arrList[0][i]] = true
+				newList = append(newList, inputList[0][i])
+				resultMap[inputList[0][i]] = true
 			}
 		}
 	}
@@ -554,18 +556,20 @@ func Intersection[T comparable](arrList ...[]T) []T {
 func IntersectionMapByKey[T comparable, R any](inputList ...map[T]R) map[T]R {
 	inputLen := len(inputList)
 
-	resultMap := make(map[T]R)
 	if inputLen == 0 {
-		return resultMap
+		return make(map[T]R)
 	}
 
 	if inputLen == 1 {
+		resultMap := make(map[T]R, len(inputList[0]))
 		for k, v := range(inputList[0]) {
 			resultMap[k] = v
 		}
 		return resultMap
 	}
 
+
+	resultMap := make(map[T]R)
 	countMap := make(map[T]int)
 	for _, mapItem := range(inputList) {
 		for k, v := range(mapItem) {
@@ -581,6 +585,38 @@ func IntersectionMapByKey[T comparable, R any](inputList ...map[T]R) map[T]R {
 			delete(resultMap, k)
 		}
 	}
+	return resultMap
+}
+
+// Minus all of set1 but not in set2
+func Minus[T comparable](set1, set2 []T) []T {
+	resultIndex := 0
+	maxLen := len(set1)
+	result := make([]T, maxLen)
+	set2Map := SliceToMap(true, set2...)
+
+	for _, item := range(set1) {
+		_, exists := set2Map[item]
+		if !exists {
+			result[resultIndex] = item
+			resultIndex += 1
+		}
+	}
+
+	return result[:resultIndex]
+}
+
+// MinusMapByKey all of set1 but not in set2
+func MinusMapByKey[T comparable, R any](set1, set2 map[T]R) map[T]R {
+	resultMap := make(map[T]R, len(set1))
+
+	for k, v := range(set1) {
+		_, exists := set2[k]
+		if !exists {
+			resultMap[k] = v
+		}
+	}
+
 	return resultMap
 }
 
@@ -661,7 +697,7 @@ func Merge[T comparable, R any](map1, map2 map[T]R) map[T]R {
 		return map[T]R{}
 	}
 
-	newMap := make(map[T]R)
+	newMap := make(map[T]R, len(map1)+len(map2))
 
 	if map1 == nil {
 		for k, v := range map2 {
