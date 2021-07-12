@@ -746,9 +746,9 @@ func IsPos[T Numeric](v T) bool {
 //
 // Takes 3 inputs. 3rd argument is option
 //  1. Function - takes 1 input
-//  2. List
-//  3. optional argument - PMapOption{FixedPool: <some_number>}
-func PMap[T any, R any](f TransformerFunctor[T, R], list []T, option *PMapOption) []R {
+//  2. optional argument - PMapOption{FixedPool: <some_number>}
+//  3. List
+func PMap[T any, R any](f TransformerFunctor[T, R], option *PMapOption, list ...T) []R {
 	if f == nil {
 		return make([]R, 0)
 	}
@@ -971,7 +971,7 @@ func IsSubset[T comparable](list1, list2 []T) bool {
 // IsSuperset returns true or false by checking if set1 is a superset of set2
 // repeated value within list parameter will be ignored
 func IsSuperset[T comparable](list1, list2 []T) bool {
-	return !IsSubset(list2, list1)
+	return IsSubset(list2, list1)
 }
 
 // IsSubsetMapByKey returns true or false by checking if set1 is a subset of set2
@@ -992,7 +992,7 @@ func IsSubsetMapByKey[T comparable, R any](item1, item2 map[T]R) bool {
 // IsSupersetMapByKey returns true or false by checking if set1 is a superset of set2
 // repeated value within list parameter will be ignored
 func IsSupersetMapByKey[T comparable, R any](item1, item2 map[T]R) bool {
-	return !IsSubsetMapByKey(item2, item1)
+	return IsSubsetMapByKey(item2, item1)
 }
 
 // Take returns the first n elements of the slice
