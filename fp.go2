@@ -105,7 +105,7 @@ func Pipe[T any](fnList ...func(...T) []T) func(...T) []T {
 			return f(s...)
 		}
 
-		return f(Compose(nextFnList...)(s...)...)
+		return f(Pipe(nextFnList...)(s...)...)
 	}
 }
 
@@ -222,11 +222,31 @@ func SortSlice[T any](fn Comparator[T], input ...T) []T {
 	return input
 }
 
+// SortOrderedAscending Sort items by Comparator
+func SortOrderedAscending[T Ordered](input ...T) []T {
+	SortOrdered(true, input...)
+
+	return input
+}
+
+// SortOrderedDescending Sort items by Comparator
+func SortOrderedDescending[T Ordered](input ...T) []T {
+	SortOrdered(false, input...)
+
+	return input
+}
+
 // SortOrdered Sort items by Comparator
-func SortOrdered[T Ordered](input ...T) []T {
-	Sort(func (a, b T) bool {
-	return CompareToOrdered(a, b) > 0
-	}, input)
+func SortOrdered[T Ordered](ascending bool, input ...T) []T {
+	if ascending {
+		Sort(func (a, b T) bool {
+			return CompareToOrdered(a, b) > 0
+		}, input)
+	} else {
+		Sort(func (a, b T) bool {
+			return CompareToOrdered(a, b) < 0
+		}, input)
+	}
 
 	return input
 }
@@ -259,17 +279,9 @@ func Difference[T comparable](arrList ...[]T) []T {
 		return make([]T, 0)
 	}
 
-	resultMap := make(map[T]struct{})
+	resultMap := make(map[T]interface{})
 	if len(arrList) == 1 {
-		var newList []T
-		for i := 0; i < len(arrList[0]); i++ {
-			_, ok := resultMap[arrList[0][i]]
-			if !ok {
-				newList = append(newList, arrList[0][i])
-				resultMap[arrList[0][i]] = struct{}{}
-			}
-		}
-		return newList
+		return Distinct(arrList[0]...)
 	}
 
 	var newList []T
@@ -292,7 +304,7 @@ func Difference[T comparable](arrList ...[]T) []T {
 			_, ok := resultMap[arrList[0][i]]
 			if !ok {
 				newList = append(newList, arrList[0][i])
-				resultMap[arrList[0][i]] = struct{}{}
+				resultMap[arrList[0][i]] = true
 			}
 		}
 	}
@@ -305,16 +317,8 @@ func Difference[T comparable](arrList ...[]T) []T {
 // 	list := []int{8, 2, 8, 0, 2, 0}
 // 	Distinct(list...) // returns [8, 2, 0]
 func Distinct[T comparable](list ...T) []T {
-	var newList []T
-	s := make(map[T]struct{}, len(list))
-	for _, v := range list {
-		if _, ok := s[v]; ok {
-			continue
-		}
-		s[v] = struct{}{}
-		newList = append(newList, v)
-	}
-	return newList
+	s := SliceToMap(true, list...)
+	return Keys(s)
 }
 
 // IsDistinct returns true if no two of the arguments are =
@@ -506,14 +510,14 @@ func Intersection[T comparable](arrList ...[]T) []T {
 		return make([]T, 0)
 	}
 
-	resultMap := make(map[T]struct{})
+	resultMap := make(map[T]interface{})
 	if len(arrList) == 1 {
 		var newList []T
 		for i := 0; i < len(arrList[0]); i++ {
 			_, ok := resultMap[arrList[0][i]]
 			if !ok {
 				newList = append(newList, arrList[0][i])
-				resultMap[arrList[0][i]] = struct{}{}
+				resultMap[arrList[0][i]] = true
 			}
 		}
 		return newList
@@ -539,11 +543,45 @@ func Intersection[T comparable](arrList ...[]T) []T {
 			_, ok := resultMap[arrList[0][i]]
 			if !ok {
 				newList = append(newList, arrList[0][i])
-				resultMap[arrList[0][i]] = struct{}{}
+				resultMap[arrList[0][i]] = true
 			}
 		}
 	}
 	return newList
+}
+
+// IntersectionMapByKey return a set that is the intersection of the input sets
+func IntersectionMapByKey[T comparable, R any](inputList ...map[T]R) map[T]R {
+	inputLen := len(inputList)
+
+	resultMap := make(map[T]R)
+	if inputLen == 0 {
+		return resultMap
+	}
+
+	if inputLen == 1 {
+		for k, v := range(inputList[0]) {
+			resultMap[k] = v
+		}
+		return resultMap
+	}
+
+	countMap := make(map[T]int)
+	for _, mapItem := range(inputList) {
+		for k, v := range(mapItem) {
+			_, exists := resultMap[k]
+			if !exists {
+				resultMap[k] = v
+			}
+			countMap[k] += 1
+		}
+	}
+	for k, v := range(countMap) {
+		if v < inputLen {
+			delete(resultMap, k)
+		}
+	}
+	return resultMap
 }
 
 // Keys returns a slice of map's keys
@@ -874,12 +912,12 @@ func IsSubset[T comparable](list1, list2 []T) bool {
 		return false
 	}
 
-	resultMap := make(map[T]struct{})
+	resultMap := make(map[T]interface{})
 	for i := 0; i < len(list1); i++ {
 		_, ok := resultMap[list1[i]]
 		if !ok {
 			found := false
-			resultMap[list1[i]] = struct{}{}
+			resultMap[list1[i]] = true
 			for j := 0; j < len(list2); j++ {
 				if list1[i] == list2[j] {
 					found = true
@@ -896,8 +934,29 @@ func IsSubset[T comparable](list1, list2 []T) bool {
 
 // IsSuperset returns true or false by checking if set1 is a superset of set2
 // repeated value within list parameter will be ignored
-func IsSuperset(list1, list2 []int) bool {
-	return IsSubset(list2, list1)
+func IsSuperset[T comparable](list1, list2 []T) bool {
+	return !IsSubset(list2, list1)
+}
+
+// IsSubsetMapByKey returns true or false by checking if set1 is a subset of set2
+func IsSubsetMapByKey[T comparable, R any](item1, item2 map[T]R) bool {
+	if item1 == nil || len(item1) == 0 || item2 == nil || len(item2) == 0 {
+		return false
+	}
+
+	for k1 := range(item1) {
+		_, found := item2[k1]
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+// IsSupersetMapByKey returns true or false by checking if set1 is a superset of set2
+// repeated value within list parameter will be ignored
+func IsSupersetMapByKey[T comparable, R any](item1, item2 map[T]R) bool {
+	return !IsSubsetMapByKey(item2, item1)
 }
 
 // Take returns the first n elements of the slice
@@ -923,10 +982,10 @@ func TakeLast[T any](count int, list ...T) []T {
 // Union return a set that is the union of the input sets
 // repeated value within list parameter will be ignored
 func Union[T comparable](arrList ...[]T) []T {
-	resultMap := make(map[T]struct{})
+	resultMap := make(map[T]interface{})
 	for _, arr := range arrList {
 		for _, v := range arr {
-			resultMap[v] = struct{}{}
+			resultMap[v] = true
 		}
 	}
 
@@ -1107,8 +1166,17 @@ func SliceOf[T any](args ...T) []T {
 	return args
 }
 
-// MakeNumericReturn1 Make Numeric 1 value Return (for compose() general fp functions simply)
-func MakeNumericReturn1[T any, R Numeric](fn func (...T) bool) func (...T) []R {
+// SliceToMap Return Slice of varargs
+func SliceToMap[T comparable, R any](defaultValue R, input ...T) map[T]R {
+	resultMap := make(map[T]R)
+	for _, key := range(input) {
+		resultMap[key] = defaultValue
+	}
+	return resultMap
+}
+
+// MakeNumericReturnForBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
+func MakeNumericReturnForBool1[T any, R Numeric](fn func (...T) bool) func (...T) []R {
 	return func (args ...T) []R {
 		if fn(args...) {
 			return SliceOf(R(1))
@@ -1152,6 +1220,48 @@ func MakeVariadicParam5[T any, R any](fn func (T, T, T, T, T) R) func (...T) R {
 func MakeVariadicParam6[T any, R any](fn func (T, T, T, T, T, T) R) func (...T) R {
 	return func (args ...T) R {
 		return fn(args[0], args[1], args[2], args[3], args[4], args[5])
+	}
+}
+
+// MakeVariadicReturn1 MakeVariadic for 1 Return value (for compose() general fp functions simply)
+func MakeVariadicReturn1[T any, R any](fn func (...T) R) func (...T) []R {
+	return func (args ...T) []R {
+		return []R{fn(args...)}
+	}
+}
+// MakeVariadicReturn2 MakeVariadic for 2 Return values (for compose() general fp functions simply)
+func MakeVariadicReturn2[T any, R any](fn func (...T) (R, R)) func (...T) []R {
+	return func (args ...T) []R {
+		r1, r2 := fn(args...)
+		return []R{r1, r2}
+	}
+}
+// MakeVariadicReturn3 MakeVariadic for 3 Return values (for compose() general fp functions simply)
+func MakeVariadicReturn3[T any, R any](fn func (...T) (R, R, R)) func (...T) []R {
+	return func (args ...T) []R {
+		r1, r2, r3 := fn(args...)
+		return []R{r1, r2, r3}
+	}
+}
+// MakeVariadicReturn4 MakeVariadic for 4 Return values (for compose() general fp functions simply)
+func MakeVariadicReturn4[T any, R any](fn func (...T) (R, R, R, R)) func (...T) []R {
+	return func (args ...T) []R {
+		r1, r2, r3, r4 := fn(args...)
+		return []R{r1, r2, r3, r4}
+	}
+}
+// MakeVariadicReturn5 MakeVariadic for 5 Return values (for compose() general fp functions simply)
+func MakeVariadicReturn5[T any, R any](fn func (...T) (R, R, R, R, R)) func (...T) []R {
+	return func (args ...T) []R {
+		r1, r2, r3, r4, r5 := fn(args...)
+		return []R{r1, r2, r3, r4, r5}
+	}
+}
+// MakeVariadicReturn6 MakeVariadic for 6 Return values (for compose() general fp functions simply)
+func MakeVariadicReturn6[T any, R any](fn func (...T) (R, R, R, R, R, R)) func (...T) []R {
+	return func (args ...T) []R {
+		r1, r2, r3, r4, r5, r6 := fn(args...)
+		return []R{r1, r2, r3, r4, r5, r6}
 	}
 }
 
