@@ -143,13 +143,19 @@ func TestFilter(t *testing.T) {
 	var s *StreamDef[interface{}]
 	var tempString string
 
-	s = StreamFromArray([]interface{}{}).Append(1).Extend(StreamFromArray([]interface{}{2, 3, 4})).Extend(StreamFromArray([]interface{}{nil})).Extend(nil)
+	s = StreamFromArray([]interface{}{}).Append(1, 1).Extend(StreamFromArray([]interface{}{2, 3, 4})).Extend(StreamFromArray([]interface{}{nil})).Extend(nil)
+	tempString = ""
+	for _, v := range s.ToArray() {
+		tempString += Maybe.Just(v).ToMaybe().ToString()
+	}
+	assert.Equal(t, "11234<nil>", tempString)
+	s = s.Distinct()
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234<nil>", tempString)
-	s = s.Distinct()
+	s = s.DistinctNotNil()
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()

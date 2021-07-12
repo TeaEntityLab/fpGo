@@ -69,6 +69,7 @@ func CompareToOrdered[T Ordered](a, b T) int {
 	return 0
 }
 
+// PMapOption Options for PMap usages
 type PMapOption struct {
 	FixedPool   int // number of goroutines
 	RandomOrder bool
@@ -317,6 +318,30 @@ func Difference[T comparable](arrList ...[]T) []T {
 // 	list := []int{8, 2, 8, 0, 2, 0}
 // 	Distinct(list...) // returns [8, 2, 0]
 func Distinct[T comparable](list ...T) []T {
+	// Keep order
+	resultIndex := 0
+	maxLen := len(list)
+	result := make([]T, maxLen)
+	if maxLen > 0 {
+		s := make(map[T]bool)
+
+		for _, v := range(list) {
+			if !s[v] {
+				result[resultIndex] = v
+				s[v] = true
+
+				resultIndex += 1
+			}
+		}
+
+		return result[:resultIndex]
+	}
+
+	return result
+}
+
+// Distinct removes duplicates.(RandomOrder)
+func DistinctRandom[T comparable](list ...T) []T {
 	s := SliceToMap(true, list...)
 	return Keys(s)
 }
@@ -494,9 +519,9 @@ func Every[T any](f Predicate[T], list ...T) bool {
 // Example:
 //	Exists(8, 8, 2, 10, 4) // Returns true
 //	Exists(8) // Returns false
-func Exists[T comparable](num T, list ...T) bool {
+func Exists[T comparable](input T, list ...T) bool {
 	for _, v := range list {
-		if v == num {
+		if v == input {
 			return true
 		}
 	}
@@ -990,7 +1015,6 @@ func IsSubsetMapByKey[T comparable, R any](item1, item2 map[T]R) bool {
 }
 
 // IsSupersetMapByKey returns true or false by checking if set1 is a superset of set2
-// repeated value within list parameter will be ignored
 func IsSupersetMapByKey[T comparable, R any](item1, item2 map[T]R) bool {
 	return IsSubsetMapByKey(item2, item1)
 }
@@ -1192,6 +1216,20 @@ func DuplicateSlice[T any](list []T) []T {
 	return make([]T, 0)
 }
 
+// DuplicateMap Return a new Map
+func DuplicateMap[T comparable, R any](input map[T]R) map[T]R {
+	if len(input) > 0 {
+		newOne := make(map[T]R, len(input))
+		for k, v := range(input) {
+			newOne[k] = v
+		}
+
+		return newOne
+	}
+
+	return make(map[T]R)
+}
+
 // PtrOf Return Ptr of a value
 func PtrOf[T any](v T) *T {
 	return &v
@@ -1206,7 +1244,9 @@ func SliceOf[T any](args ...T) []T {
 func SliceToMap[T comparable, R any](defaultValue R, input ...T) map[T]R {
 	resultMap := make(map[T]R)
 	for _, key := range(input) {
-		resultMap[key] = defaultValue
+		if _, ok := resultMap[key]; !ok {
+			resultMap[key] = defaultValue
+		}
 	}
 	return resultMap
 }

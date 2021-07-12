@@ -4,16 +4,18 @@ import (
 	"sort"
 )
 
+// Stream
+
 // StreamDef Stream inspired by Collection utils
-type StreamDef[T any] []T
+type StreamDef[T comparable] []T
 
 // StreamFrom New Stream instance from a T array
-func StreamFrom[T any](list ...T) *StreamDef[T] {
+func StreamFrom[T comparable](list ...T) *StreamDef[T] {
 	return StreamFromArray(list)
 }
 
 // StreamFromArray New Stream instance from a T array
-func StreamFromArray[T any](list []T) *StreamDef[T] {
+func StreamFromArray[T comparable](list []T) *StreamDef[T] {
 	result := StreamDef[T](list)
 	return &result
 }
@@ -49,11 +51,73 @@ func (streamSelf *StreamDef[T]) Filter(fn func(T, int) bool) *StreamDef[T] {
 	return result
 }
 
-// Distinct Filter not nil items and return a new Stream instance
-func (streamSelf *StreamDef[T]) Distinct() *StreamDef[T] {
+// FilterNotNil Filter not nil items and return a new Stream instance
+func (streamSelf *StreamDef[T]) FilterNotNil() *StreamDef[T] {
 	return streamSelf.Filter(func(val T, i int) bool {
 		return Maybe.Just(val).IsPresent()
 	})
+}
+
+// Distinct Filter duplicated items and return a new Stream instance
+func (streamSelf *StreamDef[T]) Distinct() *StreamDef[T] {
+	result := StreamDef[T](Distinct[T](*streamSelf...))
+	return &result
+}
+
+// Contains Check the item exists or not in the Stream
+func (streamSelf *StreamDef[T]) Contains(input T) bool {
+	return Exists(input, *streamSelf...)
+}
+
+// IsSubset returns true or false by checking if stream1 is a subset of stream2
+func (streamSelf *StreamDef[T]) IsSubset(input *StreamDef[T]) bool {
+	return IsSubset(*streamSelf, *input)
+}
+
+// IsSuperset returns true or false by checking if stream1 is a superset of stream2
+func (streamSelf *StreamDef[T]) IsSuperset(input *StreamDef[T]) bool {
+	return IsSuperset(*streamSelf, *input)
+}
+
+// Clone Clone this Stream
+func (streamSelf *StreamDef[T]) Clone() *StreamDef[T] {
+	result := StreamDef[T](DuplicateSlice[T](*streamSelf))
+
+	return &result
+}
+
+// Intersection Get the Intersection with this Stream and an another Stream
+func (streamSelf *StreamDef[T]) Intersection(input *StreamDef[T]) *StreamDef[T] {
+	result := StreamDef[T](Intersection(*streamSelf, *input))
+
+	return &result
+}
+
+// Minus Get all of this Stream but not in the given Stream
+func (streamSelf *StreamDef[T]) Minus(input *StreamDef[T]) *StreamDef[T] {
+	if input.Size() == 0 {
+		return streamSelf
+	}
+
+	result := StreamDef[T](Minus(*streamSelf, *input))
+	return &result
+}
+
+// Size Get size
+func (streamSelf *StreamDef[T]) Size() int {
+	return len(*streamSelf)
+}
+
+// RemoveItem Remove items from the Stream
+func (streamSelf *StreamDef[T]) RemoveItem(input ...T) *StreamDef[T] {
+	inputLen := len(input)
+	if (inputLen > 0) {
+		result := StreamDef[T](Minus(*streamSelf, input))
+
+		return &result
+	}
+
+	return streamSelf
 }
 
 // Append Append an item into Stream
@@ -147,3 +211,123 @@ func (streamSelf *StreamDef[T]) Get(i int) T {
 
 // // Stream Stream utils instance
 // var Stream StreamDef[interface{}]
+
+// Set
+
+type SetDef[T comparable] map[T] bool
+
+// SetFrom New Set instance from a T array
+func SetFrom[T comparable](list ...T) *SetDef[T] {
+	newOne := SetDef[T](SliceToMap(true, list...))
+	return &newOne
+}
+
+// Map Map all items of Set by function
+func (setSelf *SetDef[T]) Map(fn TransformerFunctor[T, T]) *SetDef[T] {
+	result := make(SetDef[T], len(*setSelf))
+	for k := range(*setSelf) {
+		result[fn(k)] = true
+	}
+
+	return &result
+}
+
+// Contains Check the item exists or not in the Set
+func (setSelf *SetDef[T]) Contains(input T) bool {
+	_, ok := (*setSelf)[input]
+	return ok
+}
+
+// IsSubset returns true or false by checking if set1 is a subset of set2
+func (setSelf *SetDef[T]) IsSubset(input *SetDef[T]) bool {
+	return IsSubsetMapByKey(*setSelf, *input)
+}
+
+// IsSuperset returns true or false by checking if set1 is a superset of set2
+func (setSelf *SetDef[T]) IsSuperset(input *SetDef[T]) bool {
+	return IsSupersetMapByKey(*setSelf, *input)
+}
+
+// Add Add items into the Set
+func (setSelf *SetDef[T]) Add(input ...T) *SetDef[T] {
+	inputLen := len(input)
+	if (inputLen > 0) {
+		result := setSelf.Clone()
+		for _, v := range(input) {
+			if _, ok := (*result)[v]; ok {
+				continue
+			}
+			(*result)[v] = true
+		}
+
+		return result
+	}
+
+	return setSelf
+}
+
+// Remove Remove items from the Set
+func (setSelf *SetDef[T]) Remove(input ...T) *SetDef[T] {
+	inputLen := len(input)
+	if (inputLen > 0) {
+		result := setSelf.Clone()
+		for _, v := range(input) {
+			delete(*result, v)
+		}
+
+		return result
+	}
+
+	return setSelf
+}
+
+// Clone Clone this Set
+func (setSelf *SetDef[T]) Clone() *SetDef[T] {
+	result := SetDef[T](DuplicateMap[T, bool](*setSelf))
+
+	return &result
+}
+
+// Union Union an another Set object
+func (setSelf *SetDef[T]) Union(input *SetDef[T]) *SetDef[T] {
+	result := SetDef[T](Merge(*setSelf, *input))
+
+	return &result
+}
+
+// Intersection Get the Intersection with this Set and an another Set
+func (setSelf *SetDef[T]) Intersection(input *SetDef[T]) *SetDef[T] {
+	result := SetDef[T](IntersectionMapByKey(*setSelf, *input))
+
+	return &result
+}
+
+// Minus Get all of this Set but not in the given Set
+func (setSelf *SetDef[T]) Minus(input *SetDef[T]) *SetDef[T] {
+	if input.Size() == 0 {
+		return setSelf
+	}
+
+	result := setSelf.Clone()
+	for k := range(*result) {
+		_, exists := (*input)[k]
+		if exists {
+			delete(*result, k)
+		}
+	}
+
+	return result
+}
+
+// Size Get size
+func (setSelf *SetDef[T]) Size() int {
+	return len(*setSelf)
+}
+
+// ToArray Convert Set to slice
+func (setSelf *SetDef[T]) ToArray() []T {
+	return Keys(*setSelf)
+}
+
+// // Set Set utils instance
+// var Set SetDef[interface{}]
