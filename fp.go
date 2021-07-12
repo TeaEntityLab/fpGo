@@ -8,6 +8,13 @@ import (
 	"sync"
 )
 
+/**
+Special thanks
+* fp functions(Dedupe/Difference/Distinct/IsDistinct/DropEq/Drop/DropLast/DropWhile/IsEqual/IsEqualMap/Every/Exists/Intersection/Keys/Values/Max/Min/MinMax/Merge/IsNeg/IsPos/PMap/Range/Reverse/Minus/Some/IsSubset/IsSuperset/Take/TakeLast/Union/IsZero/Zip/GroupBy/UniqBy/Flatten/Prepend/Partition/Tail/Head/SplitEvery)
+	*	Credit: https://github.com/logic-building/functional-go
+	* Credit: https://github.com/achannarasappa/pneumatic
+**/
+
 type fnObj func(interface{}) interface{}
 
 // Transformer Define Transformer Pattern interface
@@ -18,8 +25,14 @@ type Transformer interface {
 // TransformerFunctor Functor of Transform
 type TransformerFunctor func(interface{}) interface{}
 
+// ReducerFunctor Functor for Reduce
+type ReducerFunctor func(interface{}, interface{}) interface{}
+
 // Predicate Predicate Functor
 type Predicate func(interface{}) bool
+
+// PredicateErr Predicate Functor
+type PredicateErr func(interface{}, int) (bool, error)
 
 // Comparator Comparator Functor
 type Comparator func(interface{}, interface{}) bool
@@ -27,6 +40,12 @@ type Comparator func(interface{}, interface{}) bool
 // Comparable Comparable interface able to be compared
 type Comparable interface {
 	CompareTo(interface{}) int
+}
+
+// PMapOption Options for PMap usages
+type PMapOption struct {
+	FixedPool   int // number of goroutines
+	RandomOrder bool
 }
 
 // Compose Compose the functions from right to left (Math: f(g(x)) Compose: Compose(f, g)(x))
@@ -55,7 +74,7 @@ func Pipe(fnList ...func(...interface{}) []interface{}) func(...interface{}) []i
 			return f(s...)
 		}
 
-		return f(Compose(nextFnList...)(s...)...)
+		return f(Pipe(nextFnList...)(s...)...)
 	}
 }
 
@@ -80,7 +99,7 @@ func MapIndexed(fn func(interface{}, int) interface{}, values ...interface{}) []
 }
 
 // Reduce Reduce the values from left to right(func(memo,val), starting value, slice)
-func Reduce(fn func(interface{}, interface{}) interface{}, memo interface{}, input ...interface{}) interface{} {
+func Reduce(fn ReducerFunctor, memo interface{}, input ...interface{}) interface{} {
 
 	for i := 0; i < len(input); i++ {
 		memo = fn(memo, input[i])
@@ -174,6 +193,839 @@ func Sort(fn Comparator, input []interface{}) {
 	})
 }
 
+// Dedupe Returns a new list removing consecutive duplicates in list.
+func Dedupe(list ...interface{}) []interface{} {
+	var newList []interface{}
+
+	lenList := len(list)
+	for i := 0; i < lenList; i++ {
+		if i+1 < lenList && list[i] == list[i+1] {
+			continue
+		}
+		newList = append(newList, list[i])
+	}
+	return newList
+}
+
+// Difference returns a set that is the first set without elements of the remaining sets
+// repeated value within list parameter will be ignored
+func Difference(arrList ...[]interface{}) []interface{} {
+	if arrList == nil {
+		return make([]interface{}, 0)
+	}
+
+	resultMap := make(map[interface{}]interface{})
+	if len(arrList) == 1 {
+		return Distinct(arrList[0]...)
+	}
+
+	var newList []interface{}
+	// 1st loop iterates items in 1st array
+	// 2nd loop iterates all the rest of the arrays
+	// 3rd loop iterates items in the rest of the arrays
+	for i := 0; i < len(arrList[0]); i++ {
+
+		matchCount := 0
+		for j := 1; j < len(arrList); j++ {
+			for _, v := range arrList[j] {
+				// compare every items in 1st array to every items in the rest of the arrays
+				if arrList[0][i] == v {
+					matchCount++
+					break
+				}
+			}
+		}
+		if matchCount == 0 {
+			_, ok := resultMap[arrList[0][i]]
+			if !ok {
+				newList = append(newList, arrList[0][i])
+				resultMap[arrList[0][i]] = true
+			}
+		}
+	}
+	return newList
+}
+
+// Distinct removes duplicates.
+//
+// Example
+// 	list := []int{8, 2, 8, 0, 2, 0}
+// 	Distinct(list...) // returns [8, 2, 0]
+func Distinct(list ...interface{}) []interface{} {
+	s := SliceToMap(true, list...)
+	return Keys(s)
+}
+
+// IsDistinct returns true if no two of the arguments are =
+func IsDistinct(list ...interface{}) bool {
+	if len(list) == 0 {
+		return false
+	}
+
+	s := make(map[interface{}]bool)
+	for _, v := range list {
+		if _, ok := s[v]; ok {
+			return false
+		}
+		s[v] = true
+	}
+	return true
+}
+
+// DropEq returns a new list after dropping the given item
+//
+// Example:
+// 	DropEq(1, 1, 2, 3, 1) // returns [2, 3]
+func DropEq(num interface{}, list ...interface{}) []interface{} {
+	var newList []interface{}
+	for _, v := range list {
+		if v != num {
+			newList = append(newList, v)
+		}
+	}
+	return newList
+}
+
+// Drop drops N item(s) from the list and returns new list.
+// Returns empty list if there is only one item in the list or list empty
+func Drop(count int, list ...interface{}) []interface{} {
+	if count <= 0 {
+		return list
+	}
+
+	if count >= len(list) {
+		return make([]interface{}, 0)
+	}
+
+	return list[count:]
+}
+
+// DropLast drops last N item(s) from the list and returns new list.
+// Returns empty list if there is only one item in the list or list empty
+func DropLast(count int, list ...interface{}) []interface{} {
+	listLen := len(list)
+
+	if listLen == 0 || count >= listLen {
+		return make([]interface{}, 0)
+	}
+
+	return list[:(listLen - count)]
+}
+
+// DropWhile drops the items from the list as long as condition satisfies.
+//
+// Takes two inputs
+//	1. Function: takes one input and returns boolean
+//	2. list
+//
+// Returns:
+// 	New List.
+//  Empty list if either one of arguments or both of them are nil
+//
+// Example: Drops even number. Returns the remaining items once odd number is found in the list.
+//	DropWhile(isEven, 4, 2, 3, 4, 5) // Returns [3, 4, 5]
+//
+//	func isEven(num int) bool {
+//		return num%2 == 0
+//	}
+func DropWhile(f Predicate, list ...interface{}) []interface{} {
+	if f == nil {
+		return make([]interface{}, 0)
+	}
+	var newList []interface{}
+	for i, v := range list {
+		if !f(v) {
+			listLen := len(list)
+			newList = make([]interface{}, listLen-i)
+			j := 0
+			for i < listLen {
+				newList[j] = list[i]
+				i++
+				j++
+			}
+			return newList
+		}
+	}
+	return newList
+}
+
+// IsEqual Returns true if both list are equal else returns false
+func IsEqual(list1, list2 []interface{}) bool {
+	len1 := len(list1)
+	len2 := len(list2)
+
+	if len1 == 0 || len2 == 0 || len1 != len2 {
+		return false
+	}
+
+	for i := 0; i < len1; i++ {
+		if list1[i] != list2[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// IsEqualMap Returns true if both maps are equal else returns false
+func IsEqualMap(map1, map2 map[interface{}]interface{}) bool {
+	len1 := len(map1)
+	len2 := len(map2)
+
+	if len1 == 0 || len2 == 0 || len1 != len2 {
+		return false
+	}
+
+	for k1, v1 := range map1 {
+		found := false
+		for k2, v2 := range map2 {
+			if k1 == k2 && v1 == v2 {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+// // IsEven Returns true if n is even
+// func IsEven(v interface{}) bool {
+// 	return v%2 == 0
+// }
+//
+// // IsOdd Returns true if n is odd
+// func IsOdd(v interface{}) bool {
+// 	return v%2 != 0
+// }
+
+// Every returns true if supplied function returns logical true for every item in the list
+//
+// Example:
+//	Every(even, 8, 2, 10, 4) // Returns true
+//
+//	func isEven(num int) bool {
+//		return num%2 == 0
+//	}
+//
+// Every(even) // Returns false
+// Every(nil) // Returns false
+func Every(f Predicate, list ...interface{}) bool {
+	if f == nil || len(list) == 0 {
+		return false
+	}
+	for _, v := range list {
+		if !f(v) {
+			return false
+		}
+	}
+	return true
+}
+
+// Exists checks if given item exists in the list
+//
+// Example:
+//	Exists(8, 8, 2, 10, 4) // Returns true
+//	Exists(8) // Returns false
+func Exists(num interface{}, list ...interface{}) bool {
+	for _, v := range list {
+		if v == num {
+			return true
+		}
+	}
+	return false
+}
+
+// Intersection return a set that is the intersection of the input sets
+// repeated value within list parameter will be ignored
+func Intersection(inputList ...[]interface{}) []interface{} {
+	inputLen := len(inputList)
+	if inputList == nil {
+		return make([]interface{}, 0)
+	}
+
+	if inputLen == 1 {
+		resultMap := make(map[interface{}]interface{}, len(inputList[0]))
+		var newList []interface{}
+		for i := 0; i < len(inputList[0]); i++ {
+			_, ok := resultMap[inputList[0][i]]
+			if !ok {
+				newList = append(newList, inputList[0][i])
+				resultMap[inputList[0][i]] = true
+			}
+		}
+		return newList
+	}
+
+	resultMap := make(map[interface{}]interface{})
+	var newList []interface{}
+	// 1st loop iterates items in 1st array
+	// 2nd loop iterates all the rest of the arrays
+	// 3rd loop iterates items in the rest of the arrays
+	for i := 0; i < len(inputList[0]); i++ {
+
+		matchCount := 0
+		for j := 1; j < inputLen; j++ {
+			for _, v := range inputList[j] {
+				// compare every items in 1st array to every items in the rest of the arrays
+				if inputList[0][i] == v {
+					matchCount++
+					break
+				}
+			}
+		}
+		if matchCount == inputLen-1 {
+			_, ok := resultMap[inputList[0][i]]
+			if !ok {
+				newList = append(newList, inputList[0][i])
+				resultMap[inputList[0][i]] = true
+			}
+		}
+	}
+	return newList
+}
+
+// IntersectionMapByKey return a set that is the intersection of the input sets
+func IntersectionMapByKey(inputList ...map[interface{}]interface{}) map[interface{}]interface{} {
+	inputLen := len(inputList)
+
+	if inputLen == 0 {
+		return make(map[interface{}]interface{})
+	}
+
+	if inputLen == 1 {
+		resultMap := make(map[interface{}]interface{}, len(inputList[0]))
+		for k, v := range inputList[0] {
+			resultMap[k] = v
+		}
+		return resultMap
+	}
+
+	resultMap := make(map[interface{}]interface{})
+	countMap := make(map[interface{}]int)
+	for _, mapItem := range inputList {
+		for k, v := range mapItem {
+			_, exists := resultMap[k]
+			if !exists {
+				resultMap[k] = v
+			}
+			countMap[k] += 1
+		}
+	}
+	for k, v := range countMap {
+		if v < inputLen {
+			delete(resultMap, k)
+		}
+	}
+	return resultMap
+}
+
+// Minus all of set1 but not in set2
+func Minus(set1, set2 []interface{}) []interface{} {
+	resultIndex := 0
+	maxLen := len(set1)
+	result := make([]interface{}, maxLen)
+	set2Map := SliceToMap(true, set2...)
+
+	for _, item := range set1 {
+		_, exists := set2Map[item]
+		if !exists {
+			result[resultIndex] = item
+			resultIndex += 1
+		}
+	}
+
+	return result[:resultIndex]
+}
+
+// MinusMapByKey all of set1 but not in set2
+func MinusMapByKey(set1, set2 map[interface{}]interface{}) map[interface{}]interface{} {
+	resultMap := make(map[interface{}]interface{}, len(set1))
+
+	for k, v := range set1 {
+		_, exists := set2[k]
+		if !exists {
+			resultMap[k] = v
+		}
+	}
+
+	return resultMap
+}
+
+// Keys returns a slice of map's keys
+func Keys(m map[interface{}]interface{}) []interface{} {
+	keys := make([]interface{}, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+	return keys
+}
+
+// Values returns a slice of map's values
+func Values(m map[interface{}]interface{}) []interface{} {
+	keys := make([]interface{}, len(m))
+	i := 0
+	for _, v := range m {
+		keys[i] = v
+		i++
+	}
+	return keys
+}
+
+// Merge takes two inputs: map[interface{}]interface{} and map[interface{}]interface{} and merge two maps and returns a new map[interface{}]interface{}.
+func Merge(map1, map2 map[interface{}]interface{}) map[interface{}]interface{} {
+	if map1 == nil && map2 == nil {
+		return map[interface{}]interface{}{}
+	}
+
+	newMap := make(map[interface{}]interface{}, len(map1)+len(map2))
+
+	if map1 == nil {
+		for k, v := range map2 {
+			newMap[k] = v
+		}
+		return newMap
+	}
+
+	if map2 == nil {
+		for k, v := range map1 {
+			newMap[k] = v
+		}
+		return newMap
+	}
+
+	for k, v := range map1 {
+		newMap[k] = v
+	}
+
+	for k, v := range map2 {
+		newMap[k] = v
+	}
+
+	return newMap
+}
+
+// PMap applies the function(1st argument) on each item in the list and returns a new list.
+//  Order of new list is guaranteed. This feature can be disabled by passing: PMapOption{RandomOrder: true} to gain performance
+//  Run in parallel. no_of_goroutines = no_of_items_in_list or 3rd argument can be passed to fix the number of goroutines.
+//
+// Takes 3 inputs. 3rd argument is option
+//  1. Function - takes 1 input
+//  2. optional argument - PMapOption{FixedPool: <some_number>}
+//  3. List
+func PMap(f TransformerFunctor, option *PMapOption, list ...interface{}) []interface{} {
+	if f == nil {
+		return make([]interface{}, 0)
+	}
+
+	var worker = len(list)
+	if option != nil {
+		if option.FixedPool > 0 && option.FixedPool < worker {
+			worker = option.FixedPool
+		}
+
+		if option.RandomOrder == true {
+			return pMapNoOrder(f, list, worker)
+		}
+	}
+
+	return pMapPreserveOrder(f, list, worker)
+}
+
+func pMapPreserveOrder(f TransformerFunctor, list []interface{}, worker int) []interface{} {
+	chJobs := make(chan map[int]interface{}, len(list))
+	go func() {
+		for i, v := range list {
+			chJobs <- map[int]interface{}{i: v}
+		}
+		close(chJobs)
+	}()
+
+	chResult := make(chan map[int]interface{}, worker/3)
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < worker; i++ {
+		wg.Add(1)
+
+		go func(chResult chan map[int]interface{}, chJobs chan map[int]interface{}) {
+			defer wg.Done()
+
+			for m := range chJobs {
+				for k, v := range m {
+					chResult <- map[int]interface{}{k: f(v)}
+				}
+			}
+		}(chResult, chJobs)
+	}
+
+	// This will wait for the workers to complete their job and then close the channel
+	go func() {
+		wg.Wait()
+		close(chResult)
+	}()
+
+	newListMap := make(map[int]interface{}, len(list))
+	newList := make([]interface{}, len(list))
+
+	for m := range chResult {
+		for k, v := range m {
+			newListMap[k] = v
+		}
+	}
+
+	for i := 0; i < len(list); i++ {
+		newList[i] = newListMap[i]
+	}
+
+	return newList
+}
+
+func pMapNoOrder(f TransformerFunctor, list []interface{}, worker int) []interface{} {
+	chJobs := make(chan interface{}, len(list))
+	go func() {
+		for _, v := range list {
+			chJobs <- v
+		}
+		close(chJobs)
+	}()
+
+	chResult := make(chan interface{}, worker/3)
+
+	var wg sync.WaitGroup
+
+	for i := 0; i < worker; i++ {
+		wg.Add(1)
+
+		go func(chResult chan interface{}, chJobs chan interface{}) {
+			defer wg.Done()
+
+			for v := range chJobs {
+				chResult <- f(v)
+			}
+		}(chResult, chJobs)
+	}
+
+	// This will wait for the workers to complete their job and then close the channel
+	go func() {
+		wg.Wait()
+		close(chResult)
+	}()
+
+	newList := make([]interface{}, len(list))
+	i := 0
+
+	for v := range chResult {
+		newList[i] = v
+		i++
+	}
+
+	return newList
+}
+
+// Reverse reverse the list
+func Reverse(list ...interface{}) []interface{} {
+	newList := make([]interface{}, len(list))
+	for i := 0; i < len(list); i++ {
+		newList[i] = list[len(list)-(i+1)]
+	}
+	return newList
+}
+
+// Set returns a set of the distinct elements of coll.
+func Set(list []interface{}) []interface{} {
+	if len(list) == 0 {
+		return make([]interface{}, 0)
+	}
+
+	return Distinct(list...)
+}
+
+// Some finds item in the list based on supplied function.
+//
+// Takes 2 input:
+//	1. Function
+//	2. List
+//
+// Returns:
+//	bool.
+//	True if condition satisfies, else false
+//
+// Example:
+//	Some(isEven, 8, 2, 10, 4) // Returns true
+//	Some(isEven, 1, 3, 5, 7) // Returns false
+//	Some(nil) // Returns false
+//
+//	func isEven(num int) bool {
+//		return num%2 == 0
+//	}
+func Some(f Predicate, list ...interface{}) bool {
+	if f == nil {
+		return false
+	}
+	for _, v := range list {
+		if f(v) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsSubset returns true or false by checking if set1 is a subset of set2
+// repeated value within list parameter will be ignored
+func IsSubset(list1, list2 []interface{}) bool {
+	if list1 == nil || len(list1) == 0 || list2 == nil || len(list2) == 0 {
+		return false
+	}
+
+	resultMap := make(map[interface{}]interface{})
+	for i := 0; i < len(list1); i++ {
+		_, ok := resultMap[list1[i]]
+		if !ok {
+			found := false
+			resultMap[list1[i]] = true
+			for j := 0; j < len(list2); j++ {
+				if list1[i] == list2[j] {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// IsSuperset returns true or false by checking if set1 is a superset of set2
+// repeated value within list parameter will be ignored
+func IsSuperset(list1, list2 []interface{}) bool {
+	return IsSubset(list2, list1)
+}
+
+// IsSubsetMapByKey returns true or false by checking if set1 is a subset of set2
+func IsSubsetMapByKey(item1, item2 map[interface{}]interface{}) bool {
+	if item1 == nil || len(item1) == 0 || item2 == nil || len(item2) == 0 {
+		return false
+	}
+
+	for k1 := range item1 {
+		_, found := item2[k1]
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+// IsSupersetMapByKey returns true or false by checking if set1 is a superset of set2
+// repeated value within list parameter will be ignored
+func IsSupersetMapByKey(item1, item2 map[interface{}]interface{}) bool {
+	return IsSubsetMapByKey(item2, item1)
+}
+
+// Take returns the first n elements of the slice
+func Take(count int, list ...interface{}) []interface{} {
+	if count >= len(list) || count <= 0 {
+		return list
+	}
+
+	return list[:count]
+}
+
+// TakeLast returns the last n elements of the slice
+func TakeLast(count int, list ...interface{}) []interface{} {
+	listLen := len(list)
+
+	if count >= listLen || count <= 0 {
+		return list
+	}
+
+	return list[(listLen - count):]
+}
+
+// Union return a set that is the union of the input sets
+// repeated value within list parameter will be ignored
+func Union(arrList ...[]interface{}) []interface{} {
+	resultMap := make(map[interface{}]interface{})
+	for _, arr := range arrList {
+		for _, v := range arr {
+			resultMap[v] = true
+		}
+	}
+
+	result := make([]interface{}, len(resultMap))
+	i := 0
+	for k := range resultMap {
+		result[i] = k
+		i++
+	}
+	return result
+}
+
+// IsZero Returns true if num is zero, else false
+func IsZero(v interface{}) bool {
+	if v == 0 {
+		return true
+	}
+	return false
+}
+
+// Zip takes two inputs: first list of type: []interface{}, second list of type: []interface{}.
+// Then it merges two list and returns a new map of type: map[interface{}]interface{}
+func Zip(list1 []interface{}, list2 []interface{}) map[interface{}]interface{} {
+	newMap := make(map[interface{}]interface{})
+
+	len1 := len(list1)
+	len2 := len(list2)
+
+	if len1 == 0 || len2 == 0 {
+		return newMap
+	}
+
+	minLen := len1
+	if len2 < minLen {
+		minLen = len2
+	}
+
+	for i := 0; i < minLen; i++ {
+		newMap[list1[i]] = list2[i]
+	}
+
+	return newMap
+}
+
+// GroupBy creates a map where the key is a group identifier and the value is a slice with the elements that have the same identifer
+func GroupBy(grouper TransformerFunctor, list ...interface{}) map[interface{}][]interface{} {
+	var id interface{}
+	result := make(map[interface{}][]interface{})
+	for _, v := range list {
+		id = grouper(v)
+		result[id] = append(result[id], v)
+	}
+	return result
+}
+
+// UniqBy returns a slice of only unique values based on a comparable identifier
+func UniqBy(identify TransformerFunctor, list ...interface{}) []interface{} {
+	var id interface{}
+	result := make([]interface{}, 0)
+	identifiers := make(map[interface{}]bool)
+	for _, v := range list {
+		id = identify(v)
+		if _, ok := identifiers[id]; !ok {
+			identifiers[id] = true
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+// Flatten creates a new slice where one level of nested elements are unnested
+func Flatten(list ...[]interface{}) []interface{} {
+
+	result := make([]interface{}, 0)
+
+	// for _, v := range list {
+	// 	result = append(result, v...)
+	// }
+
+	return Concat(result, list...)
+}
+
+// Prepend returns the slice with the additional element added to the beggining
+func Prepend(element interface{}, list []interface{}) []interface{} {
+	return append([]interface{}{element}, list...)
+}
+
+// Partition splits elements into two groups - one where the predicate is satisfied and one where the predicate is not
+func Partition(predicate Predicate, list ...interface{}) [][]interface{} {
+	resultTrue := make([]interface{}, 0)
+	resultFalse := make([]interface{}, 0)
+	for _, v := range list {
+		if predicate(v) {
+			resultTrue = append(resultTrue, v)
+		} else {
+			resultFalse = append(resultFalse, v)
+		}
+	}
+	return [][]interface{}{resultTrue, resultFalse}
+}
+
+// Tail returns the input slice with all elements except the first element
+func Tail(list ...interface{}) []interface{} {
+	return Drop(1, list...)
+}
+
+// Head returns first element of a slice
+func Head(list ...interface{}) interface{} {
+	var result interface{}
+
+	if len(list) <= 0 {
+		return result
+	}
+
+	result = list[:1][0]
+
+	return result
+}
+
+// SplitEvery returns elements in equal length slices
+func SplitEvery(size int, list ...interface{}) [][]interface{} {
+	if size <= 0 || len(list) <= 1 {
+		return [][]interface{}{list}
+	}
+
+	result := make([][]interface{}, 0)
+	currentGroup := make([]interface{}, 0)
+	for i, v := range list {
+		if len(currentGroup) < size {
+			currentGroup = append(currentGroup, v)
+		} else {
+			result = append(result, currentGroup)
+			currentGroup = []interface{}{v}
+		}
+
+		if (i + 1) >= len(list) {
+			result = append(result, currentGroup)
+		}
+	}
+
+	return result
+}
+
+// Trampoline Trampoline
+func Trampoline(fn func(...interface{}) ([]interface{}, bool, error), input ...interface{}) ([]interface{}, error) {
+	result := input
+	var isDone bool
+	var err error
+
+	for {
+		result, isDone, err = fn(result...)
+		if err != nil {
+			return nil, err
+		}
+		if isDone {
+			break
+		}
+	}
+	return result, err
+}
+
+// DuplicateSlice Return a new Slice
+func DuplicateSlice(list []interface{}) []interface{} {
+	if len(list) > 0 {
+		return append(list[:0:0], list...)
+	}
+
+	return make([]interface{}, 0)
+}
+
 // PtrOf Return Ptr of a value
 func PtrOf(v interface{}) *interface{} {
 	return &v
@@ -182,6 +1034,157 @@ func PtrOf(v interface{}) *interface{} {
 // SliceOf Return Slice of varargs
 func SliceOf(args ...interface{}) []interface{} {
 	return args
+}
+
+// SliceToMap Return Slice of varargs
+func SliceToMap(defaultValue interface{}, input ...interface{}) map[interface{}]interface{} {
+	resultMap := make(map[interface{}]interface{})
+	for _, key := range input {
+		resultMap[key] = defaultValue
+	}
+	return resultMap
+}
+
+// MakeNumericReturnForBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
+func MakeNumericReturnForBool1(fn func(...interface{}) bool) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
+		if fn(args...) {
+			return SliceOf(interface{}(1))
+		}
+
+		return SliceOf(interface{}(0))
+	}
+}
+
+// MakeVariadicParam1 MakeVariadic for 1 Param (for compose() general fp functions simply)
+func MakeVariadicParam1(fn func(interface{}) interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(args[0])
+	}
+}
+
+// MakeVariadicParam2 MakeVariadic for 2 Params (for compose() general fp functions simply)
+func MakeVariadicParam2(fn func(interface{}, interface{}) interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(args[0], args[1])
+	}
+}
+
+// MakeVariadicParam3 MakeVariadic for 3 Params (for compose() general fp functions simply)
+func MakeVariadicParam3(fn func(interface{}, interface{}, interface{}) interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(args[0], args[1], args[2])
+	}
+}
+
+// MakeVariadicParam4 MakeVariadic for 4 Params (for compose() general fp functions simply)
+func MakeVariadicParam4(fn func(interface{}, interface{}, interface{}, interface{}) interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(args[0], args[1], args[2], args[3])
+	}
+}
+
+// MakeVariadicParam5 MakeVariadic for 5 Params (for compose() general fp functions simply)
+func MakeVariadicParam5(fn func(interface{}, interface{}, interface{}, interface{}, interface{}) interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(args[0], args[1], args[2], args[3], args[4])
+	}
+}
+
+// MakeVariadicParam6 MakeVariadic for 6 Params (for compose() general fp functions simply)
+func MakeVariadicParam6(fn func(interface{}, interface{}, interface{}, interface{}, interface{}, interface{}) interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(args[0], args[1], args[2], args[3], args[4], args[5])
+	}
+}
+
+// MakeVariadicReturn1 MakeVariadic for 1 Return value (for compose() general fp functions simply)
+func MakeVariadicReturn1(fn func(...interface{}) interface{}) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
+		return []interface{}{fn(args...)}
+	}
+}
+
+// MakeVariadicReturn2 MakeVariadic for 2 Return values (for compose() general fp functions simply)
+func MakeVariadicReturn2(fn func(...interface{}) (interface{}, interface{})) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
+		r1, r2 := fn(args...)
+		return []interface{}{r1, r2}
+	}
+}
+
+// MakeVariadicReturn3 MakeVariadic for 3 Return values (for compose() general fp functions simply)
+func MakeVariadicReturn3(fn func(...interface{}) (interface{}, interface{}, interface{})) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
+		r1, r2, r3 := fn(args...)
+		return []interface{}{r1, r2, r3}
+	}
+}
+
+// MakeVariadicReturn4 MakeVariadic for 4 Return values (for compose() general fp functions simply)
+func MakeVariadicReturn4(fn func(...interface{}) (interface{}, interface{}, interface{}, interface{})) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
+		r1, r2, r3, r4 := fn(args...)
+		return []interface{}{r1, r2, r3, r4}
+	}
+}
+
+// MakeVariadicReturn5 MakeVariadic for 5 Return values (for compose() general fp functions simply)
+func MakeVariadicReturn5(fn func(...interface{}) (interface{}, interface{}, interface{}, interface{}, interface{})) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
+		r1, r2, r3, r4, r5 := fn(args...)
+		return []interface{}{r1, r2, r3, r4, r5}
+	}
+}
+
+// MakeVariadicReturn6 MakeVariadic for 6 Return values (for compose() general fp functions simply)
+func MakeVariadicReturn6(fn func(...interface{}) (interface{}, interface{}, interface{}, interface{}, interface{}, interface{})) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
+		r1, r2, r3, r4, r5, r6 := fn(args...)
+		return []interface{}{r1, r2, r3, r4, r5, r6}
+	}
+}
+
+// CurryParam1 Curry for 1 Param (for currying general fp functions simply)
+func CurryParam1(fn func(interface{}, ...interface{}) interface{}, a interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(a, args...)
+	}
+}
+
+// CurryParam2 Curry for 2 Params (for currying general fp functions simply)
+func CurryParam2(fn func(interface{}, interface{}, ...interface{}) interface{}, a interface{}, b interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(a, b, args...)
+	}
+}
+
+// CurryParam3 Curry for 3 Params (for currying general fp functions simply)
+func CurryParam3(fn func(interface{}, interface{}, interface{}, ...interface{}) interface{}, a interface{}, b interface{}, c interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(a, b, c, args...)
+	}
+}
+
+// CurryParam4 Curry for 4 Params (for currying general fp functions simply)
+func CurryParam4(fn func(interface{}, interface{}, interface{}, interface{}, ...interface{}) interface{}, a interface{}, b interface{}, c interface{}, d interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(a, b, c, d, args...)
+	}
+}
+
+// CurryParam5 Curry for 5 Params (for currying general fp functions simply)
+func CurryParam5(fn func(interface{}, interface{}, interface{}, interface{}, interface{}, ...interface{}) interface{}, a interface{}, b interface{}, c interface{}, d interface{}, e interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(a, b, c, d, e, args...)
+	}
+}
+
+// CurryParam6 Curry for 6 Params (for currying general fp functions simply)
+func CurryParam6(fn func(interface{}, interface{}, interface{}, interface{}, interface{}, interface{}, ...interface{}) interface{}, a interface{}, b interface{}, c interface{}, d interface{}, e interface{}, f interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(a, b, c, d, e, f, args...)
+	}
 }
 
 // CurryDef Curry inspired by Currying in Java ways

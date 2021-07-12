@@ -66,7 +66,7 @@ func _hasNextDescriptor(sortDescriptors []SortDescriptor, index int) bool {
 
 // SimpleSortDescriptor
 
-// NewSimpleSortDescriptor Generate a new SimpleSortDescriptor by TransformerFunctor & asceding(true)/descending(false)
+// NewSimpleSortDescriptor Generate a new SimpleSortDescriptor by TransformerFunctor & ascending(true)/descending(false)
 func NewSimpleSortDescriptor(transformFn TransformerFunctor, ascending bool) SimpleSortDescriptor {
 	return SimpleSortDescriptor{
 		transformFn: transformFn,
@@ -98,7 +98,7 @@ func (descriptor SimpleSortDescriptor) TransformedBy() TransformerFunctor {
 
 // FieldSortDescriptor
 
-// NewFieldSortDescriptor Generate a new FieldSortDescriptor by FieldName & asceding(true)/descending(false)
+// NewFieldSortDescriptor Generate a new FieldSortDescriptor by FieldName & ascending(true)/descending(false)
 func NewFieldSortDescriptor(fieldName string, ascending bool) FieldSortDescriptor {
 	return FieldSortDescriptor{
 		SimpleSortDescriptor: SimpleSortDescriptor{
