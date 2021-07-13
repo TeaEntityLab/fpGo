@@ -51,6 +51,14 @@ func (streamSelf *StreamDef[T]) Filter(fn func(T, int) bool) *StreamDef[T] {
 	return result
 }
 
+// Reject Reject items of Stream by function
+func (streamSelf *StreamDef[T]) Reject(fn func(T, int) bool) *StreamDef[T] {
+
+	var result = StreamFromArray(Reject(fn, (*streamSelf)...))
+
+	return result
+}
+
 // FilterNotNil Filter not nil items and return a new Stream instance
 func (streamSelf *StreamDef[T]) FilterNotNil() *StreamDef[T] {
 	return streamSelf.Filter(func(val T, i int) bool {
@@ -95,17 +103,12 @@ func (streamSelf *StreamDef[T]) Intersection(input *StreamDef[T]) *StreamDef[T] 
 
 // Minus Get all of this Stream but not in the given Stream
 func (streamSelf *StreamDef[T]) Minus(input *StreamDef[T]) *StreamDef[T] {
-	if input.Size() == 0 {
+	if input.Len() == 0 {
 		return streamSelf
 	}
 
 	result := StreamDef[T](Minus(*streamSelf, *input))
 	return &result
-}
-
-// Size Get size
-func (streamSelf *StreamDef[T]) Size() int {
-	return len(*streamSelf)
 }
 
 // RemoveItem Remove items from the Stream
@@ -120,10 +123,9 @@ func (streamSelf *StreamDef[T]) RemoveItem(input ...T) *StreamDef[T] {
 	return streamSelf
 }
 
-// Append Append an item into Stream
+// Append Append an item to Stream
 func (streamSelf *StreamDef[T]) Append(item ...T) *StreamDef[T] {
-	result := StreamDef[T](append(*streamSelf, item...))
-	return &result
+	return streamSelf.Concat(item)
 }
 
 // Remove Remove an item by its index
@@ -192,16 +194,24 @@ func (streamSelf *StreamDef[T]) Extend(streams ...*StreamDef[T]) *StreamDef[T] {
 	return &newOne
 }
 
+// Reverse Reverse Stream items
+func (streamSelf *StreamDef[T]) Reverse() *StreamDef[T] {
+	result := StreamDef[T](Reverse(*streamSelf...))
+	return &result
+}
+
 // SortByIndex Sort Stream items by function(index, index) bool
 func (streamSelf *StreamDef[T]) SortByIndex(fn func(a, b int) bool) *StreamDef[T] {
-	sort.SliceStable(*streamSelf, fn)
-	return streamSelf
+	result := streamSelf.Clone()
+	sort.SliceStable(*result, fn)
+	return result
 }
 
 // Sort Sort Stream items by Comparator
 func (streamSelf *StreamDef[T]) Sort(fn Comparator[T]) *StreamDef[T] {
-	Sort(fn, *streamSelf)
-	return streamSelf
+	result := streamSelf.Clone()
+	Sort(fn, *result)
+	return result
 }
 
 // Get Get an item of Stream by its index
@@ -218,8 +228,28 @@ type SetDef[T comparable] map[T] bool
 
 // SetFrom New Set instance from a T array
 func SetFrom[T comparable](list ...T) *SetDef[T] {
+	return SetFromArray(list)
+}
+
+// SetFromArray New Set instance from a T array
+func SetFromArray[T comparable](list []T) *SetDef[T] {
 	newOne := SetDef[T](SliceToMap(true, list...))
 	return &newOne
+}
+
+// SetFromMap New Set instance from a map[T]R
+func SetFromMap[T comparable, R any](theMap map[T]R) *SetDef[T] {
+	return SetFromArray(Keys(theMap))
+}
+
+// SetFromInterface New Set instance from an array
+func SetFromInterface(list ...interface{}) *SetDef[interface{}] {
+	return SetFromArray(list)
+}
+
+// SetFromArrayInterface New Set instance from an array
+func SetFromArrayInterface(list []interface{}) *SetDef[interface{}] {
+	return SetFromArray(list)
 }
 
 // Map Map all items of Set by function
