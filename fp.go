@@ -252,6 +252,30 @@ func Difference(arrList ...[]interface{}) []interface{} {
 // 	list := []int{8, 2, 8, 0, 2, 0}
 // 	Distinct(list...) // returns [8, 2, 0]
 func Distinct(list ...interface{}) []interface{} {
+	// Keep order
+	resultIndex := 0
+	maxLen := len(list)
+	result := make([]interface{}, maxLen)
+	if maxLen > 0 {
+		s := make(map[interface{}]bool)
+
+		for _, v := range list {
+			if !s[v] {
+				result[resultIndex] = v
+				s[v] = true
+
+				resultIndex += 1
+			}
+		}
+
+		return result[:resultIndex]
+	}
+
+	return result
+}
+
+// Distinct removes duplicates.(RandomOrder)
+func DistinctRandom(list ...interface{}) []interface{} {
 	s := SliceToMap(true, list...)
 	return Keys(s)
 }
@@ -429,9 +453,9 @@ func Every(f Predicate, list ...interface{}) bool {
 // Example:
 //	Exists(8, 8, 2, 10, 4) // Returns true
 //	Exists(8) // Returns false
-func Exists(num interface{}, list ...interface{}) bool {
+func Exists(input interface{}, list ...interface{}) bool {
 	for _, v := range list {
-		if v == num {
+		if v == input {
 			return true
 		}
 	}
@@ -736,8 +760,8 @@ func Reverse(list ...interface{}) []interface{} {
 	return newList
 }
 
-// Set returns a set of the distinct elements of coll.
-func Set(list []interface{}) []interface{} {
+// SliceSet returns a set of the distinct elements of coll.
+func SliceSet(list []interface{}) []interface{} {
 	if len(list) == 0 {
 		return make([]interface{}, 0)
 	}
@@ -824,7 +848,6 @@ func IsSubsetMapByKey(item1, item2 map[interface{}]interface{}) bool {
 }
 
 // IsSupersetMapByKey returns true or false by checking if set1 is a superset of set2
-// repeated value within list parameter will be ignored
 func IsSupersetMapByKey(item1, item2 map[interface{}]interface{}) bool {
 	return IsSubsetMapByKey(item2, item1)
 }
@@ -1026,6 +1049,20 @@ func DuplicateSlice(list []interface{}) []interface{} {
 	return make([]interface{}, 0)
 }
 
+// DuplicateMap Return a new Map
+func DuplicateMap(input map[interface{}]interface{}) map[interface{}]interface{} {
+	if len(input) > 0 {
+		newOne := make(map[interface{}]interface{}, len(input))
+		for k, v := range input {
+			newOne[k] = v
+		}
+
+		return newOne
+	}
+
+	return make(map[interface{}]interface{})
+}
+
 // PtrOf Return Ptr of a value
 func PtrOf(v interface{}) *interface{} {
 	return &v
@@ -1040,7 +1077,9 @@ func SliceOf(args ...interface{}) []interface{} {
 func SliceToMap(defaultValue interface{}, input ...interface{}) map[interface{}]interface{} {
 	resultMap := make(map[interface{}]interface{})
 	for _, key := range input {
-		resultMap[key] = defaultValue
+		if _, ok := resultMap[key]; !ok {
+			resultMap[key] = defaultValue
+		}
 	}
 	return resultMap
 }

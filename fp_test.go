@@ -8,6 +8,16 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func SortOrderedAscending(input ...interface{}) []interface{} {
+	Sort(func(a, b interface{}) bool {
+		aVal, _ := Maybe.Just(a).ToInt()
+		bVal, _ := Maybe.Just(b).ToInt()
+		return bVal > aVal
+	}, input)
+
+	return input
+}
+
 func TestCompose(t *testing.T) {
 	var expectedinteger int
 
@@ -75,16 +85,6 @@ func TestFPFunctions(t *testing.T) {
 	var actualInt int
 	// var actualInt2 int
 	var actualMap map[interface{}]interface{}
-
-	SortOrderedAscending := func(input ...interface{}) []interface{} {
-		Sort(func(a, b interface{}) bool {
-			aVal, _ := Maybe.Just(a).ToInt()
-			bVal, _ := Maybe.Just(b).ToInt()
-			return bVal > aVal
-		}, input)
-
-		return input
-	}
 
 	fib := func(n int) int {
 
