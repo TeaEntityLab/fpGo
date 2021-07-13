@@ -155,7 +155,7 @@ func TestFilter(t *testing.T) {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234<nil>", tempString)
-	s = s.DistinctNotNil()
+	s = s.FilterNotNil()
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
