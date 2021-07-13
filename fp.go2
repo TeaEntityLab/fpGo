@@ -927,15 +927,6 @@ func Reverse[T any](list ...T) []T {
 	return newList
 }
 
-// Set returns a set of the distinct elements of coll.
-func Set[T comparable](list []T) []T {
-	if len(list) == 0 {
-		return make([]T, 0)
-	}
-
-	return Distinct(list...)
-}
-
 // Some finds item in the list based on supplied function.
 //
 // Takes 2 input:
@@ -1252,9 +1243,9 @@ func SliceToMap[T comparable, R any](defaultValue R, input ...T) map[T]R {
 }
 
 // MakeNumericReturnForBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
-func MakeNumericReturnForBool1[T any, R Numeric](fn func (...T) bool) func (...T) []R {
+func MakeNumericReturnForBool1[T any, R Numeric](fn func (...T) []bool) func (...T) []R {
 	return func (args ...T) []R {
-		if fn(args...) {
+		if fn(args...)[0] {
 			return SliceOf(R(1))
 		}
 
@@ -1263,38 +1254,38 @@ func MakeNumericReturnForBool1[T any, R Numeric](fn func (...T) bool) func (...T
 }
 
 // MakeVariadicParam1 MakeVariadic for 1 Param (for compose() general fp functions simply)
-func MakeVariadicParam1[T any, R any](fn func (T) R) func (...T) R {
-	return func (args ...T) R {
+func MakeVariadicParam1[T any, R any](fn func (T) []R) func (...T) []R {
+	return func (args ...T) []R {
 		return fn(args[0])
 	}
 }
 // MakeVariadicParam2 MakeVariadic for 2 Params (for compose() general fp functions simply)
-func MakeVariadicParam2[T any, R any](fn func (T, T) R) func (...T) R {
-	return func (args ...T) R {
+func MakeVariadicParam2[T any, R any](fn func (T, T) []R) func (...T) []R {
+	return func (args ...T) []R {
 		return fn(args[0], args[1])
 	}
 }
 // MakeVariadicParam3 MakeVariadic for 3 Params (for compose() general fp functions simply)
-func MakeVariadicParam3[T any, R any](fn func (T, T, T) R) func (...T) R {
-	return func (args ...T) R {
+func MakeVariadicParam3[T any, R any](fn func (T, T, T) []R) func (...T) []R {
+	return func (args ...T) []R {
 		return fn(args[0], args[1], args[2])
 	}
 }
 // MakeVariadicParam4 MakeVariadic for 4 Params (for compose() general fp functions simply)
-func MakeVariadicParam4[T any, R any](fn func (T, T, T, T) R) func (...T) R {
-	return func (args ...T) R {
+func MakeVariadicParam4[T any, R any](fn func (T, T, T, T) []R) func (...T) []R {
+	return func (args ...T) []R {
 		return fn(args[0], args[1], args[2], args[3])
 	}
 }
 // MakeVariadicParam5 MakeVariadic for 5 Params (for compose() general fp functions simply)
-func MakeVariadicParam5[T any, R any](fn func (T, T, T, T, T) R) func (...T) R {
-	return func (args ...T) R {
+func MakeVariadicParam5[T any, R any](fn func (T, T, T, T, T) []R) func (...T) []R {
+	return func (args ...T) []R {
 		return fn(args[0], args[1], args[2], args[3], args[4])
 	}
 }
 // MakeVariadicParam6 MakeVariadic for 6 Params (for compose() general fp functions simply)
-func MakeVariadicParam6[T any, R any](fn func (T, T, T, T, T, T) R) func (...T) R {
-	return func (args ...T) R {
+func MakeVariadicParam6[T any, R any](fn func (T, T, T, T, T, T) []R) func (...T) []R {
+	return func (args ...T) []R {
 		return fn(args[0], args[1], args[2], args[3], args[4], args[5])
 	}
 }

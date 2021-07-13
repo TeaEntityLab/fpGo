@@ -32,7 +32,7 @@ func StreamFromArrayInterface(list []interface{}) *StreamDef[interface{}] {
 
 // ToArray Convert Stream to slice
 func (streamSelf *StreamDef[T]) ToArray() []T {
-	return []T(*streamSelf)
+	return DuplicateSlice(*streamSelf)
 }
 
 // Map Map all items of Stream by function
@@ -202,9 +202,16 @@ func (streamSelf *StreamDef[T]) Reverse() *StreamDef[T] {
 
 // SortByIndex Sort Stream items by function(index, index) bool
 func (streamSelf *StreamDef[T]) SortByIndex(fn func(a, b int) bool) *StreamDef[T] {
-	result := streamSelf.Clone()
-	sort.SliceStable(*result, fn)
-	return result
+	// Keep the old value
+	oldValue := streamSelf.Clone()
+	// Make the target for sorting (original)
+	result := *streamSelf
+	sort.SliceStable(result, fn)
+	// Replace values back
+	*streamSelf = *oldValue
+
+	// Return the sorted target
+	return &result
 }
 
 // Sort Sort Stream items by Comparator

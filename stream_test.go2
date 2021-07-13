@@ -214,13 +214,21 @@ func TestSort(t *testing.T) {
 	}
 	assert.Equal(t, "11234", tempString)
 
-	s = s.Sort(func(iVal, jVal interface{}) bool {
-		var vali, _ = Maybe.Just(iVal).ToInt()
-		var valj, _ = Maybe.Just(jVal).ToInt()
-		return vali < valj
-	})
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s.SortByIndex(func(i, j int) bool {
+		var vali, _ = Maybe.Just(s.Get(i)).ToInt()
+		var valj, _ = Maybe.Just(s.Get(j)).ToInt()
+		return vali < valj
+	}).ToArray() {
+		tempString += Maybe.Just(v).ToMaybe().ToString()
+	}
+	assert.Equal(t, "23411", tempString)
+	tempString = ""
+	for _, v := range s.Sort(func(a, b interface{}) bool {
+		var vali, _ = Maybe.Just(a).ToInt()
+		var valj, _ = Maybe.Just(b).ToInt()
+		return vali < valj
+	}).ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "23411", tempString)

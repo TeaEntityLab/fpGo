@@ -83,6 +83,11 @@ func TestFPFunctions(t *testing.T) {
 	assert.Equal(t, 8, actualInt)
 
 	assert.Equal(t, []int{3, 2}, Compose[int](
+		CurryParam1[int, []int, int](DropLast[int], 1), Reverse[int], SortOrderedAscending[int], DistinctRandom[int], SortOrderedAscending[int])(
+			1, 1, 2, 1, 3, 1, 2, 1,
+		),
+	)
+	assert.Equal(t, []int{3, 2}, Compose[int](
 		CurryParam1[int, []int, int](DropLast[int], 1), Reverse[int], SortOrderedAscending[int], Distinct[int], SortOrderedAscending[int])(
 			1, 1, 2, 1, 3, 1, 2, 1,
 		),
@@ -93,7 +98,9 @@ func TestFPFunctions(t *testing.T) {
 		),
 	)
 	assert.Equal(t, []int{1}, Compose(
-		MakeNumericReturnForBool1[int, int](MakeVariadicParam1[int, bool](IsNeg[int])),
+		MakeNumericReturnForBool1[int, int](MakeVariadicParam1[int, bool](func (val int) []bool {
+			return []bool{IsNeg[int](val)}
+		})),
 		func (val ...int) []int {
 			return SliceOf(Reduce(func(a, b int) int { return a - b }, 0, val...))
 		},
@@ -167,6 +174,61 @@ func TestFPFunctions(t *testing.T) {
 	assert.Equal(t, [][]int{{1, 2, 3}, {4, 5, 6}, {7, 8}}, SplitEvery(3, 1, 2, 3, 4, 5, 6, 7, 8))
 	assert.Equal(t, map[int][]int{1:{1, 3, 5, 7}, 0:{2, 4, 6, 8}}, GroupBy(func(a int) int { return a % 2 }, 1, 2, 3, 4, 5, 6, 7, 8))
 	assert.Equal(t, []int{1, 2}, UniqBy(func(a int) int { return a % 2 }, 1, 2, 3, 4, 5, 6, 7, 8))
+}
+
+func TestVariadic(t *testing.T) {
+	assert.Equal(t, []int{28}, Compose(
+		MakeVariadicParam1(func(arg1 int) []int {
+			return []int{arg1}
+		}),
+		MakeVariadicReturn1(func(args ...int) int {
+			return args[0] + args[1]
+		}),
+		MakeVariadicParam2(func(arg1 int, arg2 int) []int {
+			return []int{arg1, arg2}
+		}),
+		MakeVariadicReturn2(func(args ...int) (int, int) {
+			return args[0], args[1] + args[2]
+		}),
+		MakeVariadicParam3(func(arg1 int, arg2 int, arg3 int) []int {
+			return []int{arg1, arg2, arg3}
+		}),
+		MakeVariadicReturn3(func(args ...int) (int, int, int) {
+			return args[0], args[1], args[2] + args[3]
+		}),
+		MakeVariadicParam4(func(arg1 int, arg2 int, arg3 int, arg4 int) []int {
+			return []int{arg1, arg2, arg3, arg4}
+		}),
+		MakeVariadicReturn4(func(args ...int) (int, int, int, int) {
+			return args[0], args[1], args[2], args[3] + args[4]
+		}),
+		MakeVariadicParam5(func(arg1 int, arg2 int, arg3 int, arg4 int, arg5 int) []int {
+			return []int{arg1, arg2, arg3, arg4, arg5}
+		}),
+		MakeVariadicReturn5(func(args ...int) (int, int, int, int, int) {
+			return args[0], args[1], args[2], args[3], args[4] + args[5]
+		}),
+		MakeVariadicParam6(func(arg1 int, arg2 int, arg3 int, arg4 int, arg5 int, arg6 int) []int {
+			return []int{arg1, arg2, arg3, arg4, arg5, arg6}
+		}),
+		MakeVariadicReturn6(func(args ...int) (int, int, int, int, int, int) {
+			return args[0], args[1], args[2], args[3], args[4], args[5] + args[6]
+		}),
+	)(1, 2, 3, 4, 5, 6, 7),
+	)
+	assert.Equal(t, 28, CurryParam6(func(arg1 int, arg2 int, arg3 int, arg4 int, arg5 int, arg6 int, arg7 ...int) int {
+		return arg7[0] + CurryParam5(func(arg1 int, arg2 int, arg3 int, arg4 int, arg5 int, arg6 ...int) int {
+			return arg6[0] + CurryParam4(func(arg1 int, arg2 int, arg3 int, arg4 int, arg5 ...int) int {
+				return arg5[0] + CurryParam3(func(arg1 int, arg2 int, arg3 int, arg4 ...int) int {
+					return arg4[0] + CurryParam2(func(arg1 int, arg2 int, arg3 ...int) int {
+						return arg3[0] + CurryParam1(func(arg1 int, arg2 ...int) int {
+							return arg2[0] + arg1
+						}, arg1)(arg2)
+					}, arg1, arg2)(arg3)
+				}, arg1, arg2, arg3)(arg4)
+			}, arg1, arg2, arg3, arg4)(arg5)
+		}, arg1, arg2, arg3, arg4, arg5)(arg6)
+	}, 1, 2, 3, 4, 5, 6)(7))
 }
 
 func TestCurry(t *testing.T) {
