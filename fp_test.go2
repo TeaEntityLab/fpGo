@@ -98,9 +98,7 @@ func TestFPFunctions(t *testing.T) {
 		),
 	)
 	assert.Equal(t, []int{1}, Compose(
-		MakeNumericReturnForBool1[int, int](func (val ...int) bool {
-			return IsNeg[int](val[0])
-		}),
+		MakeNumericReturnForParam1ReturnBool1[int, int](IsNeg[int]),
 		func (val ...int) []int {
 			return SliceOf(Reduce(func(a, b int) int { return a - b }, 0, val...))
 		},

@@ -1242,10 +1242,20 @@ func SliceToMap[T comparable, R any](defaultValue R, input ...T) map[T]R {
 	return resultMap
 }
 
-// MakeNumericReturnForBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
-func MakeNumericReturnForBool1[T any, R Numeric](fn func (...T) bool) func (...T) []R {
+// MakeNumericReturnForVariadicParamReturnBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
+func MakeNumericReturnForVariadicParamReturnBool1[T any, R Numeric](fn func (...T) bool) func (...T) []R {
 	return func (args ...T) []R {
 		if fn(args...) {
+			return SliceOf(R(1))
+		}
+
+		return SliceOf(R(0))
+	}
+}
+// MakeNumericReturnForParam1ReturnBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
+func MakeNumericReturnForParam1ReturnBool1[T any, R Numeric](fn func (T) bool) func (...T) []R {
+	return func (args ...T) []R {
+		if fn(args[0]) {
 			return SliceOf(R(1))
 		}
 
