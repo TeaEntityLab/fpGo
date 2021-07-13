@@ -108,6 +108,11 @@ func TestFPFunctions(t *testing.T) {
 	assert.Equal(t, 8, actualInt)
 
 	assert.Equal(t, []interface{}{3, 2, 1}, Compose(
+		Reverse, SortOrderedAscending, DistinctRandom, SortOrderedAscending)(
+		1, 1, 2, 1, 3, 1, 2, 1,
+	),
+	)
+	assert.Equal(t, []interface{}{3, 2, 1}, Compose(
 		Reverse, SortOrderedAscending, Distinct, SortOrderedAscending)(
 		1, 1, 2, 1, 3, 1, 2, 1,
 	),
@@ -143,6 +148,10 @@ func TestFPFunctions(t *testing.T) {
 	}, 8, 3, 10, 4))
 	assert.Equal(t, true, Exists(10, 8, 3, 10, 4))
 	assert.Equal(t, false, Exists(9, 8, 3, 10, 4))
+	assert.Equal(t, true, IsZero(0))
+	assert.Equal(t, false, IsZero(nil))
+	assert.Equal(t, false, IsZero(1))
+	assert.Equal(t, false, IsZero(""))
 	assert.Equal(t, []interface{}{1, 3, 2}, Intersection([]interface{}{5, 1, 3, 2, 8}, []interface{}{7, 6, 4, 3, 1, 2}))
 	assert.Equal(t, []interface{}{2, 5}, SortOrderedAscending(Keys(IntersectionMapByKey(map[interface{}]interface{}{2: 11, 5: 11, 1: 12}, map[interface{}]interface{}{41: 1, 2: 77, 42: 1, 5: 66, 43: 2}))...))
 	assert.Equal(t, []interface{}{1, 2, 3}, SortOrderedAscending(Keys(map[interface{}]interface{}{2: 8, 1: 5, 3: 4})...))
@@ -207,6 +216,61 @@ func TestFPFunctions(t *testing.T) {
 		return aVal % 2
 	}, 1, 2, 3, 4, 5, 6, 7, 8))
 
+}
+
+func TestVariadic(t *testing.T) {
+	assert.Equal(t, []interface{}{28}, Compose(
+		MakeVariadicParam1(func(arg1 interface{}) []interface{} {
+			return []interface{}{arg1.(int)}
+		}),
+		MakeVariadicReturn1(func(args ...interface{}) interface{} {
+			return args[0].(int) + args[1].(int)
+		}),
+		MakeVariadicParam2(func(arg1 interface{}, arg2 interface{}) []interface{} {
+			return []interface{}{arg1.(int), arg2.(int)}
+		}),
+		MakeVariadicReturn2(func(args ...interface{}) (interface{}, interface{}) {
+			return args[0].(int), args[1].(int) + args[2].(int)
+		}),
+		MakeVariadicParam3(func(arg1 interface{}, arg2 interface{}, arg3 interface{}) []interface{} {
+			return []interface{}{arg1.(int), arg2.(int), arg3.(int)}
+		}),
+		MakeVariadicReturn3(func(args ...interface{}) (interface{}, interface{}, interface{}) {
+			return args[0].(int), args[1].(int), args[2].(int) + args[3].(int)
+		}),
+		MakeVariadicParam4(func(arg1 interface{}, arg2 interface{}, arg3 interface{}, arg4 interface{}) []interface{} {
+			return []interface{}{arg1.(int), arg2.(int), arg3.(int), arg4.(int)}
+		}),
+		MakeVariadicReturn4(func(args ...interface{}) (interface{}, interface{}, interface{}, interface{}) {
+			return args[0].(int), args[1].(int), args[2].(int), args[3].(int) + args[4].(int)
+		}),
+		MakeVariadicParam5(func(arg1 interface{}, arg2 interface{}, arg3 interface{}, arg4 interface{}, arg5 interface{}) []interface{} {
+			return []interface{}{arg1.(int), arg2.(int), arg3.(int), arg4.(int), arg5.(int)}
+		}),
+		MakeVariadicReturn5(func(args ...interface{}) (interface{}, interface{}, interface{}, interface{}, interface{}) {
+			return args[0].(int), args[1].(int), args[2].(int), args[3].(int), args[4].(int) + args[5].(int)
+		}),
+		MakeVariadicParam6(func(arg1 interface{}, arg2 interface{}, arg3 interface{}, arg4 interface{}, arg5 interface{}, arg6 interface{}) []interface{} {
+			return []interface{}{arg1.(int), arg2.(int), arg3.(int), arg4.(int), arg5.(int), arg6.(int)}
+		}),
+		MakeVariadicReturn6(func(args ...interface{}) (interface{}, interface{}, interface{}, interface{}, interface{}, interface{}) {
+			return args[0].(int), args[1].(int), args[2].(int), args[3].(int), args[4].(int), args[5].(int) + args[6].(int)
+		}),
+	)(1, 2, 3, 4, 5, 6, 7),
+	)
+	assert.Equal(t, 28, CurryParam6(func(arg1 interface{}, arg2 interface{}, arg3 interface{}, arg4 interface{}, arg5 interface{}, arg6 interface{}, arg7 ...interface{}) interface{} {
+		return arg7[0].(int) + CurryParam5(func(arg1 interface{}, arg2 interface{}, arg3 interface{}, arg4 interface{}, arg5 interface{}, arg6 ...interface{}) interface{} {
+			return arg6[0].(int) + CurryParam4(func(arg1 interface{}, arg2 interface{}, arg3 interface{}, arg4 interface{}, arg5 ...interface{}) interface{} {
+				return arg5[0].(int) + CurryParam3(func(arg1 interface{}, arg2 interface{}, arg3 interface{}, arg4 ...interface{}) interface{} {
+					return arg4[0].(int) + CurryParam2(func(arg1 interface{}, arg2 interface{}, arg3 ...interface{}) interface{} {
+						return arg3[0].(int) + CurryParam1(func(arg1 interface{}, arg2 ...interface{}) interface{} {
+							return arg2[0].(int) + arg1.(int)
+						}, arg1)(arg2).(int)
+					}, arg1, arg2)(arg3).(int)
+				}, arg1, arg2, arg3)(arg4).(int)
+			}, arg1, arg2, arg3, arg4)(arg5).(int)
+		}, arg1, arg2, arg3, arg4, arg5)(arg6).(int)
+	}, 1, 2, 3, 4, 5, 6)(7))
 }
 
 func TestCurry(t *testing.T) {

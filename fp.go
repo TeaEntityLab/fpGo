@@ -760,15 +760,6 @@ func Reverse(list ...interface{}) []interface{} {
 	return newList
 }
 
-// SliceSet returns a set of the distinct elements of coll.
-func SliceSet(list []interface{}) []interface{} {
-	if len(list) == 0 {
-		return make([]interface{}, 0)
-	}
-
-	return Distinct(list...)
-}
-
 // Some finds item in the list based on supplied function.
 //
 // Takes 2 input:
@@ -1096,43 +1087,43 @@ func MakeNumericReturnForBool1(fn func(...interface{}) bool) func(...interface{}
 }
 
 // MakeVariadicParam1 MakeVariadic for 1 Param (for compose() general fp functions simply)
-func MakeVariadicParam1(fn func(interface{}) interface{}) func(...interface{}) interface{} {
-	return func(args ...interface{}) interface{} {
+func MakeVariadicParam1(fn func(interface{}) []interface{}) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
 		return fn(args[0])
 	}
 }
 
 // MakeVariadicParam2 MakeVariadic for 2 Params (for compose() general fp functions simply)
-func MakeVariadicParam2(fn func(interface{}, interface{}) interface{}) func(...interface{}) interface{} {
-	return func(args ...interface{}) interface{} {
+func MakeVariadicParam2(fn func(interface{}, interface{}) []interface{}) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
 		return fn(args[0], args[1])
 	}
 }
 
 // MakeVariadicParam3 MakeVariadic for 3 Params (for compose() general fp functions simply)
-func MakeVariadicParam3(fn func(interface{}, interface{}, interface{}) interface{}) func(...interface{}) interface{} {
-	return func(args ...interface{}) interface{} {
+func MakeVariadicParam3(fn func(interface{}, interface{}, interface{}) []interface{}) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
 		return fn(args[0], args[1], args[2])
 	}
 }
 
 // MakeVariadicParam4 MakeVariadic for 4 Params (for compose() general fp functions simply)
-func MakeVariadicParam4(fn func(interface{}, interface{}, interface{}, interface{}) interface{}) func(...interface{}) interface{} {
-	return func(args ...interface{}) interface{} {
+func MakeVariadicParam4(fn func(interface{}, interface{}, interface{}, interface{}) []interface{}) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
 		return fn(args[0], args[1], args[2], args[3])
 	}
 }
 
 // MakeVariadicParam5 MakeVariadic for 5 Params (for compose() general fp functions simply)
-func MakeVariadicParam5(fn func(interface{}, interface{}, interface{}, interface{}, interface{}) interface{}) func(...interface{}) interface{} {
-	return func(args ...interface{}) interface{} {
+func MakeVariadicParam5(fn func(interface{}, interface{}, interface{}, interface{}, interface{}) []interface{}) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
 		return fn(args[0], args[1], args[2], args[3], args[4])
 	}
 }
 
 // MakeVariadicParam6 MakeVariadic for 6 Params (for compose() general fp functions simply)
-func MakeVariadicParam6(fn func(interface{}, interface{}, interface{}, interface{}, interface{}, interface{}) interface{}) func(...interface{}) interface{} {
-	return func(args ...interface{}) interface{} {
+func MakeVariadicParam6(fn func(interface{}, interface{}, interface{}, interface{}, interface{}, interface{}) []interface{}) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
 		return fn(args[0], args[1], args[2], args[3], args[4], args[5])
 	}
 }
