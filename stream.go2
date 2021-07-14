@@ -444,3 +444,238 @@ func (setSelf *SetDef[T, R]) Values() []R {
 
 // // Set Set utils instance
 // var Set SetDef[interface{}]
+
+
+// StreamSet
+
+type StreamSetDef[T comparable, R comparable] SetDef[T, *StreamDef[R]]
+
+// NewStreamSet New StreamSet instance
+func NewStreamSet[T comparable, R comparable]() *StreamSetDef[T, R] {
+	return &StreamSetDef[T, R]{
+		// SetDef: SetDef[T, *StreamDef[R]]{},
+	}
+}
+
+// StreamSetFrom New StreamSet instance from a T array
+func StreamSetFrom[T comparable, R comparable](list ...T) *StreamSetDef[T, R] {
+	return StreamSetFromArray[T, R](list)
+}
+
+// StreamSetFromArray New StreamSet instance from a T array
+func StreamSetFromArray[T comparable, R comparable](list []T) *StreamSetDef[T, R] {
+	newOne := NewStreamSet[T, R]()
+  for _, v := range(list) {
+    (*newOne)[v] = new(StreamDef[R])
+  }
+	return newOne
+}
+
+// StreamSetFromMap New StreamSet instance from a map[T]R
+func StreamSetFromMap[T comparable, R comparable](theMap map[T]*StreamDef[R]) *StreamSetDef[T, R] {
+	result := StreamSetDef[T, R](DuplicateMap(theMap))
+	return &result
+}
+
+// StreamSetFromInterface New StreamSet instance from an array
+func StreamSetFromInterface(list ...interface{}) *StreamSetDef[interface{}, interface{}] {
+	return StreamSetFromArray[interface{}, interface{}](list)
+}
+
+// StreamSetFromArrayInterface New StreamSet instance from an array
+func StreamSetFromArrayInterface(list []interface{}) *StreamSetDef[interface{}, interface{}] {
+	return StreamSetFromArray[interface{}, interface{}](list)
+}
+
+// Clone Clone this StreamSet
+func (streamSetSelf *StreamSetDef[T, R]) Clone() *StreamSetDef[T, R] {
+	result := StreamSetFromMap(DuplicateMap(*streamSetSelf))
+  for k, v := range(*result) {
+    if (v != nil) {
+      v = v.Clone()
+      (*result)[k] = v
+    }
+  }
+
+	return result
+}
+
+// Union Union an another StreamSet object
+func (streamSetSelf *StreamSetDef[T, R]) Union(input *StreamSetDef[T, R]) *StreamSetDef[T, R] {
+  if (input == nil || input.Size() == 0) {
+    return streamSetSelf
+  }
+
+	result := StreamSetFromMap(Merge(*streamSetSelf, *input))
+
+  for k, v := range(*streamSetSelf) {
+    v2, ok := (*input)[k]
+    if (ok && v2 != nil && v2.Len() > 0) {
+			if (v == nil) {
+				v = new(StreamDef[R])
+			}
+      v = v.Extend(v2)
+      (*result)[k] = v
+    }
+  }
+
+	return result
+}
+
+// Intersection Get the Intersection with this StreamSet and an another StreamSet
+func (streamSetSelf *StreamSetDef[T, R]) Intersection(input *StreamSetDef[T, R]) *StreamSetDef[T, R] {
+  if (input == nil || input.Size() == 0) {
+    return NewStreamSet[T, R]()
+  }
+
+	result := StreamSetFromMap(IntersectionMapByKey(*streamSetSelf, *input))
+
+  for k, v := range(*result) {
+    v2, ok := (*input)[k]
+    if (ok && v2 != nil && v2.Len() > 0) {
+			if (v == nil) {
+				v = new(StreamDef[R])
+			}
+
+      v = v.Intersection(v2)
+      (*result)[k] = v
+    }
+  }
+
+	return result
+}
+
+// MinusStreams Minus the Stream values by their keys(keys will not be changed but Stream values will)
+func (streamSetSelf *StreamSetDef[T, R]) MinusStreams(input *StreamSetDef[T, R]) *StreamSetDef[T, R] {
+  if (input == nil || input.Size() == 0) {
+    return NewStreamSet[T, R]()
+  }
+
+	result := streamSetSelf.Clone()
+
+  for k, v := range(*result) {
+    v2, ok := (*input)[k]
+    if (ok && v2 != nil && v2.Len() > 0) {
+			if (v == nil) {
+				v = new(StreamDef[R])
+			}
+
+      v = v.Minus(v2)
+      (*result)[k] = v
+    }
+  }
+
+	return result
+}
+
+/**
+TODO DUPLICATED ZONE (for go2go temporarily)
+BEGIN
+**/
+
+// MapKey TODO NOTE !!Duplicated!! Map all keys of Set by function
+func (streamSetSelf *StreamSetDef[T, R]) MapKey(fn TransformerFunctor[T, T]) *StreamSetDef[T, R] {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	result := StreamSetDef[T, R](*selfPtr.MapKey(fn))
+	return &result
+}
+// MapValue TODO NOTE !!Duplicated!! Map all values of Set by function
+func (streamSetSelf *StreamSetDef[T, R]) MapValue(fn TransformerFunctor[*StreamDef[R], *StreamDef[R]]) *StreamSetDef[T, R] {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	result := StreamSetDef[T, R](*selfPtr.MapValue(fn))
+	return &result
+}
+// ContainsKey TODO NOTE !!Duplicated!! Check the key exists or not in the Set
+func (streamSetSelf *StreamSetDef[T, R]) ContainsKey(input T) bool {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	return selfPtr.ContainsKey(input)
+}
+// ContainsValue TODO NOTE !!Duplicated!! Check the value exists or not in the Set
+func (streamSetSelf *StreamSetDef[T, R]) ContainsValue(input *StreamDef[R]) bool {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	return selfPtr.ContainsValue(input)
+}
+// IsSubsetByKey TODO NOTE !!Duplicated!! returns true or false by checking if set1 is a subset of set2
+func (streamSetSelf *StreamSetDef[T, R]) IsSubsetByKey(input *StreamSetDef[T, R]) bool {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	target := SetDef[T, *StreamDef[R]](*input)
+	selfPtr := &self
+	return selfPtr.IsSubsetByKey(&target)
+}
+// IsSupersetByKey TODO NOTE !!Duplicated!! returns true or false by checking if set1 is a superset of set2
+func (streamSetSelf *StreamSetDef[T, R]) IsSupersetByKey(input *StreamSetDef[T, R]) bool {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	target := SetDef[T, *StreamDef[R]](*input)
+	selfPtr := &self
+	return selfPtr.IsSupersetByKey(&target)
+}
+// Add TODO NOTE !!Duplicated!! Add items into the Set
+func (streamSetSelf *StreamSetDef[T, R]) Add(input ...T) *StreamSetDef[T, R] {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	result := StreamSetDef[T, R](*selfPtr.Add(input...))
+	return &result
+}
+// RemoveKeys TODO NOTE !!Duplicated!! Remove keys from the Set
+func (streamSetSelf *StreamSetDef[T, R]) RemoveKeys(input ...T) *StreamSetDef[T, R] {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	result := StreamSetDef[T, R](*selfPtr.RemoveKeys(input...))
+	return &result
+}
+// RemoveValues TODO NOTE !!Duplicated!! Remove values from the Set
+func (streamSetSelf *StreamSetDef[T, R]) RemoveValues(input ...*StreamDef[R]) *StreamSetDef[T, R] {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	result := StreamSetDef[T, R](*selfPtr.RemoveValues(input...))
+	return &result
+}
+// Get TODO NOTE !!Duplicated!! Get items from the Set
+func (streamSetSelf *StreamSetDef[T, R]) Get(key T) *StreamDef[R] {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	return selfPtr.Get(key)
+}
+// Set TODO NOTE !!Duplicated!! Set items to the Set
+func (streamSetSelf *StreamSetDef[T, R]) Set(key T, value *StreamDef[R]) {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	selfPtr.Set(key, value)
+}
+// Minus TODO NOTE !!Duplicated!! Get all of this StreamSet but not in the given StreamSet
+func (streamSetSelf *StreamSetDef[T, R]) Minus(input *StreamSetDef[T, R]) *StreamSetDef[T, R] {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	target := SetDef[T, *StreamDef[R]](*input)
+	selfPtr := &self
+	result := StreamSetDef[T, R](*selfPtr.Minus(&target))
+	return &result
+}
+// Size TODO NOTE !!Duplicated!! Get size
+func (streamSetSelf *StreamSetDef[T, R]) Size() int {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	return selfPtr.Size()
+}
+// Keys TODO NOTE !!Duplicated!! Convert Set to slice
+func (streamSetSelf *StreamSetDef[T, R]) Keys() []T {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	return selfPtr.Keys()
+}
+// Values TODO NOTE !!Duplicated!! Convert Set to slice
+func (streamSetSelf *StreamSetDef[T, R]) Values() []*StreamDef[R] {
+	self := SetDef[T, *StreamDef[R]](*streamSetSelf)
+	selfPtr := &self
+	return selfPtr.Values()
+}
+/**
+TODO DUPLICATED ZONE (for go2go temporarily)
+END
+**/
+
+// // StreamSet StreamSet utils instance
+// var StreamSet StreamSetDef[interface{}]
