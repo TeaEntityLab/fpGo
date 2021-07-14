@@ -231,62 +231,63 @@ func (streamSelf *StreamDef[T]) Get(i int) T {
 
 // Set
 
-type SetDef[T comparable] map[T] bool
+type SetDef[T comparable, R any] map[T] R
 
 // SetFrom New Set instance from a T array
-func SetFrom[T comparable](list ...T) *SetDef[T] {
-	return SetFromArray(list)
+func SetFrom[T comparable, R any](list ...T) *SetDef[T, R] {
+	return SetFromArray[T, R](list)
 }
 
 // SetFromArray New Set instance from a T array
-func SetFromArray[T comparable](list []T) *SetDef[T] {
-	newOne := SetDef[T](SliceToMap(true, list...))
+func SetFromArray[T comparable, R any](list []T) *SetDef[T, R] {
+	newOne := SetDef[T, R](SliceToMap(*new(R), list...))
 	return &newOne
 }
 
 // SetFromMap New Set instance from a map[T]R
-func SetFromMap[T comparable, R any](theMap map[T]R) *SetDef[T] {
-	return SetFromArray(Keys(theMap))
+func SetFromMap[T comparable, R any](theMap map[T]R) *SetDef[T, R] {
+	result := SetDef[T, R](theMap)
+	return &result
 }
 
 // SetFromInterface New Set instance from an array
-func SetFromInterface(list ...interface{}) *SetDef[interface{}] {
-	return SetFromArray(list)
+func SetFromInterface(list ...interface{}) *SetDef[interface{}, interface{}] {
+	return SetFromArray[interface{}, interface{}](list)
 }
 
 // SetFromArrayInterface New Set instance from an array
-func SetFromArrayInterface(list []interface{}) *SetDef[interface{}] {
-	return SetFromArray(list)
+func SetFromArrayInterface(list []interface{}) *SetDef[interface{}, interface{}] {
+	return SetFromArray[interface{}, interface{}](list)
 }
 
 // Map Map all items of Set by function
-func (setSelf *SetDef[T]) Map(fn TransformerFunctor[T, T]) *SetDef[T] {
-	result := make(SetDef[T], len(*setSelf))
-	for k := range(*setSelf) {
-		result[fn(k)] = true
+func (setSelf *SetDef[T, R]) MapKey(fn TransformerFunctor[T, T]) *SetDef[T, R] {
+	result := make(SetDef[T, R], len(*setSelf))
+	for k, v := range(*setSelf) {
+		result[fn(k)] = v
 	}
 
 	return &result
 }
 
 // Contains Check the item exists or not in the Set
-func (setSelf *SetDef[T]) Contains(input T) bool {
+func (setSelf *SetDef[T, R]) Contains(input T) bool {
 	_, ok := (*setSelf)[input]
 	return ok
 }
 
 // IsSubset returns true or false by checking if set1 is a subset of set2
-func (setSelf *SetDef[T]) IsSubset(input *SetDef[T]) bool {
+func (setSelf *SetDef[T, R]) IsSubset(input *SetDef[T, R]) bool {
 	return IsSubsetMapByKey(*setSelf, *input)
 }
 
 // IsSuperset returns true or false by checking if set1 is a superset of set2
-func (setSelf *SetDef[T]) IsSuperset(input *SetDef[T]) bool {
+func (setSelf *SetDef[T, R]) IsSuperset(input *SetDef[T, R]) bool {
 	return IsSupersetMapByKey(*setSelf, *input)
 }
 
 // Add Add items into the Set
-func (setSelf *SetDef[T]) Add(input ...T) *SetDef[T] {
+func (setSelf *SetDef[T, R]) Add(input ...T) *SetDef[T, R] {
 	inputLen := len(input)
 	if (inputLen > 0) {
 		result := setSelf.Clone()
@@ -294,7 +295,7 @@ func (setSelf *SetDef[T]) Add(input ...T) *SetDef[T] {
 			if _, ok := (*result)[v]; ok {
 				continue
 			}
-			(*result)[v] = true
+			(*result)[v] = *new(R)
 		}
 
 		return result
@@ -304,7 +305,7 @@ func (setSelf *SetDef[T]) Add(input ...T) *SetDef[T] {
 }
 
 // Remove Remove items from the Set
-func (setSelf *SetDef[T]) Remove(input ...T) *SetDef[T] {
+func (setSelf *SetDef[T, R]) Remove(input ...T) *SetDef[T, R] {
 	inputLen := len(input)
 	if (inputLen > 0) {
 		result := setSelf.Clone()
@@ -318,29 +319,41 @@ func (setSelf *SetDef[T]) Remove(input ...T) *SetDef[T] {
 	return setSelf
 }
 
+// Get Get items from the Set
+func (setSelf *SetDef[T, R]) Get(key T) R {
+	return (*setSelf)[key]
+}
+
+// Set Set items to the Set
+func (setSelf *SetDef[T, R]) Set(key T, value R) {
+	(*setSelf)[key] = value
+
+	// return setSelf
+}
+
 // Clone Clone this Set
-func (setSelf *SetDef[T]) Clone() *SetDef[T] {
-	result := SetDef[T](DuplicateMap[T, bool](*setSelf))
+func (setSelf *SetDef[T, R]) Clone() *SetDef[T, R] {
+	result := SetDef[T, R](DuplicateMap[T, R](*setSelf))
 
 	return &result
 }
 
 // Union Union an another Set object
-func (setSelf *SetDef[T]) Union(input *SetDef[T]) *SetDef[T] {
-	result := SetDef[T](Merge(*setSelf, *input))
+func (setSelf *SetDef[T, R]) Union(input *SetDef[T, R]) *SetDef[T, R] {
+	result := SetDef[T, R](Merge(*setSelf, *input))
 
 	return &result
 }
 
 // Intersection Get the Intersection with this Set and an another Set
-func (setSelf *SetDef[T]) Intersection(input *SetDef[T]) *SetDef[T] {
-	result := SetDef[T](IntersectionMapByKey(*setSelf, *input))
+func (setSelf *SetDef[T, R]) Intersection(input *SetDef[T, R]) *SetDef[T, R] {
+	result := SetDef[T, R](IntersectionMapByKey(*setSelf, *input))
 
 	return &result
 }
 
 // Minus Get all of this Set but not in the given Set
-func (setSelf *SetDef[T]) Minus(input *SetDef[T]) *SetDef[T] {
+func (setSelf *SetDef[T, R]) Minus(input *SetDef[T, R]) *SetDef[T, R] {
 	if input.Size() == 0 {
 		return setSelf
 	}
@@ -357,12 +370,12 @@ func (setSelf *SetDef[T]) Minus(input *SetDef[T]) *SetDef[T] {
 }
 
 // Size Get size
-func (setSelf *SetDef[T]) Size() int {
+func (setSelf *SetDef[T, R]) Size() int {
 	return len(*setSelf)
 }
 
 // ToArray Convert Set to slice
-func (setSelf *SetDef[T]) ToArray() []T {
+func (setSelf *SetDef[T, R]) ToArray() []T {
 	return Keys(*setSelf)
 }
 

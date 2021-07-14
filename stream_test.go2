@@ -276,14 +276,14 @@ func TestStreamSetOperation(t *testing.T) {
 }
 
 func TestSetSetOperation(t *testing.T) {
-	var s *SetDef[int]
-	var s2 *SetDef[int]
-	var s3 *SetDef[int]
+	var s *SetDef[int, bool]
+	var s2 *SetDef[int, bool]
+	var s3 *SetDef[int, bool]
 	var tempString string
 
-	s = SetFrom(11, 2, 3, 4, 5)
-	s2 = SetFrom(9, 2, 5, 6)
-	s3 = SetFrom(2, 5)
+	s = SetFrom[int, bool](11, 2, 3, 4, 5)
+	s2 = SetFrom[int, bool](9, 2, 5, 6)
+	s3 = SetFrom[int, bool](2, 5)
 	assert.Equal(t, true, s.Contains(4))
 	assert.Equal(t, false, s.Contains(6))
 	assert.Equal(t, true, s.IsSuperset(s3))
