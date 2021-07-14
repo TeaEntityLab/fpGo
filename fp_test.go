@@ -3,16 +3,27 @@ package fpgo
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func SortOrderedAscending(input ...interface{}) []interface{} {
+func SortIntAscending(input ...interface{}) []interface{} {
 	Sort(func(a, b interface{}) bool {
 		aVal, _ := Maybe.Just(a).ToInt()
 		bVal, _ := Maybe.Just(b).ToInt()
 		return bVal > aVal
+	}, input)
+
+	return input
+}
+
+func SortStringAscending(input ...interface{}) []interface{} {
+	Sort(func(a, b interface{}) bool {
+		aVal := Maybe.Just(a).ToString()
+		bVal := Maybe.Just(b).ToString()
+		return strings.Compare(aVal, bVal) < 0
 	}, input)
 
 	return input
@@ -108,23 +119,23 @@ func TestFPFunctions(t *testing.T) {
 	assert.Equal(t, 8, actualInt)
 
 	assert.Equal(t, []interface{}{3, 2, 1}, Compose(
-		Reverse, SortOrderedAscending, DistinctRandom, SortOrderedAscending)(
+		Reverse, SortIntAscending, DistinctRandom, SortIntAscending)(
 		1, 1, 2, 1, 3, 1, 2, 1,
 	),
 	)
 	assert.Equal(t, []interface{}{3, 2, 1}, Compose(
-		Reverse, SortOrderedAscending, Distinct, SortOrderedAscending)(
+		Reverse, SortIntAscending, Distinct, SortIntAscending)(
 		1, 1, 2, 1, 3, 1, 2, 1,
 	),
 	)
 	assert.Equal(t, []interface{}{1, 2, 3}, Pipe(
-		Reverse, SortOrderedAscending, Distinct, SortOrderedAscending)(
+		Reverse, SortIntAscending, Distinct, SortIntAscending)(
 		1, 1, 2, 1, 3, 1, 2, 1,
 	),
 	)
 	assert.Equal(t, []interface{}{1, 2, 3}, Dedupe(1, 1, 2, 2, 3, 3, 3, 3, 3))
 	assert.Equal(t, []interface{}{1, 2, 3}, Difference([]interface{}{5, 1, 2, 3}, []interface{}{4, 5, 7, 8}))
-	assert.Equal(t, []interface{}{1, 2, 3}, SortOrderedAscending(Distinct(1, 1, 2, 1, 3, 1, 2, 1)...))
+	assert.Equal(t, []interface{}{1, 2, 3}, SortIntAscending(Distinct(1, 1, 2, 1, 3, 1, 2, 1)...))
 	assert.Equal(t, true, IsDistinct(1, 2, 3))
 	assert.Equal(t, false, IsDistinct(1, 1, 2, 1, 3, 1, 2, 1))
 	assert.Equal(t, []interface{}{2, 3, 2}, DropEq(1, 1, 1, 2, 1, 3, 1, 2, 1))
@@ -153,13 +164,13 @@ func TestFPFunctions(t *testing.T) {
 	assert.Equal(t, false, IsZero(1))
 	assert.Equal(t, false, IsZero(""))
 	assert.Equal(t, []interface{}{1, 3, 2}, Intersection([]interface{}{5, 1, 3, 2, 8}, []interface{}{7, 6, 4, 3, 1, 2}))
-	assert.Equal(t, []interface{}{2, 5}, SortOrderedAscending(Keys(IntersectionMapByKey(map[interface{}]interface{}{2: 11, 5: 11, 1: 12}, map[interface{}]interface{}{41: 1, 2: 77, 42: 1, 5: 66, 43: 2}))...))
-	assert.Equal(t, []interface{}{1, 2, 3}, SortOrderedAscending(Keys(map[interface{}]interface{}{2: 8, 1: 5, 3: 4})...))
-	assert.Equal(t, []interface{}{4, 5, 8}, SortOrderedAscending(Values(map[interface{}]interface{}{2: 8, 1: 5, 3: 4})...))
+	assert.Equal(t, []interface{}{2, 5}, SortIntAscending(Keys(IntersectionMapByKey(map[interface{}]interface{}{2: 11, 5: 11, 1: 12}, map[interface{}]interface{}{41: 1, 2: 77, 42: 1, 5: 66, 43: 2}))...))
+	assert.Equal(t, []interface{}{1, 2, 3}, SortIntAscending(Keys(map[interface{}]interface{}{2: 8, 1: 5, 3: 4})...))
+	assert.Equal(t, []interface{}{4, 5, 8}, SortIntAscending(Values(map[interface{}]interface{}{2: 8, 1: 5, 3: 4})...))
 	assert.Equal(t, []interface{}{5, 8, 8}, Minus([]interface{}{5, 1, 8, 3, 2, 8}, []interface{}{7, 6, 4, 3, 1, 2}))
 	assert.Equal(t, []interface{}{7, 6, 4}, Minus([]interface{}{7, 6, 4, 3, 1, 2}, []interface{}{5, 1, 8, 3, 2, 8}))
-	assert.Equal(t, []interface{}{1}, SortOrderedAscending(Keys(MinusMapByKey(map[interface{}]interface{}{2: 11, 5: 11, 1: 12}, map[interface{}]interface{}{41: 1, 2: 77, 42: 1, 5: 66, 43: 2}))...))
-	assert.Equal(t, []interface{}{41, 42, 43}, SortOrderedAscending(Keys(MinusMapByKey(map[interface{}]interface{}{41: 1, 2: 77, 42: 1, 5: 66, 43: 2}, map[interface{}]interface{}{2: 11, 5: 11, 1: 12}))...))
+	assert.Equal(t, []interface{}{1}, SortIntAscending(Keys(MinusMapByKey(map[interface{}]interface{}{2: 11, 5: 11, 1: 12}, map[interface{}]interface{}{41: 1, 2: 77, 42: 1, 5: 66, 43: 2}))...))
+	assert.Equal(t, []interface{}{41, 42, 43}, SortIntAscending(Keys(MinusMapByKey(map[interface{}]interface{}{41: 1, 2: 77, 42: 1, 5: 66, 43: 2}, map[interface{}]interface{}{2: 11, 5: 11, 1: 12}))...))
 	assert.Equal(t, true, IsSubset([]interface{}{1, 2, 3}, []interface{}{4, 5, 1, 2, 3, 6}))
 	assert.Equal(t, true, IsSubset([]interface{}{1, 2, 2, 3}, []interface{}{4, 5, 1, 2, 3, 6}))
 	assert.Equal(t, false, IsSubset([]interface{}{5, 1, 8, 3, 2, 8}, []interface{}{7, 6, 4, 3, 1, 2}))
@@ -170,10 +181,10 @@ func TestFPFunctions(t *testing.T) {
 	assert.Equal(t, false, IsSubsetMapByKey(map[interface{}]interface{}{5: 6, 1: 4, 3: 5, 2: 7, 8: 9}, map[interface{}]interface{}{7: 8, 6: 9, 4: 10, 3: 11, 1: 13, 2: 12}))
 	assert.Equal(t, true, IsSupersetMapByKey(map[interface{}]interface{}{5: 6, 1: 4, 3: 5, 2: 7, 8: 9}, map[interface{}]interface{}{1: 3, 2: 4}))
 	assert.Equal(t, false, IsSupersetMapByKey(map[interface{}]interface{}{5: 6, 1: 4, 3: 5, 2: 7, 8: 9}, map[interface{}]interface{}{7: 8, 6: 9, 4: 10, 3: 11, 1: 13, 2: 12}))
-	assert.Equal(t, []interface{}{1, 2, 3, 4, 5, 6, 7, 8}, SortOrderedAscending(Union([]interface{}{5, 1, 3, 2, 8}, []interface{}{7, 6, 4, 3, 1, 2})...))
+	assert.Equal(t, []interface{}{1, 2, 3, 4, 5, 6, 7, 8}, SortIntAscending(Union([]interface{}{5, 1, 3, 2, 8}, []interface{}{7, 6, 4, 3, 1, 2})...))
 	actualMap = Merge(map[interface{}]interface{}{2: 11, 5: 11, 1: 12}, map[interface{}]interface{}{41: 1, 42: 1, 43: 2})
-	assert.Equal(t, []interface{}{1, 2, 5, 41, 42, 43}, SortOrderedAscending(Keys(actualMap)...))
-	assert.Equal(t, []interface{}{1, 1, 2, 11, 11, 12}, SortOrderedAscending(Values(actualMap)...))
+	assert.Equal(t, []interface{}{1, 2, 5, 41, 42, 43}, SortIntAscending(Keys(actualMap)...))
+	assert.Equal(t, []interface{}{1, 1, 2, 11, 11, 12}, SortIntAscending(Values(actualMap)...))
 	assert.Equal(t, []interface{}{2, 1, 2}, Take(3, 2, 1, 2, 1, 3, 1, 2, 1))
 	assert.Equal(t, []interface{}{1, 2, 1}, TakeLast(3, 2, 1, 2, 1, 3, 1, 2, 1))
 	assert.Equal(t, []interface{}{1, 2, 1, 3, 1, 2, 1}, Tail(2, 1, 2, 1, 3, 1, 2, 1))
@@ -189,7 +200,7 @@ func TestFPFunctions(t *testing.T) {
 		aVal, _ := Maybe.Just(a).ToInt()
 		return aVal + 1
 	}, &PMapOption{FixedPool: 3, RandomOrder: false}, 1, 2, 3, 4, 5))
-	assert.Equal(t, []interface{}{2, 3, 4, 5, 6}, SortOrderedAscending(PMap(func(a interface{}) interface{} {
+	assert.Equal(t, []interface{}{2, 3, 4, 5, 6}, SortIntAscending(PMap(func(a interface{}) interface{} {
 		aVal, _ := Maybe.Just(a).ToInt()
 		return aVal + 1
 	}, &PMapOption{FixedPool: 3, RandomOrder: true}, 1, 2, 3, 4, 5)...))

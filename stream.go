@@ -130,6 +130,11 @@ func (streamSelf *StreamDef) FromArrayFloat64(old []float64) *StreamDef {
 	return streamSelf.FromArray(new)
 }
 
+// From New Stream instance from a interface{} array
+func (streamSelf *StreamDef) From(list ...interface{}) *StreamDef {
+	return Stream.FromArray(list)
+}
+
 // FromArray New Stream instance from an interface{} array
 func (streamSelf *StreamDef) FromArray(list []interface{}) *StreamDef {
 	result := StreamDef(list)
@@ -543,3 +548,174 @@ func (setSelf *SetDef) Values() []interface{} {
 
 // Set Set utils instance
 var Set SetDef
+
+// StreamSet
+
+// StreamSetDef Set inspired by Collection utils
+type StreamSetDef struct {
+	SetDef
+}
+
+// NewStreamSet New StreamSet instance
+func NewStreamSet() *StreamSetDef {
+	return &StreamSetDef{
+		SetDef: SetDef{},
+	}
+}
+
+// StreamSetFrom New StreamSet instance from a T array
+func StreamSetFrom(list ...interface{}) *StreamSetDef {
+	return StreamSetFromArray(list)
+}
+
+// StreamSetFromArray New StreamSet instance from a T array
+func StreamSetFromArray(list []interface{}) *StreamSetDef {
+	newOne := NewStreamSet()
+	for _, v := range list {
+		newOne.SetDef[v] = new(StreamDef)
+	}
+	return newOne
+}
+
+// StreamSetFromMap New StreamSet instance from a map[T]R
+func StreamSetFromMap(theMap map[interface{}]*StreamDef) *StreamSetDef {
+	resultMap := make(map[interface{}]interface{}, len(theMap))
+	for k, v := range theMap {
+		resultMap[k] = v
+	}
+	result := StreamSetDef{
+		SetDef: SetDef(resultMap),
+	}
+	return &result
+}
+
+// StreamSetFromInterface New StreamSet instance from an array
+func StreamSetFromInterface(list ...interface{}) *StreamSetDef {
+	return StreamSetFromArray(list)
+}
+
+// StreamSetFromArrayInterface New StreamSet instance from an array
+func StreamSetFromArrayInterface(list []interface{}) *StreamSetDef {
+	return StreamSetFromArray(list)
+}
+
+// Clone Clone this StreamSet
+func (streamSetSelf *StreamSetDef) Clone() *StreamSetDef {
+	result := &StreamSetDef{SetDef: SetDef(DuplicateMap(streamSetSelf.SetDef))}
+	for k, v := range result.SetDef {
+		if v != nil {
+			v = v.(*StreamDef).Clone()
+			(result.SetDef)[k] = v
+		}
+	}
+
+	return result
+}
+
+// Union Union an another StreamSet object
+func (streamSetSelf *StreamSetDef) Union(input *StreamSetDef) *StreamSetDef {
+	if input == nil || input.Size() == 0 {
+		return streamSetSelf
+	}
+
+	result := &StreamSetDef{SetDef: SetDef(Merge(streamSetSelf.SetDef, input.SetDef))}
+
+	for k, v := range streamSetSelf.SetDef {
+		v2, ok := (input.SetDef)[k]
+		if ok && v2 != nil && v2.(*StreamDef).Len() > 0 {
+			if v == nil {
+				v = new(StreamDef)
+			}
+			v = v.(*StreamDef).Extend(v2.(*StreamDef))
+			(result.SetDef)[k] = v
+		}
+	}
+
+	return result
+}
+
+// Intersection Get the Intersection with this StreamSet and an another StreamSet
+func (streamSetSelf *StreamSetDef) Intersection(input *StreamSetDef) *StreamSetDef {
+	if input == nil || input.Size() == 0 {
+		return NewStreamSet()
+	}
+
+	result := &StreamSetDef{SetDef: SetDef(IntersectionMapByKey(streamSetSelf.SetDef, input.SetDef))}
+
+	for k, v := range result.SetDef {
+		v2, ok := (input.SetDef)[k]
+		if ok && v2 != nil && v2.(*StreamDef).Len() > 0 {
+			if v == nil {
+				v = new(StreamDef)
+			}
+
+			v = v.(*StreamDef).Intersection(v2.(*StreamDef))
+			(result.SetDef)[k] = v
+		}
+	}
+
+	return result
+}
+
+// MinusStreams Minus the Stream values by their keys(keys will not be changed but Stream values will)
+func (streamSetSelf *StreamSetDef) MinusStreams(input *StreamSetDef) *StreamSetDef {
+	if input == nil || input.Size() == 0 {
+		return NewStreamSet()
+	}
+
+	result := streamSetSelf.Clone()
+
+	for k, v := range result.SetDef {
+		v2, ok := (input.SetDef)[k]
+		if ok && v2 != nil && v2.(*StreamDef).Len() > 0 {
+			if v == nil {
+				v = new(StreamDef)
+			}
+
+			v = v.(*StreamDef).Minus(v2.(*StreamDef))
+			(result.SetDef)[k] = v
+		}
+	}
+
+	return result
+}
+
+/**
+TODO DUPLICATED ZONE (temporarily)
+BEGIN
+**/
+
+// IsSubsetByKey TODO NOTE !!Duplicated!! returns true or false by checking if set1 is a subset of set2
+func (streamSetSelf *StreamSetDef) IsSubsetByKey(input *StreamSetDef) bool {
+	if input == nil || input.Size() == 0 {
+		return false
+	}
+
+	return streamSetSelf.SetDef.IsSubsetByKey(&input.SetDef)
+}
+
+// IsSupersetByKey TODO NOTE !!Duplicated!! returns true or false by checking if set1 is a superset of set2
+func (streamSetSelf *StreamSetDef) IsSupersetByKey(input *StreamSetDef) bool {
+	if input == nil || input.Size() == 0 {
+		return true
+	}
+
+	return streamSetSelf.SetDef.IsSupersetByKey(&input.SetDef)
+}
+
+// Minus TODO NOTE !!Duplicated!! Get all of this StreamSet but not in the given StreamSet
+func (streamSetSelf *StreamSetDef) Minus(input *StreamSetDef) *StreamSetDef {
+	if input == nil || input.Size() == 0 {
+		return NewStreamSet()
+	}
+
+	return &StreamSetDef{SetDef: *streamSetSelf.SetDef.Minus(&input.SetDef)}
+}
+
+/**
+TODO DUPLICATED ZONE (temporarily)
+END
+**/
+
+// StreamSet StreamSet utils instance
+var StreamSet StreamSetDef

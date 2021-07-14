@@ -292,25 +292,115 @@ func TestSetSetOperation(t *testing.T) {
 	assert.Equal(t, true, s3.IsSubsetByKey(s2))
 	assert.Equal(t, false, s.IsSupersetByKey(s2))
 	tempString = ""
-	for _, v := range SortOrderedAscending(s.Clone().Intersection(s2).Keys()...) {
+	for _, v := range SortIntAscending(s.Clone().Intersection(s2).Keys()...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "2/5/", tempString)
 	assert.Equal(t, 2, s.Intersection(s2).Size())
 	tempString = ""
-	for _, v := range SortOrderedAscending(s.Union(s2).Keys()...) {
+	for _, v := range SortIntAscending(s.Union(s2).Keys()...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "2/3/4/5/6/9/11/", tempString)
 	assert.Equal(t, 7, s.Union(s2).Size())
 	tempString = ""
-	for _, v := range SortOrderedAscending(s.Minus(s2).Keys()...) {
+	for _, v := range SortIntAscending(s.Minus(s2).Keys()...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "3/4/11/", tempString)
 	tempString = ""
-	for _, v := range SortOrderedAscending(s2.Minus(s).Keys()...) {
+	for _, v := range SortIntAscending(s2.Minus(s).Keys()...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "6/9/", tempString)
+}
+
+func TestStreamSetSetOperation(t *testing.T) {
+	var s *StreamSetDef
+	var s2 *StreamSetDef
+	var s3 *StreamSetDef
+	var tempString string
+
+	s = StreamSetFrom(11, 2, 3, 4, 5)
+	s2 = StreamSetFrom(9, 2, 5, 6)
+	s3 = StreamSetFrom(2, 5)
+	s.Set(2, Stream.From(70, 71, 72))
+	s2.Set(2, Stream.From(73, 74, 75))
+	s2.Set(6, Stream.From(6, 6, 6))
+	s2.Set(9, Stream.From(9, 9, 9))
+	s3.Set(2, Stream.From(71, 73, 78))
+
+	assert.Equal(t, true, s.ContainsKey(4))
+	assert.Equal(t, false, s.ContainsKey(6))
+	assert.Equal(t, true, s.IsSupersetByKey(s3))
+	assert.Equal(t, true, s2.IsSupersetByKey(s3))
+	assert.Equal(t, true, s3.IsSubsetByKey(s))
+	assert.Equal(t, true, s3.IsSubsetByKey(s2))
+	assert.Equal(t, false, s.IsSupersetByKey(s2))
+	tempString = ""
+	for _, v := range SortIntAscending(s.Clone().Intersection(s2).Keys()...) {
+		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
+	}
+	assert.Equal(t, "2/5/", tempString)
+	assert.Equal(t, 2, s.Intersection(s2).Size())
+	tempString = ""
+	for _, v := range SortIntAscending(s.Union(s2).Keys()...) {
+		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
+	}
+	assert.Equal(t, "2/3/4/5/6/9/11/", tempString)
+	assert.Equal(t, 7, s.Union(s2).Size())
+	tempString = ""
+	for _, v := range SortIntAscending(s.Minus(s2).Keys()...) {
+		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
+	}
+	assert.Equal(t, "3/4/11/", tempString)
+	tempString = ""
+	for _, v := range SortIntAscending(s2.Minus(s).Keys()...) {
+		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
+	}
+	assert.Equal(t, "6/9/", tempString)
+
+	tempString = ""
+	for _, v := range SortStringAscending(Map(streamIntTransformer, s2.Union(s).Values()...)...) {
+		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
+	}
+	assert.Equal(t, "6,6,6,end/70,71,72,73,74,75,end/9,9,9,end/end/end/end/end/", tempString)
+	tempString = ""
+	for _, v := range SortStringAscending(Map(streamIntTransformer, s2.Minus(s).Values()...)...) {
+		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
+	}
+	assert.Equal(t, "6,6,6,end/9,9,9,end/", tempString)
+	tempString = ""
+	for _, v := range SortStringAscending(Map(streamIntTransformer, s2.Intersection(s).Values()...)...) {
+		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
+	}
+	assert.Equal(t, "end/end/", tempString)
+	tempString = ""
+	for _, v := range SortStringAscending(Map(streamIntTransformer, s.Intersection(s2).Values()...)...) {
+		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
+	}
+	assert.Equal(t, "end/end/", tempString)
+	tempString = ""
+	for _, v := range SortStringAscending(Map(streamIntTransformer, s.Intersection(s3).Values()...)...) {
+		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
+	}
+	assert.Equal(t, "71,end/end/", tempString)
+	tempString = ""
+	for _, v := range SortStringAscending(Map(streamIntTransformer, s2.Intersection(s3).Values()...)...) {
+		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
+	}
+	assert.Equal(t, "73,end/end/", tempString)
+	tempString = ""
+	for _, v := range SortStringAscending(Map(streamIntTransformer, s.MinusStreams(s3).Values()...)...) {
+		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
+	}
+	assert.Equal(t, "70,72,end/end/end/end/end/", tempString)
+}
+
+func streamIntTransformer(s interface{}) interface{} {
+	result := ""
+	for _, item := range SortIntAscending(s.(*StreamDef).ToArray()...) {
+		result += Maybe.Just(item).ToMaybe().ToString() + ","
+	}
+	return result + "end"
 }
