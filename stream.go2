@@ -79,11 +79,19 @@ func (streamSelf *StreamDef[T]) Contains(input T) bool {
 
 // IsSubset returns true or false by checking if stream1 is a subset of stream2
 func (streamSelf *StreamDef[T]) IsSubset(input *StreamDef[T]) bool {
+	if input == nil || input.Len() == 0 {
+		return false
+	}
+
 	return IsSubset(*streamSelf, *input)
 }
 
 // IsSuperset returns true or false by checking if stream1 is a superset of stream2
 func (streamSelf *StreamDef[T]) IsSuperset(input *StreamDef[T]) bool {
+	if input == nil || input.Len() == 0 {
+		return true
+	}
+
 	return IsSuperset(*streamSelf, *input)
 }
 
@@ -96,6 +104,10 @@ func (streamSelf *StreamDef[T]) Clone() *StreamDef[T] {
 
 // Intersection Get the Intersection with this Stream and an another Stream
 func (streamSelf *StreamDef[T]) Intersection(input *StreamDef[T]) *StreamDef[T] {
+	if input == nil || input.Len() == 0 {
+		return new(StreamDef[T])
+	}
+
 	result := StreamDef[T](Intersection(*streamSelf, *input))
 
 	return &result
@@ -103,7 +115,7 @@ func (streamSelf *StreamDef[T]) Intersection(input *StreamDef[T]) *StreamDef[T] 
 
 // Minus Get all of this Stream but not in the given Stream
 func (streamSelf *StreamDef[T]) Minus(input *StreamDef[T]) *StreamDef[T] {
-	if input.Len() == 0 {
+	if input == nil || input.Len() == 0 {
 		return streamSelf
 	}
 
@@ -378,6 +390,10 @@ func (setSelf *SetDef[T, R]) Clone() *SetDef[T, R] {
 
 // Union Union an another Set object
 func (setSelf *SetDef[T, R]) Union(input *SetDef[T, R]) *SetDef[T, R] {
+	if (input == nil || input.Size() == 0) {
+		return setSelf
+	}
+
 	result := SetDef[T, R](Merge(*setSelf, *input))
 
 	return &result
@@ -385,6 +401,10 @@ func (setSelf *SetDef[T, R]) Union(input *SetDef[T, R]) *SetDef[T, R] {
 
 // Intersection Get the Intersection with this Set and an another Set
 func (setSelf *SetDef[T, R]) Intersection(input *SetDef[T, R]) *SetDef[T, R] {
+	if (input == nil || input.Size() == 0) {
+		return new(SetDef[T, R])
+	}
+
 	result := SetDef[T, R](IntersectionMapByKey(*setSelf, *input))
 
 	return &result
@@ -392,7 +412,7 @@ func (setSelf *SetDef[T, R]) Intersection(input *SetDef[T, R]) *SetDef[T, R] {
 
 // Minus Get all of this Set but not in the given Set
 func (setSelf *SetDef[T, R]) Minus(input *SetDef[T, R]) *SetDef[T, R] {
-	if input.Size() == 0 {
+	if input == nil || input.Size() == 0 {
 		return setSelf
 	}
 
