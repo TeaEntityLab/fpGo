@@ -1075,10 +1075,21 @@ func SliceToMap(defaultValue interface{}, input ...interface{}) map[interface{}]
 	return resultMap
 }
 
-// MakeNumericReturnForBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
-func MakeNumericReturnForBool1(fn func(...interface{}) bool) func(...interface{}) []interface{} {
+// MakeNumericReturnForVariadicParamReturnBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
+func MakeNumericReturnForVariadicParamReturnBool1(fn func(...interface{}) bool) func(...interface{}) []interface{} {
 	return func(args ...interface{}) []interface{} {
 		if fn(args...) {
+			return SliceOf(interface{}(1))
+		}
+
+		return SliceOf(interface{}(0))
+	}
+}
+
+// MakeNumericReturnForParam1ReturnBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
+func MakeNumericReturnForParam1ReturnBool1(fn func(interface{}) bool) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
+		if fn(args[0]) {
 			return SliceOf(interface{}(1))
 		}
 

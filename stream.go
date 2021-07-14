@@ -184,11 +184,19 @@ func (streamSelf *StreamDef) Contains(input interface{}) bool {
 
 // IsSubset returns true or false by checking if stream1 is a subset of stream2
 func (streamSelf *StreamDef) IsSubset(input *StreamDef) bool {
+	if input == nil || input.Len() == 0 {
+		return false
+	}
+
 	return IsSubset(*streamSelf, *input)
 }
 
 // IsSuperset returns true or false by checking if stream1 is a superset of stream2
 func (streamSelf *StreamDef) IsSuperset(input *StreamDef) bool {
+	if input == nil || input.Len() == 0 {
+		return true
+	}
+
 	return IsSuperset(*streamSelf, *input)
 }
 
@@ -199,6 +207,10 @@ func (streamSelf *StreamDef) Clone() *StreamDef {
 
 // Intersection Get the Intersection with this Stream and an another Stream
 func (streamSelf *StreamDef) Intersection(input *StreamDef) *StreamDef {
+	if input == nil || input.Len() == 0 {
+		return new(StreamDef)
+	}
+
 	result := Stream.FromArray(Intersection(*streamSelf, *input))
 
 	return result
@@ -206,7 +218,7 @@ func (streamSelf *StreamDef) Intersection(input *StreamDef) *StreamDef {
 
 // Minus Get all of this Stream but not in the given Stream
 func (streamSelf *StreamDef) Minus(input *StreamDef) *StreamDef {
-	if input.Len() == 0 {
+	if input == nil || input.Len() == 0 {
 		return streamSelf
 	}
 
@@ -330,6 +342,7 @@ var Stream StreamDef
 
 // Set
 
+// SetDef Set inspired by Collection utils
 type SetDef map[interface{}]interface{}
 
 // SetFrom New Set instance from a interface{} array
@@ -358,29 +371,49 @@ func SetFromArrayInterface(list []interface{}) *SetDef {
 	return SetFromArray(list)
 }
 
-// Map Map all items of Set by function
-func (setSelf *SetDef) Map(fn TransformerFunctor) *SetDef {
+// MapKey Map all keys of Set by function
+func (setSelf *SetDef) MapKey(fn TransformerFunctor) *SetDef {
 	result := make(SetDef, len(*setSelf))
-	for k := range *setSelf {
-		result[fn(k)] = true
+	for k, v := range *setSelf {
+		result[fn(k)] = v
 	}
 
 	return &result
 }
 
-// Contains Check the item exists or not in the Set
-func (setSelf *SetDef) Contains(input interface{}) bool {
+// MapValue Map all values of Set by function
+func (setSelf *SetDef) MapValue(fn TransformerFunctor) *SetDef {
+	result := make(SetDef, len(*setSelf))
+	for k, v := range *setSelf {
+		result[k] = fn(v)
+	}
+
+	return &result
+}
+
+// ContainsKey Check the key exists or not in the Set
+func (setSelf *SetDef) ContainsKey(input interface{}) bool {
 	_, ok := (*setSelf)[input]
 	return ok
 }
 
-// IsSubset returns true or false by checking if set1 is a subset of set2
-func (setSelf *SetDef) IsSubset(input *SetDef) bool {
+// ContainsValue Check the value exists or not in the Set
+func (setSelf *SetDef) ContainsValue(input interface{}) bool {
+	for _, v := range *setSelf {
+		if v == input {
+			return true
+		}
+	}
+	return false
+}
+
+// IsSubsetByKey returns true or false by checking if set1 is a subset of set2
+func (setSelf *SetDef) IsSubsetByKey(input *SetDef) bool {
 	return IsSubsetMapByKey(*setSelf, *input)
 }
 
-// IsSuperset returns true or false by checking if set1 is a superset of set2
-func (setSelf *SetDef) IsSuperset(input *SetDef) bool {
+// IsSupersetByKey returns true or false by checking if set1 is a superset of set2
+func (setSelf *SetDef) IsSupersetByKey(input *SetDef) bool {
 	return IsSupersetMapByKey(*setSelf, *input)
 }
 
@@ -402,8 +435,8 @@ func (setSelf *SetDef) Add(input ...interface{}) *SetDef {
 	return setSelf
 }
 
-// Remove Remove items from the Set
-func (setSelf *SetDef) Remove(input ...interface{}) *SetDef {
+// RemoveKeys Remove keys from the Set
+func (setSelf *SetDef) RemoveKeys(input ...interface{}) *SetDef {
 	inputLen := len(input)
 	if inputLen > 0 {
 		result := setSelf.Clone()
@@ -417,6 +450,36 @@ func (setSelf *SetDef) Remove(input ...interface{}) *SetDef {
 	return setSelf
 }
 
+// RemoveValues Remove values from the Set
+func (setSelf *SetDef) RemoveValues(input ...interface{}) *SetDef {
+	inputLen := len(input)
+	if inputLen > 0 {
+		result := setSelf.Clone()
+		valueMap := SliceToMap(0, input...)
+		for k, v := range *setSelf {
+			if _, ok := valueMap[v]; ok {
+				delete(*result, k)
+			}
+		}
+
+		return result
+	}
+
+	return setSelf
+}
+
+// Get Get items from the Set
+func (setSelf *SetDef) Get(key interface{}) interface{} {
+	return (*setSelf)[key]
+}
+
+// Set Set items to the Set
+func (setSelf *SetDef) Set(key interface{}, value interface{}) {
+	(*setSelf)[key] = value
+
+	// return setSelf
+}
+
 // Clone Clone this Set
 func (setSelf *SetDef) Clone() *SetDef {
 	result := SetDef(DuplicateMap(*setSelf))
@@ -426,6 +489,10 @@ func (setSelf *SetDef) Clone() *SetDef {
 
 // Union Union an another Set object
 func (setSelf *SetDef) Union(input *SetDef) *SetDef {
+	if input == nil || input.Size() == 0 {
+		return setSelf
+	}
+
 	result := SetDef(Merge(*setSelf, *input))
 
 	return &result
@@ -433,6 +500,10 @@ func (setSelf *SetDef) Union(input *SetDef) *SetDef {
 
 // Intersection Get the Intersection with this Set and an another Set
 func (setSelf *SetDef) Intersection(input *SetDef) *SetDef {
+	if input == nil || input.Size() == 0 {
+		return new(SetDef)
+	}
+
 	result := SetDef(IntersectionMapByKey(*setSelf, *input))
 
 	return &result
@@ -440,7 +511,7 @@ func (setSelf *SetDef) Intersection(input *SetDef) *SetDef {
 
 // Minus Get all of this Set but not in the given Set
 func (setSelf *SetDef) Minus(input *SetDef) *SetDef {
-	if input.Size() == 0 {
+	if input == nil || input.Size() == 0 {
 		return setSelf
 	}
 
@@ -460,9 +531,14 @@ func (setSelf *SetDef) Size() int {
 	return len(*setSelf)
 }
 
-// ToArray Convert Set to slice
-func (setSelf *SetDef) ToArray() []interface{} {
+// Keys Convert Set to slice
+func (setSelf *SetDef) Keys() []interface{} {
 	return Keys(*setSelf)
+}
+
+// Values Convert Set to slice
+func (setSelf *SetDef) Values() []interface{} {
+	return Values(*setSelf)
 }
 
 // Set Set utils instance

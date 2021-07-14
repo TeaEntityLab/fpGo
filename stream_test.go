@@ -284,32 +284,32 @@ func TestSetSetOperation(t *testing.T) {
 	s = SetFrom(11, 2, 3, 4, 5)
 	s2 = SetFrom(9, 2, 5, 6)
 	s3 = SetFrom(2, 5)
-	assert.Equal(t, true, s.Contains(4))
-	assert.Equal(t, false, s.Contains(6))
-	assert.Equal(t, true, s.IsSuperset(s3))
-	assert.Equal(t, true, s2.IsSuperset(s3))
-	assert.Equal(t, true, s3.IsSubset(s))
-	assert.Equal(t, true, s3.IsSubset(s2))
-	assert.Equal(t, false, s.IsSuperset(s2))
+	assert.Equal(t, true, s.ContainsKey(4))
+	assert.Equal(t, false, s.ContainsKey(6))
+	assert.Equal(t, true, s.IsSupersetByKey(s3))
+	assert.Equal(t, true, s2.IsSupersetByKey(s3))
+	assert.Equal(t, true, s3.IsSubsetByKey(s))
+	assert.Equal(t, true, s3.IsSubsetByKey(s2))
+	assert.Equal(t, false, s.IsSupersetByKey(s2))
 	tempString = ""
-	for _, v := range SortOrderedAscending(s.Clone().Intersection(s2).ToArray()...) {
+	for _, v := range SortOrderedAscending(s.Clone().Intersection(s2).Keys()...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "2/5/", tempString)
 	assert.Equal(t, 2, s.Intersection(s2).Size())
 	tempString = ""
-	for _, v := range SortOrderedAscending(s.Union(s2).ToArray()...) {
+	for _, v := range SortOrderedAscending(s.Union(s2).Keys()...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "2/3/4/5/6/9/11/", tempString)
 	assert.Equal(t, 7, s.Union(s2).Size())
 	tempString = ""
-	for _, v := range SortOrderedAscending(s.Minus(s2).ToArray()...) {
+	for _, v := range SortOrderedAscending(s.Minus(s2).Keys()...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "3/4/11/", tempString)
 	tempString = ""
-	for _, v := range SortOrderedAscending(s2.Minus(s).ToArray()...) {
+	for _, v := range SortOrderedAscending(s2.Minus(s).Keys()...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "6/9/", tempString)
