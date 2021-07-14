@@ -231,21 +231,21 @@ func (streamSelf *StreamDef[T]) Get(i int) T {
 
 // Set
 
-type SetDef[T comparable, R any] map[T] R
+type SetDef[T comparable, R comparable] map[T] R
 
 // SetFrom New Set instance from a T array
-func SetFrom[T comparable, R any](list ...T) *SetDef[T, R] {
+func SetFrom[T comparable, R comparable](list ...T) *SetDef[T, R] {
 	return SetFromArray[T, R](list)
 }
 
 // SetFromArray New Set instance from a T array
-func SetFromArray[T comparable, R any](list []T) *SetDef[T, R] {
+func SetFromArray[T comparable, R comparable](list []T) *SetDef[T, R] {
 	newOne := SetDef[T, R](SliceToMap(*new(R), list...))
 	return &newOne
 }
 
 // SetFromMap New Set instance from a map[T]R
-func SetFromMap[T comparable, R any](theMap map[T]R) *SetDef[T, R] {
+func SetFromMap[T comparable, R comparable](theMap map[T]R) *SetDef[T, R] {
 	result := SetDef[T, R](theMap)
 	return &result
 }
@@ -260,7 +260,7 @@ func SetFromArrayInterface(list []interface{}) *SetDef[interface{}, interface{}]
 	return SetFromArray[interface{}, interface{}](list)
 }
 
-// Map Map all items of Set by function
+// MapKey Map all keys of Set by function
 func (setSelf *SetDef[T, R]) MapKey(fn TransformerFunctor[T, T]) *SetDef[T, R] {
 	result := make(SetDef[T, R], len(*setSelf))
 	for k, v := range(*setSelf) {
@@ -270,19 +270,39 @@ func (setSelf *SetDef[T, R]) MapKey(fn TransformerFunctor[T, T]) *SetDef[T, R] {
 	return &result
 }
 
-// Contains Check the item exists or not in the Set
-func (setSelf *SetDef[T, R]) Contains(input T) bool {
+// MapValue Map all values of Set by function
+func (setSelf *SetDef[T, R]) MapValue(fn TransformerFunctor[R, R]) *SetDef[T, R] {
+	result := make(SetDef[T, R], len(*setSelf))
+	for k, v := range(*setSelf) {
+		result[k] = fn(v)
+	}
+
+	return &result
+}
+
+// ContainsKey Check the key exists or not in the Set
+func (setSelf *SetDef[T, R]) ContainsKey(input T) bool {
 	_, ok := (*setSelf)[input]
 	return ok
 }
 
-// IsSubset returns true or false by checking if set1 is a subset of set2
-func (setSelf *SetDef[T, R]) IsSubset(input *SetDef[T, R]) bool {
+// ContainsValue Check the value exists or not in the Set
+func (setSelf *SetDef[T, R]) ContainsValue(input R) bool {
+	for _, v := range(*setSelf) {
+		if v == input {
+			return true
+		}
+	}
+	return false
+}
+
+// IsSubsetByKey returns true or false by checking if set1 is a subset of set2
+func (setSelf *SetDef[T, R]) IsSubsetByKey(input *SetDef[T, R]) bool {
 	return IsSubsetMapByKey(*setSelf, *input)
 }
 
-// IsSuperset returns true or false by checking if set1 is a superset of set2
-func (setSelf *SetDef[T, R]) IsSuperset(input *SetDef[T, R]) bool {
+// IsSupersetByKey returns true or false by checking if set1 is a superset of set2
+func (setSelf *SetDef[T, R]) IsSupersetByKey(input *SetDef[T, R]) bool {
 	return IsSupersetMapByKey(*setSelf, *input)
 }
 
@@ -304,13 +324,31 @@ func (setSelf *SetDef[T, R]) Add(input ...T) *SetDef[T, R] {
 	return setSelf
 }
 
-// Remove Remove items from the Set
-func (setSelf *SetDef[T, R]) Remove(input ...T) *SetDef[T, R] {
+// RemoveKeys Remove keys from the Set
+func (setSelf *SetDef[T, R]) RemoveKeys(input ...T) *SetDef[T, R] {
 	inputLen := len(input)
 	if (inputLen > 0) {
 		result := setSelf.Clone()
 		for _, v := range(input) {
 			delete(*result, v)
+		}
+
+		return result
+	}
+
+	return setSelf
+}
+
+// RemoveValues Remove values from the Set
+func (setSelf *SetDef[T, R]) RemoveValues(input ...R) *SetDef[T, R] {
+	inputLen := len(input)
+	if (inputLen > 0) {
+		result := setSelf.Clone()
+		valueMap := SliceToMap(0, input...)
+		for k, v := range(*setSelf) {
+			if _, ok := valueMap[v]; ok {
+				delete(*result, k)
+			}
 		}
 
 		return result
@@ -374,9 +412,14 @@ func (setSelf *SetDef[T, R]) Size() int {
 	return len(*setSelf)
 }
 
-// ToArray Convert Set to slice
-func (setSelf *SetDef[T, R]) ToArray() []T {
+// Keys Convert Set to slice
+func (setSelf *SetDef[T, R]) Keys() []T {
 	return Keys(*setSelf)
+}
+
+// Values Convert Set to slice
+func (setSelf *SetDef[T, R]) Values() []R {
+	return Values(*setSelf)
 }
 
 // // Set Set utils instance
