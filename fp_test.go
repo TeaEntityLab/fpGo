@@ -133,6 +133,17 @@ func TestFPFunctions(t *testing.T) {
 		1, 1, 2, 1, 3, 1, 2, 1,
 	),
 	)
+	assert.Equal(t, []interface{}{1}, Compose(
+		MakeNumericReturnForParam1ReturnBool1(IsZero),
+	)(0))
+	assert.Equal(t, []interface{}{1}, Compose(
+		MakeNumericReturnForVariadicParamReturnBool1(IsDistinct),
+	)(1, 2, 3, 4))
+	/*
+		assert.Equal(t, []interface{}{1}, Compose(
+			MakeNumericReturnForVariadicParamReturnBool1(CurryParam1ForSlice1(IsEqual, []interface{}{1, 2, 3, 4})),
+		)(1, 2, 3, 4))
+	*/
 	assert.Equal(t, []interface{}{1, 2, 3}, Dedupe(1, 1, 2, 2, 3, 3, 3, 3, 3))
 	assert.Equal(t, []interface{}{1, 2, 3}, Difference([]interface{}{5, 1, 2, 3}, []interface{}{4, 5, 7, 8}))
 	assert.Equal(t, []interface{}{1, 2, 3}, SortIntAscending(Distinct(1, 1, 2, 1, 3, 1, 2, 1)...))

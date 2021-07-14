@@ -1086,6 +1086,17 @@ func MakeNumericReturnForVariadicParamReturnBool1(fn func(...interface{}) bool) 
 	}
 }
 
+// MakeNumericReturnForSliceParamReturnBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
+func MakeNumericReturnForSliceParamReturnBool1(fn func([]interface{}) bool) func(...interface{}) []interface{} {
+	return func(args ...interface{}) []interface{} {
+		if fn(args) {
+			return SliceOf(interface{}(1))
+		}
+
+		return SliceOf(interface{}(0))
+	}
+}
+
 // MakeNumericReturnForParam1ReturnBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
 func MakeNumericReturnForParam1ReturnBool1(fn func(interface{}) bool) func(...interface{}) []interface{} {
 	return func(args ...interface{}) []interface{} {
@@ -1183,6 +1194,13 @@ func MakeVariadicReturn6(fn func(...interface{}) (interface{}, interface{}, inte
 	return func(args ...interface{}) []interface{} {
 		r1, r2, r3, r4, r5, r6 := fn(args...)
 		return []interface{}{r1, r2, r3, r4, r5, r6}
+	}
+}
+
+// CurryParam1ForSlice1 Curry for 1 Param (for currying general fp functions simply)
+func CurryParam1ForSlice1(fn func(interface{}, []interface{}) interface{}, a interface{}) func(...interface{}) interface{} {
+	return func(args ...interface{}) interface{} {
+		return fn(a, args)
 	}
 }
 
