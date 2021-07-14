@@ -243,6 +243,7 @@ func (streamSelf *StreamDef[T]) Get(i int) T {
 
 // Set
 
+// SetDef Set inspired by Collection utils
 type SetDef[T comparable, R comparable] map[T] R
 
 // SetFrom New Set instance from a T array
@@ -448,6 +449,7 @@ func (setSelf *SetDef[T, R]) Values() []R {
 
 // StreamSet
 
+// StreamSetDef StreamSet inspired by Collection utils
 type StreamSetDef[T comparable, R comparable] SetDef[T, *StreamDef[R]]
 
 // NewStreamSet New StreamSet instance

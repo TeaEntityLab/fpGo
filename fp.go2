@@ -1252,6 +1252,16 @@ func MakeNumericReturnForVariadicParamReturnBool1[T any, R Numeric](fn func (...
 		return SliceOf(R(0))
 	}
 }
+// MakeNumericReturnForSliceParamReturnBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
+func MakeNumericReturnForSliceParamReturnBool1[T any, R Numeric](fn func ([]T) bool) func (...T) []R {
+	return func (args ...T) []R {
+		if fn(args) {
+			return SliceOf(R(1))
+		}
+
+		return SliceOf(R(0))
+	}
+}
 // MakeNumericReturnForParam1ReturnBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
 func MakeNumericReturnForParam1ReturnBool1[T any, R Numeric](fn func (T) bool) func (...T) []R {
 	return func (args ...T) []R {
@@ -1339,6 +1349,13 @@ func MakeVariadicReturn6[T any, R any](fn func (...T) (R, R, R, R, R, R)) func (
 	return func (args ...T) []R {
 		r1, r2, r3, r4, r5, r6 := fn(args...)
 		return []R{r1, r2, r3, r4, r5, r6}
+	}
+}
+
+// CurryParam1ForSlice1 Curry for 1 Param (for currying general fp functions simply)
+func CurryParam1ForSlice1[T any, R any, A any](fn func (A, []T) R, a A) func (...T) R {
+	return func (args ...T) R {
+		return fn(a, args)
 	}
 }
 
