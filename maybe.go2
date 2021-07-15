@@ -39,6 +39,8 @@ type MaybeDef[T any] interface {
 // someDef Maybe inspired by Rx/Optional/Guava/Haskell
 type someDef[T any] struct {
 	ref T
+	isNil bool
+	isPresent bool
 }
 
 // Just New Maybe by a given value
@@ -52,7 +54,8 @@ func (maybeSelf someDef[T]) Just(in interface{}) MaybeDef[interface{}] {
 
 // JustGenerics New Maybe by a given value
 func JustGenerics[T any](in T) MaybeDef[T] {
-	return someDef[T]{ref: in}
+	isNil := IsNil(in)
+	return someDef[T]{ref: in, isNil: isNil, isPresent: !isNil}
 }
 
 // Or Check the value wrapped by Maybe, if it's nil then return a given fallback value
@@ -379,17 +382,22 @@ func (maybeSelf someDef[T]) UnwrapInterface() interface{} {
 
 // IsPresent Check is it present(not nil)
 func (maybeSelf someDef[T]) IsPresent() bool {
-	return !(maybeSelf.IsNil())
+	return maybeSelf.isPresent
+	// return !(maybeSelf.IsNil())
 }
 
 // IsNil Check is it nil
 func (maybeSelf someDef[T]) IsNil() bool {
-	val := reflect.ValueOf(maybeSelf.ref)
+	return maybeSelf.isNil
 
-	if maybeSelf.Kind() == reflect.Ptr {
-		return val.IsNil()
-	}
-	return !val.IsValid()
+	// return IsNil(maybeSelf.ref)
+	//
+	// val := reflect.ValueOf(maybeSelf.ref)
+	//
+	// if maybeSelf.Kind() == reflect.Ptr {
+	// 	return val.IsNil()
+	// }
+	// return !val.IsValid()
 }
 
 // IsValid Check is its reflect.ValueOf(ref) valid
@@ -551,5 +559,5 @@ END
 **/
 
 // None None utils instance
-var None = noneDef{}
+var None = noneDef{isNil: true, isPresent: false}
 var noneAsSome = someDef[interface{}](None)
