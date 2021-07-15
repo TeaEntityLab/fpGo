@@ -7,23 +7,56 @@ import (
 	"strconv"
 )
 
+// Maybe
+
 // MaybeDef Maybe inspired by Rx/Optional/Guava/Haskell
-type MaybeDef[T any] struct {
+type MaybeDef[T any] interface {
+	Just(in interface{}) MaybeDef[interface{}]
+	Or(or T) T
+	Clone() MaybeDef[T]
+	FlatMap(fn func(T) MaybeDef[T]) MaybeDef[T]
+	ToString() string
+	ToPtr() *T
+	ToMaybe() MaybeDef[T]
+	ToFloat64() (float64, error)
+	ToFloat32() (float32, error)
+	ToInt() (int, error)
+	ToInt32() (int32, error)
+	ToInt64() (int64, error)
+	ToBool() (bool, error)
+	Let(fn func())
+	Unwrap() T
+	UnwrapInterface() interface{}
+	IsPresent() bool
+	IsNil() bool
+	IsValid() bool
+	Type() reflect.Type
+	Kind() reflect.Kind
+	IsType(t reflect.Type) bool
+	IsKind(t reflect.Kind) bool
+}
+
+// someDef Maybe inspired by Rx/Optional/Guava/Haskell
+type someDef[T any] struct {
 	ref T
 }
 
 // Just New Maybe by a given value
-func (maybeSelf MaybeDef[T]) Just(in interface{}) MaybeDef[interface{}] {
+func (maybeSelf someDef[T]) Just(in interface{}) MaybeDef[interface{}] {
+	if IsNil(in) {
+		return None
+	}
+
 	return JustGenerics(in)
 }
 
 // JustGenerics New Maybe by a given value
 func JustGenerics[T any](in T) MaybeDef[T] {
-	return MaybeDef[T]{ref: in}
+	return someDef[T]{ref: in}
 }
 
 // Or Check the value wrapped by Maybe, if it's nil then return a given fallback value
-func (maybeSelf MaybeDef[T]) Or(or T) T {
+func (maybeSelf someDef[T]) Or(or T) T {
 	if maybeSelf.IsNil() {
 		return or
 	}
@@ -35,10 +68,10 @@ func (maybeSelf MaybeDef[T]) Or(or T) T {
 func CloneTo[T any](maybeSelf MaybeDef[T], dest T) MaybeDef[T] {
 	if maybeSelf.IsNil() {
 		// return JustGenerics(nil)
-		return JustGenerics(maybeSelf.ref)
+		return JustGenerics(maybeSelf.Unwrap())
 	}
 
-	x := reflect.ValueOf(maybeSelf.ref)
+	x := reflect.ValueOf(maybeSelf.Unwrap())
 	if x.Kind() == reflect.Ptr {
 		starX := x.Elem()
 		y := reflect.New(starX.Type())
@@ -53,17 +86,17 @@ func CloneTo[T any](maybeSelf MaybeDef[T], dest T) MaybeDef[T] {
 }
 
 // Clone Clone Maybe object & its wrapped value
-func (maybeSelf MaybeDef[T]) Clone() MaybeDef[T] {
-	return CloneTo(maybeSelf, *new(T))
+func (maybeSelf someDef[T]) Clone() MaybeDef[T] {
+	return CloneTo[T](maybeSelf, *new(T))
 }
 
 // FlatMap FlatMap Maybe by function
-func (maybeSelf MaybeDef[T]) FlatMap(fn func(T) *MaybeDef[T]) *MaybeDef[T] {
+func (maybeSelf someDef[T]) FlatMap(fn func(T) MaybeDef[T]) MaybeDef[T] {
 	return fn(maybeSelf.ref)
 }
 
 // ToString Maybe to String
-func (maybeSelf MaybeDef[T]) ToString() string {
+func (maybeSelf someDef[T]) ToString() string {
 	if maybeSelf.IsNil() {
 		return "<nil>"
 	}
@@ -80,7 +113,7 @@ func (maybeSelf MaybeDef[T]) ToString() string {
 }
 
 // ToPtr Maybe to Ptr
-func (maybeSelf MaybeDef[T]) ToPtr() *T {
+func (maybeSelf someDef[T]) ToPtr() *T {
 	if maybeSelf.Kind() == reflect.Ptr {
 		val := reflect.Indirect(reflect.ValueOf(maybeSelf.ref)).Interface()
 		switch val.(type) {
@@ -96,7 +129,7 @@ func (maybeSelf MaybeDef[T]) ToPtr() *T {
 }
 
 // ToMaybe Maybe to Maybe
-func (maybeSelf MaybeDef[T]) ToMaybe() MaybeDef[T] {
+func (maybeSelf someDef[T]) ToMaybe() MaybeDef[T] {
 	if maybeSelf.IsNil() {
 		return maybeSelf
 	}
@@ -105,13 +138,13 @@ func (maybeSelf MaybeDef[T]) ToMaybe() MaybeDef[T] {
 	switch (ref).(type) {
 	default:
 		return maybeSelf
-	case MaybeDef[T]:
-		return (ref).(MaybeDef[T])
+	case someDef[T]:
+		return (ref).(someDef[T])
 	}
 }
 
 // ToFloat64 Maybe to Float64
-func (maybeSelf MaybeDef[T]) ToFloat64() (float64, error) {
+func (maybeSelf someDef[T]) ToFloat64() (float64, error) {
 	if maybeSelf.IsNil() {
 		return float64(0), errors.New("<nil>")
 	}
@@ -146,7 +179,7 @@ func (maybeSelf MaybeDef[T]) ToFloat64() (float64, error) {
 }
 
 // ToFloat32 Maybe to Float32
-func (maybeSelf MaybeDef[T]) ToFloat32() (float32, error) {
+func (maybeSelf someDef[T]) ToFloat32() (float32, error) {
 	if maybeSelf.IsNil() {
 		return float32(0), errors.New("<nil>")
 	}
@@ -182,7 +215,7 @@ func (maybeSelf MaybeDef[T]) ToFloat32() (float32, error) {
 }
 
 // ToInt Maybe to Int
-func (maybeSelf MaybeDef[T]) ToInt() (int, error) {
+func (maybeSelf someDef[T]) ToInt() (int, error) {
 	if maybeSelf.IsNil() {
 		return int(0), errors.New("<nil>")
 	}
@@ -217,7 +250,7 @@ func (maybeSelf MaybeDef[T]) ToInt() (int, error) {
 }
 
 // ToInt32 Maybe to Int32
-func (maybeSelf MaybeDef[T]) ToInt32() (int32, error) {
+func (maybeSelf someDef[T]) ToInt32() (int32, error) {
 	if maybeSelf.IsNil() {
 		return int32(0), errors.New("<nil>")
 	}
@@ -253,7 +286,7 @@ func (maybeSelf MaybeDef[T]) ToInt32() (int32, error) {
 }
 
 // ToInt64 Maybe to Int64
-func (maybeSelf MaybeDef[T]) ToInt64() (int64, error) {
+func (maybeSelf someDef[T]) ToInt64() (int64, error) {
 	if maybeSelf.IsNil() {
 		return int64(0), errors.New("<nil>")
 	}
@@ -288,7 +321,7 @@ func (maybeSelf MaybeDef[T]) ToInt64() (int64, error) {
 }
 
 // ToBool Maybe to Bool
-func (maybeSelf MaybeDef[T]) ToBool() (bool, error) {
+func (maybeSelf someDef[T]) ToBool() (bool, error) {
 	if maybeSelf.IsNil() {
 		return bool(false), errors.New("<nil>")
 	}
@@ -320,14 +353,14 @@ func (maybeSelf MaybeDef[T]) ToBool() (bool, error) {
 }
 
 // Let If the wrapped value is not nil, then do the given function
-func (maybeSelf MaybeDef[T]) Let(fn func()) {
+func (maybeSelf someDef[T]) Let(fn func()) {
 	if maybeSelf.IsPresent() {
 		fn()
 	}
 }
 
 // Unwrap Unwrap the wrapped value of Maybe
-func (maybeSelf MaybeDef[T]) Unwrap() T {
+func (maybeSelf someDef[T]) Unwrap() T {
 	// if maybeSelf.IsNil() {
 	// 	return nil
 	// }
@@ -336,7 +369,7 @@ func (maybeSelf MaybeDef[T]) Unwrap() T {
 }
 
 // UnwrapInterface Unwrap the wrapped value of Maybe as interface{}
-func (maybeSelf MaybeDef[T]) UnwrapInterface() interface{} {
+func (maybeSelf someDef[T]) UnwrapInterface() interface{} {
 	if maybeSelf.IsNil() {
 		return nil
 	}
@@ -345,12 +378,12 @@ func (maybeSelf MaybeDef[T]) UnwrapInterface() interface{} {
 }
 
 // IsPresent Check is it present(not nil)
-func (maybeSelf MaybeDef[T]) IsPresent() bool {
+func (maybeSelf someDef[T]) IsPresent() bool {
 	return !(maybeSelf.IsNil())
 }
 
 // IsNil Check is it nil
-func (maybeSelf MaybeDef[T]) IsNil() bool {
+func (maybeSelf someDef[T]) IsNil() bool {
 	val := reflect.ValueOf(maybeSelf.ref)
 
 	if maybeSelf.Kind() == reflect.Ptr {
@@ -360,13 +393,13 @@ func (maybeSelf MaybeDef[T]) IsNil() bool {
 }
 
 // IsValid Check is its reflect.ValueOf(ref) valid
-func (maybeSelf MaybeDef[T]) IsValid() bool {
+func (maybeSelf someDef[T]) IsValid() bool {
 	val := reflect.ValueOf(maybeSelf.ref)
 	return val.IsValid()
 }
 
 // Type Get its Type
-func (maybeSelf MaybeDef[T]) Type() reflect.Type {
+func (maybeSelf someDef[T]) Type() reflect.Type {
 	if maybeSelf.IsNil() {
 		return reflect.TypeOf(nil)
 	}
@@ -374,19 +407,149 @@ func (maybeSelf MaybeDef[T]) Type() reflect.Type {
 }
 
 // Kind Get its Kind
-func (maybeSelf MaybeDef[T]) Kind() reflect.Kind {
+func (maybeSelf someDef[T]) Kind() reflect.Kind {
 	return reflect.ValueOf(maybeSelf.ref).Kind()
 }
 
 // IsType Check is its Type equal to the given one
-func (maybeSelf MaybeDef[T]) IsType(t reflect.Type) bool {
+func (maybeSelf someDef[T]) IsType(t reflect.Type) bool {
 	return maybeSelf.Type() == t
 }
 
 // IsKind Check is its Kind equal to the given one
-func (maybeSelf MaybeDef[T]) IsKind(t reflect.Kind) bool {
+func (maybeSelf someDef[T]) IsKind(t reflect.Kind) bool {
 	return maybeSelf.Kind() == t
 }
 
 // Maybe Maybe utils instance
-var Maybe MaybeDef[interface{}]
+var Maybe someDef[interface{}]
+
+// None
+
+// noneDef None inspired by Rx/Optional/Guava/Haskell
+type noneDef someDef[interface{}] // TODO Make it a struct to inheritance (for go2go temporarily)
+
+// Or Check the value wrapped by Maybe, if it's nil then return a given fallback value
+func (noneSelf noneDef) Or(or interface{}) interface{} {
+	return or
+}
+
+// CloneTo Clone the Ptr target to an another Ptr target
+func (noneSelf noneDef) CloneTo(dest interface{}) MaybeDef[interface{}] {
+	return None
+}
+
+// Clone Clone Maybe object & its wrapped value
+func (noneSelf noneDef) Clone() MaybeDef[interface{}] {
+	return None
+}
+
+// ToString Maybe to String
+func (noneSelf noneDef) ToString() string {
+	return "<nil>"
+}
+
+// ToPtr Maybe to Ptr
+func (noneSelf noneDef) ToPtr() *interface{} {
+	return nil
+}
+
+// ToMaybe Maybe to Maybe
+func (noneSelf noneDef) ToMaybe() MaybeDef[interface{}] {
+	return noneSelf
+}
+
+// ToFloat64 Maybe to Float64
+func (noneSelf noneDef) ToFloat64() (float64, error) {
+	return float64(0), errors.New("<nil>")
+}
+
+// ToFloat32 Maybe to Float32
+func (noneSelf noneDef) ToFloat32() (float32, error) {
+	return float32(0), errors.New("<nil>")
+}
+
+// ToInt Maybe to Int
+func (noneSelf noneDef) ToInt() (int, error) {
+	return int(0), errors.New("<nil>")
+}
+
+// ToInt32 Maybe to Int32
+func (noneSelf noneDef) ToInt32() (int32, error) {
+	return int32(0), errors.New("<nil>")
+}
+
+// ToInt64 Maybe to Int64
+func (noneSelf noneDef) ToInt64() (int64, error) {
+	return int64(0), errors.New("<nil>")
+}
+
+// ToBool Maybe to Bool
+func (noneSelf noneDef) ToBool() (bool, error) {
+	return bool(false), errors.New("<nil>")
+}
+
+// Let If the wrapped value is not nil, then do the given function
+func (noneSelf noneDef) Let(fn func()) {}
+
+// Unwrap Unwrap the wrapped value of Maybe
+func (noneSelf noneDef) Unwrap() interface{} {
+	return nil
+}
+
+// UnwrapInterface Unwrap the wrapped value of Maybe as interface{}
+func (noneSelf noneDef) UnwrapInterface() interface{} {
+	return nil
+}
+
+// IsPresent Check is it present(not nil)
+func (noneSelf noneDef) IsPresent() bool {
+	return false
+}
+
+// IsNil Check is it nil
+func (noneSelf noneDef) IsNil() bool {
+	return true
+}
+
+// Type Get its Type
+func (noneSelf noneDef) Type() reflect.Type {
+	return reflect.TypeOf(nil)
+}
+
+/**
+TODO DUPLICATED ZONE (for go2go temporarily)
+BEGIN
+**/
+// Just TODO NOTE !!Duplicated!! New Maybe by a given value
+func (noneSelf noneDef) Just(in interface{}) MaybeDef[interface{}] {
+  return noneAsSome.Just(in)
+}
+// FlatMap TODO NOTE !!Duplicated!! FlatMap Maybe by function
+func (noneSelf noneDef) FlatMap(fn func(interface{}) MaybeDef[interface{}]) MaybeDef[interface{}] {
+  return noneAsSome.FlatMap(fn)
+}
+// IsValid TODO NOTE !!Duplicated!! Check is its reflect.ValueOf(ref) valid
+func (noneSelf noneDef) IsValid() bool {
+  return noneAsSome.IsValid()
+}
+// Kind TODO NOTE !!Duplicated!! Get its Kind
+func (noneSelf noneDef) Kind() reflect.Kind {
+  return noneAsSome.Kind()
+}
+// IsType TODO NOTE !!Duplicated!! Check is its Type equal to the given one
+func (noneSelf noneDef) IsType(t reflect.Type) bool {
+  return noneAsSome.IsType(t)
+}
+// IsKind TODO NOTE !!Duplicated!! Check is its Kind equal to the given one
+func (noneSelf noneDef) IsKind(t reflect.Kind) bool {
+  return noneAsSome.IsKind(t)
+}
+/**
+TODO DUPLICATED ZONE (for go2go temporarily)
+END
+**/
+
+// None None utils instance
+var None = noneDef{}
+var noneAsSome = someDef[interface{}](None)
