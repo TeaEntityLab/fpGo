@@ -38,7 +38,9 @@ type MaybeDef interface {
 
 // someDef Maybe inspired by Rx/Optional/Guava/Haskell
 type someDef struct {
-	ref interface{}
+	ref       interface{}
+	isNil     bool
+	isPresent bool
 }
 
 // Just New Maybe by a given value
@@ -47,7 +49,7 @@ func (maybeSelf someDef) Just(in interface{}) MaybeDef {
 		return None
 	}
 
-	return someDef{ref: in}
+	return someDef{ref: in, isNil: false, isPresent: true}
 }
 
 // Or Check the value wrapped by Maybe, if it's nil then return a given fallback value
@@ -328,12 +330,14 @@ func (maybeSelf someDef) Unwrap() interface{} {
 
 // IsPresent Check is it present(not nil)
 func (maybeSelf someDef) IsPresent() bool {
-	return !(maybeSelf.IsNil())
+	return maybeSelf.isPresent
+	// return !(maybeSelf.IsNil())
 }
 
 // IsNil Check is it nil
 func (maybeSelf someDef) IsNil() bool {
-	return IsNil(maybeSelf.ref)
+	return maybeSelf.isNil
+	// return IsNil(maybeSelf.ref)
 }
 
 // IsValid Check is its reflect.ValueOf(ref) valid
@@ -457,4 +461,4 @@ func (noneSelf noneDef) Type() reflect.Type {
 }
 
 // None None utils instance
-var None = noneDef{}
+var None = noneDef{someDef{isNil: true, isPresent: false}}
