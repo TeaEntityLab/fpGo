@@ -74,12 +74,12 @@ func TestClone(t *testing.T) {
 }
 
 func TestFlatMap(t *testing.T) {
-	var m *MaybeDef
+	var m MaybeDef
 
-	m = Maybe.Just(1).FlatMap(func(in interface{}) *MaybeDef {
+	m = Maybe.Just(1).FlatMap(func(in interface{}) MaybeDef {
 		v, _ := Maybe.Just(in).ToInt()
 		result := Maybe.Just(v + 1)
-		return &result
+		return result
 	})
 	assert.Equal(t, 2, m.Unwrap())
 }

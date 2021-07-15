@@ -264,7 +264,7 @@ func Distinct(list ...interface{}) []interface{} {
 				result[resultIndex] = v
 				s[v] = true
 
-				resultIndex += 1
+				resultIndex++
 			}
 		}
 
@@ -274,7 +274,7 @@ func Distinct(list ...interface{}) []interface{} {
 	return result
 }
 
-// Distinct removes duplicates.(RandomOrder)
+// DistinctRandom removes duplicates.(RandomOrder)
 func DistinctRandom(list ...interface{}) []interface{} {
 	s := SliceToMap(true, list...)
 	return Keys(s)
@@ -535,7 +535,7 @@ func IntersectionMapByKey(inputList ...map[interface{}]interface{}) map[interfac
 			if !exists {
 				resultMap[k] = v
 			}
-			countMap[k] += 1
+			countMap[k]++
 		}
 	}
 	for k, v := range countMap {
@@ -557,7 +557,7 @@ func Minus(set1, set2 []interface{}) []interface{} {
 		_, exists := set2Map[item]
 		if !exists {
 			result[resultIndex] = item
-			resultIndex += 1
+			resultIndex++
 		}
 	}
 
@@ -1052,6 +1052,21 @@ func DuplicateMap(input map[interface{}]interface{}) map[interface{}]interface{}
 	}
 
 	return make(map[interface{}]interface{})
+}
+
+// IsNil Check is it nil
+func IsNil(obj interface{}) bool {
+	val := reflect.ValueOf(obj)
+
+	if Kind(obj) == reflect.Ptr {
+		return val.IsNil()
+	}
+	return !val.IsValid()
+}
+
+// Kind Get Kind by reflection
+func Kind(obj interface{}) reflect.Kind {
+	return reflect.ValueOf(obj).Kind()
 }
 
 // PtrOf Return Ptr of a value
