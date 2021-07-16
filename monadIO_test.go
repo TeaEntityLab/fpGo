@@ -30,4 +30,13 @@ func TestMonadIO(t *testing.T) {
 		},
 	})
 	assert.Equal(t, 2, actualInt)
+
+	actualInt = 0
+	m = MonadIO.New(func() interface{} {
+		actualInt = 3
+		return 0
+	})
+	assert.Equal(t, 0, actualInt)
+	m.Eval()
+	assert.Equal(t, 3, actualInt)
 }

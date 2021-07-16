@@ -7,6 +7,13 @@ import (
 	"strconv"
 )
 
+var (
+	// ErrConversionUnsupported Conversion Unsupported
+	ErrConversionUnsupported = errors.New("unsupported")
+	// ErrConversionNil Conversion Nil
+	ErrConversionNil = errors.New("<nil>")
+)
+
 // Maybe
 
 // MaybeDef Maybe inspired by Rx/Optional/Guava/Haskell
@@ -30,6 +37,7 @@ type MaybeDef interface {
 	IsPresent() bool
 	IsNil() bool
 	IsValid() bool
+	IsPtr() bool
 	Type() reflect.Type
 	Kind() reflect.Kind
 	IsType(t reflect.Type) bool
@@ -106,7 +114,7 @@ func (maybeSelf someDef) ToString() string {
 
 // ToPtr Maybe to Ptr
 func (maybeSelf someDef) ToPtr() *interface{} {
-	if maybeSelf.Kind() == reflect.Ptr {
+	if maybeSelf.IsPtr() {
 		val := reflect.Indirect(reflect.ValueOf(maybeSelf.ref)).Interface()
 		return &val
 	}
@@ -130,7 +138,7 @@ func (maybeSelf someDef) ToFloat64() (float64, error) {
 	ref := maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return float64(0), errors.New("unsupported")
+		return float64(0), ErrConversionUnsupported
 	case string:
 		return strconv.ParseFloat(maybeSelf.ToString(), 64)
 	case bool:
@@ -161,7 +169,7 @@ func (maybeSelf someDef) ToFloat32() (float32, error) {
 	ref := maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return float32(0), errors.New("unsupported")
+		return float32(0), ErrConversionUnsupported
 	case string:
 		val, err := strconv.ParseFloat(maybeSelf.ToString(), 32)
 		return float32(val), err
@@ -193,7 +201,7 @@ func (maybeSelf someDef) ToInt() (int, error) {
 	ref := maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return int(0), errors.New("unsupported")
+		return int(0), ErrConversionUnsupported
 	case string:
 		return strconv.Atoi(maybeSelf.ToString())
 	case bool:
@@ -224,7 +232,7 @@ func (maybeSelf someDef) ToInt32() (int32, error) {
 	ref := maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return int32(0), errors.New("unsupported")
+		return int32(0), ErrConversionUnsupported
 	case string:
 		val, err := maybeSelf.ToInt64()
 		return int32(val), err
@@ -256,7 +264,7 @@ func (maybeSelf someDef) ToInt64() (int64, error) {
 	ref := maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return int64(0), errors.New("unsupported")
+		return int64(0), ErrConversionUnsupported
 	case string:
 		return strconv.ParseInt(maybeSelf.ToString(), 10, 32)
 	case bool:
@@ -287,7 +295,7 @@ func (maybeSelf someDef) ToBool() (bool, error) {
 	ref := maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return bool(false), errors.New("unsupported")
+		return bool(false), ErrConversionUnsupported
 	case string:
 		return strconv.ParseBool(maybeSelf.ToString())
 	case bool:
@@ -346,11 +354,16 @@ func (maybeSelf someDef) IsValid() bool {
 	return val.IsValid()
 }
 
+// IsPtr Check is it a Ptr
+func (maybeSelf someDef) IsPtr() bool {
+	return IsPtr(maybeSelf.ref)
+}
+
 // Type Get its Type
 func (maybeSelf someDef) Type() reflect.Type {
-	if maybeSelf.IsNil() {
-		return reflect.TypeOf(nil)
-	}
+	// if maybeSelf.IsNil() {
+	// 	return reflect.TypeOf(nil)
+	// }
 	return reflect.TypeOf(maybeSelf.ref)
 }
 
@@ -409,32 +422,32 @@ func (noneSelf noneDef) ToMaybe() MaybeDef {
 
 // ToFloat64 Maybe to Float64
 func (noneSelf noneDef) ToFloat64() (float64, error) {
-	return float64(0), errors.New("<nil>")
+	return float64(0), ErrConversionNil
 }
 
 // ToFloat32 Maybe to Float32
 func (noneSelf noneDef) ToFloat32() (float32, error) {
-	return float32(0), errors.New("<nil>")
+	return float32(0), ErrConversionNil
 }
 
 // ToInt Maybe to Int
 func (noneSelf noneDef) ToInt() (int, error) {
-	return int(0), errors.New("<nil>")
+	return int(0), ErrConversionNil
 }
 
 // ToInt32 Maybe to Int32
 func (noneSelf noneDef) ToInt32() (int32, error) {
-	return int32(0), errors.New("<nil>")
+	return int32(0), ErrConversionNil
 }
 
 // ToInt64 Maybe to Int64
 func (noneSelf noneDef) ToInt64() (int64, error) {
-	return int64(0), errors.New("<nil>")
+	return int64(0), ErrConversionNil
 }
 
 // ToBool Maybe to Bool
 func (noneSelf noneDef) ToBool() (bool, error) {
-	return bool(false), errors.New("<nil>")
+	return bool(false), ErrConversionNil
 }
 
 // Let If the wrapped value is not nil, then do the given function
@@ -455,9 +468,19 @@ func (noneSelf noneDef) IsNil() bool {
 	return true
 }
 
+// IsPtr Check is it nil
+func (noneSelf noneDef) IsPtr() bool {
+	return false
+}
+
 // Type Get its Type
 func (noneSelf noneDef) Type() reflect.Type {
 	return reflect.TypeOf(nil)
+}
+
+// Kind Get its Kind
+func (noneSelf noneDef) Kind() reflect.Kind {
+	return reflect.Invalid
 }
 
 // None None utils instance

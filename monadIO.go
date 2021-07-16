@@ -83,5 +83,10 @@ func (monadIOSelf *MonadIODef) doEffect() interface{} {
 	return monadIOSelf.effect()
 }
 
+// Eval Eval the value right now(sync)
+func (monadIOSelf *MonadIODef) Eval() interface{} {
+	return monadIOSelf.doEffect()
+}
+
 // MonadIO MonadIO utils instance
 var MonadIO MonadIODef
