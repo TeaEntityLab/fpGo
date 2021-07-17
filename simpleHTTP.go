@@ -2,6 +2,7 @@ package fpgo
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,9 +10,15 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // SimpleHTTP
+
+const (
+	// DefaultTimeoutMillisecond Default Request TimeoutMillisecond
+	DefaultTimeoutMillisecond = 30 * time.Second
+)
 
 // Interceptor Interceptor functions
 type Interceptor func(*http.Request) (*http.Response, error)
@@ -21,6 +28,8 @@ type SimpleHTTPDef struct {
 	client       *http.Client
 	interceptors StreamDef
 
+	TimeoutMillisecond int64
+
 	clientTransport http.RoundTripper
 	lastTransport   http.RoundTripper
 }
@@ -28,8 +37,10 @@ type SimpleHTTPDef struct {
 // ResponseWithError Response with Error
 type ResponseWithError struct {
 	TargetObject interface{}
+	Request      *http.Request
 	Response     *http.Response
-	Err          error
+
+	Err error
 }
 
 // NewSimpleHTTP New a SimpleHTTP instance
@@ -108,21 +119,108 @@ func (simpleHTTPSelf *SimpleHTTPDef) recursiveVisit(request *http.Request, index
 	return simpleHTTPSelf.recursiveVisit(request, index+1)
 }
 
-// Get HTTP Get
-func (simpleHTTPSelf *SimpleHTTPDef) Get(theURL string) *ResponseWithError {
-	response, err := simpleHTTPSelf.client.Get(theURL)
+// GetContextTimeout Get Context by TimeoutMillisecond
+func (simpleHTTPSelf *SimpleHTTPDef) GetContextTimeout() (context.Context, context.CancelFunc) {
+	if simpleHTTPSelf.TimeoutMillisecond > 0 {
+		return context.WithTimeout(context.Background(), time.Duration(simpleHTTPSelf.TimeoutMillisecond))
+	}
+
+	return context.WithTimeout(context.Background(), DefaultTimeoutMillisecond)
+}
+
+// Get HTTP Method Get
+func (simpleHTTPSelf *SimpleHTTPDef) Get(givenURL string) *ResponseWithError {
+	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
+	defer cancel()
+	return simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodGet, givenURL)
+}
+
+// Head HTTP Method Head
+func (simpleHTTPSelf *SimpleHTTPDef) Head(givenURL string) *ResponseWithError {
+	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
+	defer cancel()
+	return simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodHead, givenURL)
+}
+
+// Options HTTP Method Options
+func (simpleHTTPSelf *SimpleHTTPDef) Options(givenURL string) *ResponseWithError {
+	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
+	defer cancel()
+	return simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodOptions, givenURL)
+}
+
+// Delete HTTP Method Delete
+func (simpleHTTPSelf *SimpleHTTPDef) Delete(givenURL string) *ResponseWithError {
+	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
+	defer cancel()
+	return simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodDelete, givenURL)
+}
+
+// Post HTTP Method Post
+func (simpleHTTPSelf *SimpleHTTPDef) Post(givenURL, contentType string, body io.Reader) *ResponseWithError {
+	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
+	defer cancel()
+	return simpleHTTPSelf.DoNewRequestWithBodyOptions(ctx, nil, http.MethodPost, givenURL, body, contentType)
+}
+
+// Put HTTP Method Put
+func (simpleHTTPSelf *SimpleHTTPDef) Put(givenURL, contentType string, body io.Reader) *ResponseWithError {
+	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
+	defer cancel()
+	return simpleHTTPSelf.DoNewRequestWithBodyOptions(ctx, nil, http.MethodPut, givenURL, body, contentType)
+}
+
+// Patch HTTP Method Patch
+func (simpleHTTPSelf *SimpleHTTPDef) Patch(givenURL, contentType string, body io.Reader) *ResponseWithError {
+	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
+	defer cancel()
+	return simpleHTTPSelf.DoNewRequestWithBodyOptions(ctx, nil, http.MethodPatch, givenURL, body, contentType)
+}
+
+// DoNewRequest Do New HTTP Request
+func (simpleHTTPSelf *SimpleHTTPDef) DoNewRequest(context context.Context, header http.Header, method string, givenURL string) *ResponseWithError {
+	request, newRequestErr := http.NewRequestWithContext(context, method, givenURL, nil)
+	if newRequestErr != nil {
+		return &ResponseWithError{
+			Request: request,
+			Err:     newRequestErr,
+		}
+	}
+
+	if header != nil {
+		request.Header = header
+	}
+
+	response, err := simpleHTTPSelf.client.Do(request)
 
 	return &ResponseWithError{
+		Request:  request,
 		Response: response,
 		Err:      err,
 	}
 }
 
-// Post HTTP Post
-func (simpleHTTPSelf *SimpleHTTPDef) Post(theURL, contentType string, body io.Reader) *ResponseWithError {
-	response, err := simpleHTTPSelf.client.Post(theURL, contentType, body)
+// DoNewRequestWithBodyOptions Do New HTTP Request with body options
+func (simpleHTTPSelf *SimpleHTTPDef) DoNewRequestWithBodyOptions(context context.Context, header http.Header, method string, givenURL string, body io.Reader, contentType string) *ResponseWithError {
+	request, newRequestErr := http.NewRequestWithContext(context, method, givenURL, body)
+	if newRequestErr != nil {
+		return &ResponseWithError{
+			Request: request,
+			Err:     newRequestErr,
+		}
+	}
+
+	if header != nil {
+		request.Header = header
+	}
+	if contentType != "" {
+		request.Header.Add("Content-Type", contentType)
+	}
+
+	response, err := simpleHTTPSelf.client.Do(request)
 
 	return &ResponseWithError{
+		Request:  request,
 		Response: response,
 		Err:      err,
 	}
@@ -133,23 +231,11 @@ func (simpleHTTPSelf *SimpleHTTPDef) Post(theURL, contentType string, body io.Re
 
 // SimpleAPI
 
-type apiNoBody func(pathParam map[string]interface{}, target interface{}) *MonadIODef
-type apiHasBody func(pathParam map[string]interface{}, body interface{}, target interface{}) *MonadIODef
+// APINoBody API without request body options
+type APINoBody func(pathParam map[string]interface{}, target interface{}) *MonadIODef
 
-// APIGet API Get function definition
-type APIGet apiNoBody
-
-// APIOption API Option function definition
-type APIOption apiNoBody
-
-// APIDelete API Delete function definition
-type APIDelete apiNoBody
-
-// APIPost API Post function definition
-type APIPost apiHasBody
-
-// APIPut API Put function definition
-type APIPut apiHasBody
+// APIHasBody API with request body options
+type APIHasBody func(pathParam map[string]interface{}, body interface{}, target interface{}) *MonadIODef
 
 // BodySerializer Serialize the body (for put/post etc)
 type BodySerializer func(body interface{}) (io.Reader, error)
@@ -163,12 +249,24 @@ func JSONBodyDeserializer(body []byte, target interface{}) (interface{}, error) 
 	return target, err
 }
 
+// JSONBodySerializer Default JSON Body serializer
+func JSONBodySerializer(body interface{}) (io.Reader, error) {
+	jsonBytes, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes.NewReader(jsonBytes), err
+}
+
 // SimpleAPIDef SimpleAPIDef inspired by Retrofits
 type SimpleAPIDef struct {
-	simpleHTTP *SimpleHTTPDef
-	BaseURL    string
+	simpleHTTP    *SimpleHTTPDef
+	BaseURL       string
+	DefaultHeader http.Header
 
-	ResponseDeserializer BodyDeserializer
+	RequestSerializerForJSON BodySerializer
+	ResponseDeserializer     BodyDeserializer
 }
 
 // NewSimpleAPI New a NewSimpleAPI instance
@@ -178,10 +276,10 @@ func NewSimpleAPI(baseURL string) *SimpleAPIDef {
 
 // NewSimpleAPIWithSimpleHTTP a SimpleAPIDef instance with a SimpleHTTP
 func NewSimpleAPIWithSimpleHTTP(baseURL string, simpleHTTP *SimpleHTTPDef) *SimpleAPIDef {
-	theURL, _ := url.Parse(baseURL)
+	urlInstance, _ := url.Parse(baseURL)
 
 	return &SimpleAPIDef{
-		BaseURL:              theURL.String(),
+		BaseURL:              urlInstance.String(),
 		ResponseDeserializer: JSONBodyDeserializer,
 
 		simpleHTTP: simpleHTTP,
@@ -194,61 +292,58 @@ func (simpleAPISelf *SimpleAPIDef) GetSimpleHTTP() *SimpleHTTPDef {
 }
 
 // MakeGet Make a Get API
-func (simpleAPISelf *SimpleAPIDef) MakeGet(theURL string) APIGet {
-	return APIGet(func(pathParam map[string]interface{}, target interface{}) *MonadIODef {
-		return MonadIO.New(func() interface{} {
+func (simpleAPISelf *SimpleAPIDef) MakeGet(relativeURL string) APINoBody {
+	return simpleAPISelf.MakeDoNewRequest(http.MethodGet, relativeURL)
+}
 
-			response := simpleAPISelf.simpleHTTP.Get(simpleAPISelf.replacePathParams(theURL, pathParam))
-			if response.Err != nil {
-				return ResponseWithError{
-					Err: response.Err,
-				}
-			}
-			responseBody, readResponseErr := ioutil.ReadAll(response.Response.Body)
-			if readResponseErr != nil {
-				return ResponseWithError{
-					Err: readResponseErr,
-				}
-			}
-			response.TargetObject, response.Err = simpleAPISelf.ResponseDeserializer(responseBody, target)
-			return response
-		})
-	})
+// MakeDelete Make a Delete API
+func (simpleAPISelf *SimpleAPIDef) MakeDelete(relativeURL string) APINoBody {
+	return simpleAPISelf.MakeDoNewRequest(http.MethodDelete, relativeURL)
 }
 
 // MakePostJSONBody Make a Post API with json Body
-func (simpleAPISelf *SimpleAPIDef) MakePostJSONBody(theURL string) APIPost {
-	return simpleAPISelf.MakePostWithBodySerializer(theURL, "application/json", BodySerializer(func(body interface{}) (io.Reader, error) {
-		jsonBytes, err := json.Marshal(body)
-		if err != nil {
-			return nil, err
-		}
-
-		return bytes.NewReader(jsonBytes), err
-	}))
+func (simpleAPISelf *SimpleAPIDef) MakePostJSONBody(relativeURL string) APIHasBody {
+	return simpleAPISelf.MakeDoNewRequestWithBodyOptions(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
 }
 
-// MakePostWithBodySerializer Make a Post API with Body serializer
-func (simpleAPISelf *SimpleAPIDef) MakePostWithBodySerializer(theURL string, contentType string, bodySerializer BodySerializer) APIPost {
-	return APIPost(func(pathParam map[string]interface{}, body interface{}, target interface{}) *MonadIODef {
+// MakePutJSONBody Make a Put API with json Body
+func (simpleAPISelf *SimpleAPIDef) MakePutJSONBody(relativeURL string) APIHasBody {
+	return simpleAPISelf.MakeDoNewRequestWithBodyOptions(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+}
+
+// MakePatchJSONBody Make a Patch API with json Body
+func (simpleAPISelf *SimpleAPIDef) MakePatchJSONBody(relativeURL string) APIHasBody {
+	return simpleAPISelf.MakeDoNewRequestWithBodyOptions(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+}
+
+// MakeDoNewRequestWithBodyOptions Make a API with request body options
+func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithBodyOptions(method string, relativeURL string, contentType string, bodySerializer BodySerializer) APIHasBody {
+	return APIHasBody(func(pathParam map[string]interface{}, body interface{}, target interface{}) *MonadIODef {
 		return MonadIO.New(func() interface{} {
-			bodyReader, err := bodySerializer(body)
-			if err != nil {
-				return ResponseWithError{
-					Err: err,
+			var bodyReader io.Reader
+			if !IsNil(body) {
+				var newBodyReaderErr error
+				bodyReader, newBodyReaderErr = bodySerializer(body)
+				if newBodyReaderErr != nil {
+					return &ResponseWithError{
+						// Request: request,
+						Err: newBodyReaderErr,
+					}
 				}
 			}
 
-			response := simpleAPISelf.simpleHTTP.Post(simpleAPISelf.replacePathParams(theURL, pathParam), contentType, bodyReader)
+			ctx, cancel := simpleAPISelf.GetSimpleHTTP().GetContextTimeout()
+			defer cancel()
+			response := simpleAPISelf.simpleHTTP.DoNewRequestWithBodyOptions(ctx, simpleAPISelf.DefaultHeader, method, simpleAPISelf.replacePathParams(relativeURL, pathParam), bodyReader, contentType)
 			if response.Err != nil {
-				return ResponseWithError{
-					Err: response.Err,
-				}
+				return response
 			}
 			responseBody, readResponseErr := ioutil.ReadAll(response.Response.Body)
 			if readResponseErr != nil {
-				return ResponseWithError{
-					Err: readResponseErr,
+				return &ResponseWithError{
+					Request:  response.Request,
+					Response: response.Response,
+					Err:      readResponseErr,
 				}
 			}
 			response.TargetObject, response.Err = simpleAPISelf.ResponseDeserializer(responseBody, target)
@@ -257,10 +352,35 @@ func (simpleAPISelf *SimpleAPIDef) MakePostWithBodySerializer(theURL string, con
 	})
 }
 
-func (simpleAPISelf *SimpleAPIDef) replacePathParams(theURL string, pathParam map[string]interface{}) string {
-	finalURL := theURL
+// MakeDoNewRequest Make a API without body options
+func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequest(method string, relativeURL string) APINoBody {
+	return APINoBody(func(pathParam map[string]interface{}, target interface{}) *MonadIODef {
+		return MonadIO.New(func() interface{} {
+
+			ctx, cancel := simpleAPISelf.GetSimpleHTTP().GetContextTimeout()
+			defer cancel()
+			response := simpleAPISelf.simpleHTTP.DoNewRequest(ctx, simpleAPISelf.DefaultHeader, method, simpleAPISelf.replacePathParams(relativeURL, pathParam))
+			if response.Err != nil {
+				return response
+			}
+			responseBody, readResponseErr := ioutil.ReadAll(response.Response.Body)
+			if readResponseErr != nil {
+				return &ResponseWithError{
+					Request:  response.Request,
+					Response: response.Response,
+					Err:      readResponseErr,
+				}
+			}
+			response.TargetObject, response.Err = simpleAPISelf.ResponseDeserializer(responseBody, target)
+			return response
+		})
+	})
+}
+
+func (simpleAPISelf *SimpleAPIDef) replacePathParams(relativeURL string, pathParam map[string]interface{}) string {
+	finalURL := relativeURL
 	for k, v := range pathParam {
-		finalURL = strings.ReplaceAll(theURL, fmt.Sprintf("{%s}", k), fmt.Sprintf("%v", v))
+		finalURL = strings.ReplaceAll(relativeURL, fmt.Sprintf("{%s}", k), fmt.Sprintf("%v", v))
 	}
 	return simpleAPISelf.BaseURL + "/" + finalURL
 }
