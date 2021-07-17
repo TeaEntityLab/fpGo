@@ -1,4 +1,4 @@
-package fpgo
+package network
 
 import (
 	"bytes"
@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	fpgo "github.com/TeaEntityLab/fpGo"
 )
 
 // SimpleHTTP
@@ -26,7 +28,7 @@ type Interceptor func(*http.Request) error
 // SimpleHTTPDef SimpleHTTP inspired by Retrofits
 type SimpleHTTPDef struct {
 	client       *http.Client
-	interceptors StreamDef
+	interceptors fpgo.StreamDef
 
 	TimeoutMillisecond int64
 
@@ -56,7 +58,7 @@ func NewSimpleHTTPWithClientAndInterceptors(client *http.Client, interceptors ..
 	}
 	newOne := &SimpleHTTPDef{
 		client:       client,
-		interceptors: StreamDef(interceptorsInternal),
+		interceptors: fpgo.StreamDef(interceptorsInternal),
 	}
 	newOne.SetHTTPClient(client)
 	return newOne
@@ -78,7 +80,7 @@ func (simpleHTTPSelf *SimpleHTTPDef) AddInterceptor(interceptors ...*Interceptor
 
 // ClearInterceptor Clear the interceptor(s)
 func (simpleHTTPSelf *SimpleHTTPDef) ClearInterceptor() {
-	simpleHTTPSelf.interceptors = StreamDef{}
+	simpleHTTPSelf.interceptors = fpgo.StreamDef{}
 }
 
 // GetHTTPClient Get the http client
@@ -238,10 +240,10 @@ func (simpleHTTPSelf *SimpleHTTPDef) DoNewRequestWithBodyOptions(context context
 type PathParam map[string]interface{}
 
 // APINoBody API without request body options
-type APINoBody func(pathParam PathParam, target interface{}) *MonadIODef
+type APINoBody func(pathParam PathParam, target interface{}) *fpgo.MonadIODef
 
 // APIHasBody API with request body options
-type APIHasBody func(pathParam PathParam, body interface{}, target interface{}) *MonadIODef
+type APIHasBody func(pathParam PathParam, body interface{}, target interface{}) *fpgo.MonadIODef
 
 // BodySerializer Serialize the body (for put/post etc)
 type BodySerializer func(body interface{}) (io.Reader, error)
@@ -325,10 +327,10 @@ func (simpleAPISelf *SimpleAPIDef) MakePatchJSONBody(relativeURL string) APIHasB
 
 // MakeDoNewRequestWithBodyOptions Make a API with request body options
 func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithBodyOptions(method string, relativeURL string, contentType string, bodySerializer BodySerializer) APIHasBody {
-	return APIHasBody(func(pathParam PathParam, body interface{}, target interface{}) *MonadIODef {
-		return MonadIO.New(func() interface{} {
+	return APIHasBody(func(pathParam PathParam, body interface{}, target interface{}) *fpgo.MonadIODef {
+		return fpgo.MonadIO.New(func() interface{} {
 			var bodyReader io.Reader
-			if !IsNil(body) {
+			if !fpgo.IsNil(body) {
 				var newBodyReaderErr error
 				bodyReader, newBodyReaderErr = bodySerializer(body)
 				if newBodyReaderErr != nil {
@@ -361,8 +363,8 @@ func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithBodyOptions(method string
 
 // MakeDoNewRequest Make a API without body options
 func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequest(method string, relativeURL string) APINoBody {
-	return APINoBody(func(pathParam PathParam, target interface{}) *MonadIODef {
-		return MonadIO.New(func() interface{} {
+	return APINoBody(func(pathParam PathParam, target interface{}) *fpgo.MonadIODef {
+		return fpgo.MonadIO.New(func() interface{} {
 
 			ctx, cancel := simpleAPISelf.GetSimpleHTTP().GetContextTimeout()
 			defer cancel()

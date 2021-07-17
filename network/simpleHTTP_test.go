@@ -1,4 +1,4 @@
-package fpgo
+package network
 
 import (
 	"bytes"
