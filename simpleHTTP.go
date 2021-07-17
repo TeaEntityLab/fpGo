@@ -341,7 +341,7 @@ func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithBodyOptions(method string
 
 			ctx, cancel := simpleAPISelf.GetSimpleHTTP().GetContextTimeout()
 			defer cancel()
-			response := simpleAPISelf.simpleHTTP.DoNewRequestWithBodyOptions(ctx, simpleAPISelf.DefaultHeader, method, simpleAPISelf.replacePathParams(relativeURL, pathParam), bodyReader, contentType)
+			response := simpleAPISelf.simpleHTTP.DoNewRequestWithBodyOptions(ctx, simpleAPISelf.DefaultHeader.Clone(), method, simpleAPISelf.replacePathParams(relativeURL, pathParam), bodyReader, contentType)
 			if response.Err != nil {
 				return response
 			}
@@ -366,7 +366,7 @@ func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequest(method string, relativeURL s
 
 			ctx, cancel := simpleAPISelf.GetSimpleHTTP().GetContextTimeout()
 			defer cancel()
-			response := simpleAPISelf.simpleHTTP.DoNewRequest(ctx, simpleAPISelf.DefaultHeader, method, simpleAPISelf.replacePathParams(relativeURL, pathParam))
+			response := simpleAPISelf.simpleHTTP.DoNewRequest(ctx, simpleAPISelf.DefaultHeader.Clone(), method, simpleAPISelf.replacePathParams(relativeURL, pathParam))
 			if response.Err != nil {
 				return response
 			}
