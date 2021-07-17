@@ -21,7 +21,7 @@ const (
 )
 
 // Interceptor Interceptor functions
-type Interceptor func(*http.Request) (*http.Response, error)
+type Interceptor func(*http.Request) error
 
 // SimpleHTTPDef SimpleHTTP inspired by Retrofits
 type SimpleHTTPDef struct {
@@ -52,7 +52,7 @@ func NewSimpleHTTP() *SimpleHTTPDef {
 func NewSimpleHTTPWithClientAndInterceptors(client *http.Client, interceptors ...Interceptor) *SimpleHTTPDef {
 	interceptorsInternal := make([]interface{}, len(interceptors))
 	for i, interceptor := range interceptors {
-		interceptorsInternal[i] = interceptor
+		interceptorsInternal[i] = &interceptor
 	}
 	newOne := &SimpleHTTPDef{
 		client:       client,
@@ -65,14 +65,14 @@ func NewSimpleHTTPWithClientAndInterceptors(client *http.Client, interceptors ..
 // RemoveInterceptor Remove the interceptor(s)
 func (simpleHTTPSelf *SimpleHTTPDef) RemoveInterceptor(interceptors ...Interceptor) {
 	for _, interceptor := range interceptors {
-		simpleHTTPSelf.interceptors.RemoveItem(interceptor)
+		simpleHTTPSelf.interceptors = *simpleHTTPSelf.interceptors.RemoveItem(&interceptor)
 	}
 }
 
 // AddInterceptor Add the interceptor(s)
 func (simpleHTTPSelf *SimpleHTTPDef) AddInterceptor(interceptors ...Interceptor) {
 	for _, interceptor := range interceptors {
-		simpleHTTPSelf.interceptors.Append(interceptor)
+		simpleHTTPSelf.interceptors = *simpleHTTPSelf.interceptors.Append(&interceptor)
 	}
 }
 
@@ -115,7 +115,10 @@ func (simpleHTTPSelf *SimpleHTTPDef) recursiveVisit(request *http.Request, index
 		return simpleHTTPSelf.clientTransport.RoundTrip(request)
 	}
 
-	simpleHTTPSelf.interceptors[index].(Interceptor)(request)
+	err := (*simpleHTTPSelf.interceptors[index].(*Interceptor))(request)
+	if err != nil {
+		return nil, err
+	}
 	return simpleHTTPSelf.recursiveVisit(request, index+1)
 }
 
@@ -231,11 +234,14 @@ func (simpleHTTPSelf *SimpleHTTPDef) DoNewRequestWithBodyOptions(context context
 
 // SimpleAPI
 
+// PathParam Path params for API usages
+type PathParam map[string]interface{}
+
 // APINoBody API without request body options
-type APINoBody func(pathParam map[string]interface{}, target interface{}) *MonadIODef
+type APINoBody func(pathParam PathParam, target interface{}) *MonadIODef
 
 // APIHasBody API with request body options
-type APIHasBody func(pathParam map[string]interface{}, body interface{}, target interface{}) *MonadIODef
+type APIHasBody func(pathParam PathParam, body interface{}, target interface{}) *MonadIODef
 
 // BodySerializer Serialize the body (for put/post etc)
 type BodySerializer func(body interface{}) (io.Reader, error)
@@ -279,8 +285,9 @@ func NewSimpleAPIWithSimpleHTTP(baseURL string, simpleHTTP *SimpleHTTPDef) *Simp
 	urlInstance, _ := url.Parse(baseURL)
 
 	return &SimpleAPIDef{
-		BaseURL:              urlInstance.String(),
-		ResponseDeserializer: JSONBodyDeserializer,
+		BaseURL:                  urlInstance.String(),
+		RequestSerializerForJSON: JSONBodySerializer,
+		ResponseDeserializer:     JSONBodyDeserializer,
 
 		simpleHTTP: simpleHTTP,
 	}
@@ -318,7 +325,7 @@ func (simpleAPISelf *SimpleAPIDef) MakePatchJSONBody(relativeURL string) APIHasB
 
 // MakeDoNewRequestWithBodyOptions Make a API with request body options
 func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithBodyOptions(method string, relativeURL string, contentType string, bodySerializer BodySerializer) APIHasBody {
-	return APIHasBody(func(pathParam map[string]interface{}, body interface{}, target interface{}) *MonadIODef {
+	return APIHasBody(func(pathParam PathParam, body interface{}, target interface{}) *MonadIODef {
 		return MonadIO.New(func() interface{} {
 			var bodyReader io.Reader
 			if !IsNil(body) {
@@ -354,7 +361,7 @@ func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithBodyOptions(method string
 
 // MakeDoNewRequest Make a API without body options
 func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequest(method string, relativeURL string) APINoBody {
-	return APINoBody(func(pathParam map[string]interface{}, target interface{}) *MonadIODef {
+	return APINoBody(func(pathParam PathParam, target interface{}) *MonadIODef {
 		return MonadIO.New(func() interface{} {
 
 			ctx, cancel := simpleAPISelf.GetSimpleHTTP().GetContextTimeout()
@@ -377,7 +384,7 @@ func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequest(method string, relativeURL s
 	})
 }
 
-func (simpleAPISelf *SimpleAPIDef) replacePathParams(relativeURL string, pathParam map[string]interface{}) string {
+func (simpleAPISelf *SimpleAPIDef) replacePathParams(relativeURL string, pathParam PathParam) string {
 	finalURL := relativeURL
 	for k, v := range pathParam {
 		finalURL = strings.ReplaceAll(relativeURL, fmt.Sprintf("{%s}", k), fmt.Sprintf("%v", v))
