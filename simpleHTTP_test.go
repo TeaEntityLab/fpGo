@@ -69,7 +69,7 @@ func TestSimpleAPI(t *testing.T) {
 		actualContentType = actualRequest.Header.Get("Content-Type")
 		return nil
 	})
-	client.AddInterceptor(interceptorForTest)
+	client.AddInterceptor(&interceptorForTest)
 
 	response = client.Get(server.URL + "/posts")
 	assert.Equal(t, nil, response.Err)
@@ -106,14 +106,14 @@ func TestSimpleAPI(t *testing.T) {
 	assert.Equal(t, `{"userId":0,"id":3,"title":"cc","body":""}`, string(actualRequestBody))
 
 	// Test RemoveInterceptor
-	client.RemoveInterceptor(interceptorForTest)
+	client.RemoveInterceptor(&interceptorForTest)
 	actualContentType = ""
 	response = client.Patch(server.URL+"/posts", "application/json", bytes.NewReader([]byte(`{"userId":0,"id":3,"title":"cc","body":""}`)))
-	assert.Equal(t, "application/json", actualContentType)
+	assert.Equal(t, "", actualContentType)
 
 	// api := NewSimpleAPI("https://jsonplaceholder.typicode.com")
 	api := NewSimpleAPI(server.URL)
-	api.GetSimpleHTTP().AddInterceptor(interceptorForTest)
+	api.GetSimpleHTTP().AddInterceptor(&interceptorForTest)
 
 	postsGet := api.MakeGet("posts")
 	response = postsGet(nil, &PostListResponse{}).Eval().(*ResponseWithError)
@@ -151,4 +151,10 @@ func TestSimpleAPI(t *testing.T) {
 	assert.Equal(t, nil, response.Err)
 	assert.Equal(t, "application/json", actualContentType)
 	assert.Equal(t, `{"userId":0,"id":3,"title":"cc","body":""}`, string(actualRequestBody))
+
+	// Test ClearInterceptor
+	api.GetSimpleHTTP().ClearInterceptor()
+	actualContentType = ""
+	response = postsPatch(nil, Post{ID: 3, Title: "cc"}, &struct{}{}).Eval().(*ResponseWithError)
+	assert.Equal(t, "", actualContentType)
 }

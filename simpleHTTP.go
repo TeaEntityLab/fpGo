@@ -49,7 +49,7 @@ func NewSimpleHTTP() *SimpleHTTPDef {
 }
 
 // NewSimpleHTTPWithClientAndInterceptors a SimpleHTTP instance with a given client & interceptor(s)
-func NewSimpleHTTPWithClientAndInterceptors(client *http.Client, interceptors ...Interceptor) *SimpleHTTPDef {
+func NewSimpleHTTPWithClientAndInterceptors(client *http.Client, interceptors ...*Interceptor) *SimpleHTTPDef {
 	interceptorsInternal := make([]interface{}, len(interceptors))
 	for i, interceptor := range interceptors {
 		interceptorsInternal[i] = &interceptor
@@ -63,16 +63,16 @@ func NewSimpleHTTPWithClientAndInterceptors(client *http.Client, interceptors ..
 }
 
 // RemoveInterceptor Remove the interceptor(s)
-func (simpleHTTPSelf *SimpleHTTPDef) RemoveInterceptor(interceptors ...Interceptor) {
+func (simpleHTTPSelf *SimpleHTTPDef) RemoveInterceptor(interceptors ...*Interceptor) {
 	for _, interceptor := range interceptors {
-		simpleHTTPSelf.interceptors = *simpleHTTPSelf.interceptors.RemoveItem(&interceptor)
+		simpleHTTPSelf.interceptors = *simpleHTTPSelf.interceptors.RemoveItem(interceptor)
 	}
 }
 
 // AddInterceptor Add the interceptor(s)
-func (simpleHTTPSelf *SimpleHTTPDef) AddInterceptor(interceptors ...Interceptor) {
+func (simpleHTTPSelf *SimpleHTTPDef) AddInterceptor(interceptors ...*Interceptor) {
 	for _, interceptor := range interceptors {
-		simpleHTTPSelf.interceptors = *simpleHTTPSelf.interceptors.Append(&interceptor)
+		simpleHTTPSelf.interceptors = *simpleHTTPSelf.interceptors.Append(interceptor)
 	}
 }
 
