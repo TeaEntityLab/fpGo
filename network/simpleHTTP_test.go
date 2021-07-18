@@ -3,8 +3,12 @@ package network
 import (
 	"bytes"
 	"io/ioutil"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -157,4 +161,83 @@ func TestSimpleAPI(t *testing.T) {
 	actualContentType = ""
 	response = postsPatch(nil, Post{ID: 3, Title: "cc"}, &struct{}{}).Eval().(*ResponseWithError)
 	assert.Equal(t, "", actualContentType)
+}
+
+func TestSimpleAPIMultipart(t *testing.T) {
+	// var actualPath string
+	var actualRequest *http.Request
+	var actualRequestBody []byte
+	var actualContentType string
+
+	postsHandler := http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
+
+		actualRequestBody, _ = ioutil.ReadAll(req.Body)
+
+		// auth := req.Header.Get("Auth")
+		_, err := writer.Write([]byte(`{}`))
+		assert.NoError(t, err)
+	})
+
+	server := httptest.NewServer(postsHandler)
+	defer server.Close()
+	// router := httprouter.New()
+	// router.GET("/posts", postsHandler)
+	// recorder := httptest.NewRecorder()
+
+	var response *ResponseWithError
+
+	interceptorForTest := Interceptor(func(request *http.Request) error {
+		// actualPath = request.URL.Path
+		actualRequest = request
+		actualContentType = actualRequest.Header.Get("Content-Type")
+		return nil
+	})
+
+	// api := NewSimpleAPI("https://jsonplaceholder.typicode.com")
+	api := NewSimpleAPI(server.URL)
+	api.GetSimpleHTTP().AddInterceptor(&interceptorForTest)
+
+	var multipartReader *multipart.Reader
+	var params map[string]string
+
+	var actualForm *multipart.Form
+	var sentValues map[string][]string
+
+	fileDir, _ := os.Getwd()
+	fileName := "simpleHTTP_test.go"
+	filePath := path.Join(fileDir, fileName)
+
+	actualContentType = ""
+	postsPost := api.MakePostMultipartBody("posts")
+	sentValues = map[string][]string{"userId": []string{"0"}, "id": []string{"5"}, "title": []string{"aa"}, "body": []string{""}}
+	sentFiles := map[string][]string{"file": []string{filePath}}
+	response = postsPost(nil, &MultipartForm{Value: sentValues, File: sentFiles}, &struct{}{}).Eval().(*ResponseWithError)
+	assert.Equal(t, nil, response.Err)
+	_, params, _ = mime.ParseMediaType(actualContentType)
+	multipartReader = multipart.NewReader(bytes.NewReader(actualRequestBody), params["boundary"])
+	actualForm, _ = multipartReader.ReadForm(1024)
+	assert.Equal(t, sentValues, actualForm.Value)
+	assert.Equal(t, 1, len(actualForm.File["file"]))
+
+	actualContentType = ""
+	postsPut := api.MakePutMultipartBody("posts")
+	sentValues = map[string][]string{"userId": []string{"0"}, "id": []string{"4"}, "title": []string{"bb"}, "body": []string{""}}
+	response = postsPut(nil, &MultipartForm{Value: sentValues}, &struct{}{}).Eval().(*ResponseWithError)
+	assert.Equal(t, nil, response.Err)
+	_, params, _ = mime.ParseMediaType(actualContentType)
+	multipartReader = multipart.NewReader(bytes.NewReader(actualRequestBody), params["boundary"])
+	actualForm, _ = multipartReader.ReadForm(1024)
+	assert.Equal(t, sentValues, actualForm.Value)
+	assert.Equal(t, 0, len(actualForm.File["file"]))
+
+	actualContentType = ""
+	postsPatch := api.MakePatchMultipartBody("posts")
+	sentValues = map[string][]string{"userId": []string{"0"}, "id": []string{"3"}, "title": []string{"cc"}, "body": []string{""}}
+	response = postsPatch(nil, &MultipartForm{Value: sentValues}, &struct{}{}).Eval().(*ResponseWithError)
+	assert.Equal(t, nil, response.Err)
+	_, params, _ = mime.ParseMediaType(actualContentType)
+	multipartReader = multipart.NewReader(bytes.NewReader(actualRequestBody), params["boundary"])
+	actualForm, _ = multipartReader.ReadForm(1024)
+	assert.Equal(t, sentValues, actualForm.Value)
+	assert.Equal(t, 0, len(actualForm.File["file"]))
 }

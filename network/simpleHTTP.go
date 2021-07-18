@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -239,20 +242,33 @@ func (simpleHTTPSelf *SimpleHTTPDef) DoRequest(request *http.Request) *ResponseW
 // PathParam Path params for API usages
 type PathParam map[string]interface{}
 
+// MultipartForm Path params for API usages
+type MultipartForm struct {
+	Value map[string][]string
+	// File The absolute paths of files
+	File map[string][]string
+}
+
 // APINoBody API without request body options
 type APINoBody func(pathParam PathParam, target interface{}) *fpgo.MonadIODef
 
 // APIHasBody API with request body options
 type APIHasBody func(pathParam PathParam, body interface{}, target interface{}) *fpgo.MonadIODef
 
+// APIMultipart API with request body options
+type APIMultipart func(pathParam PathParam, body *MultipartForm, target interface{}) *fpgo.MonadIODef
+
 // // APIResponseOnly API with only response options
 // type APIResponseOnly func(target interface{}) *fpgo.MonadIODef
 
-// BodySerializer Serialize the body (for put/post etc)
+// BodySerializer Serialize the body (for put/post/patch etc)
 type BodySerializer func(body interface{}) (io.Reader, error)
 
 // BodyDeserializer Deserialize the body (for response)
 type BodyDeserializer func(body []byte, target interface{}) (interface{}, error)
+
+// MultipartSerializer Serialize the multipart body (for put/post/patch etc)
+type MultipartSerializer func(body *MultipartForm) (io.Reader, string, error)
 
 // JSONBodyDeserializer Default JSON Body deserializer
 func JSONBodyDeserializer(body []byte, target interface{}) (interface{}, error) {
@@ -270,14 +286,48 @@ func JSONBodySerializer(body interface{}) (io.Reader, error) {
 	return bytes.NewReader(jsonBytes), err
 }
 
+// GeneralMultipartSerializer Default Multipart Body serializer
+func GeneralMultipartSerializer(form *MultipartForm) (io.Reader, string, error) {
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	for fieldName, values := range form.Value {
+		for _, value := range values {
+			writeFieldErr := writer.WriteField(fieldName, value)
+			if writeFieldErr != nil {
+				return nil, "", writeFieldErr
+			}
+		}
+	}
+	for fieldName, filePaths := range form.File {
+		for _, filePath := range filePaths {
+			part, createFormFileErr := writer.CreateFormFile(fieldName, filepath.Base(filePath))
+			if createFormFileErr != nil {
+				return nil, "", createFormFileErr
+			}
+			file, openFileErr := os.Open(filePath)
+			if openFileErr != nil {
+				return nil, "", openFileErr
+			}
+			defer file.Close()
+
+			io.Copy(part, file)
+		}
+	}
+	writer.Close()
+
+	return body, writer.FormDataContentType(), nil
+}
+
 // SimpleAPIDef SimpleAPIDef inspired by Retrofits
 type SimpleAPIDef struct {
 	simpleHTTP    *SimpleHTTPDef
 	BaseURL       string
 	DefaultHeader http.Header
 
-	RequestSerializerForJSON BodySerializer
-	ResponseDeserializer     BodyDeserializer
+	RequestSerializerForMultipart MultipartSerializer
+	RequestSerializerForJSON      BodySerializer
+	ResponseDeserializer          BodyDeserializer
 }
 
 // NewSimpleAPI New a NewSimpleAPI instance
@@ -290,9 +340,11 @@ func NewSimpleAPIWithSimpleHTTP(baseURL string, simpleHTTP *SimpleHTTPDef) *Simp
 	urlInstance, _ := url.Parse(baseURL)
 
 	return &SimpleAPIDef{
-		BaseURL:                  urlInstance.String(),
-		RequestSerializerForJSON: JSONBodySerializer,
-		ResponseDeserializer:     JSONBodyDeserializer,
+		BaseURL: urlInstance.String(),
+
+		RequestSerializerForMultipart: GeneralMultipartSerializer,
+		RequestSerializerForJSON:      JSONBodySerializer,
+		ResponseDeserializer:          JSONBodyDeserializer,
 
 		simpleHTTP: simpleHTTP,
 	}
@@ -315,27 +367,70 @@ func (simpleAPISelf *SimpleAPIDef) MakeDelete(relativeURL string) APINoBody {
 
 // MakePostJSONBody Make a Post API with json Body
 func (simpleAPISelf *SimpleAPIDef) MakePostJSONBody(relativeURL string) APIHasBody {
-	return simpleAPISelf.MakeDoNewRequestWithBodyOptions(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+	return simpleAPISelf.MakeDoNewRequestWithBodySerializer(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
 }
 
 // MakePutJSONBody Make a Put API with json Body
 func (simpleAPISelf *SimpleAPIDef) MakePutJSONBody(relativeURL string) APIHasBody {
-	return simpleAPISelf.MakeDoNewRequestWithBodyOptions(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+	return simpleAPISelf.MakeDoNewRequestWithBodySerializer(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
 }
 
 // MakePatchJSONBody Make a Patch API with json Body
 func (simpleAPISelf *SimpleAPIDef) MakePatchJSONBody(relativeURL string) APIHasBody {
-	return simpleAPISelf.MakeDoNewRequestWithBodyOptions(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+	return simpleAPISelf.MakeDoNewRequestWithBodySerializer(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
 }
 
-// MakeDoNewRequestWithBodyOptions Make a API with request body options
-func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithBodyOptions(method string, relativeURL string, contentType string, bodySerializer BodySerializer) APIHasBody {
+// MakePostMultipartBody Make a Post API with multipart Body
+func (simpleAPISelf *SimpleAPIDef) MakePostMultipartBody(relativeURL string) APIMultipart {
+	return simpleAPISelf.MakeDoNewRequestWithMultipartSerializer(http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
+}
+
+// MakePutMultipartBody Make a Put API with multipart Body
+func (simpleAPISelf *SimpleAPIDef) MakePutMultipartBody(relativeURL string) APIMultipart {
+	return simpleAPISelf.MakeDoNewRequestWithMultipartSerializer(http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
+}
+
+// MakePatchMultipartBody Make a Patch API with multipart Body
+func (simpleAPISelf *SimpleAPIDef) MakePatchMultipartBody(relativeURL string) APIMultipart {
+	return simpleAPISelf.MakeDoNewRequestWithMultipartSerializer(http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
+}
+
+// MakeDoNewRequestWithBodySerializer Make a API with request body options
+func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithBodySerializer(method string, relativeURL string, contentType string, bodySerializer BodySerializer) APIHasBody {
 	return APIHasBody(func(pathParam PathParam, body interface{}, target interface{}) *fpgo.MonadIODef {
 		return fpgo.MonadIO.New(func() interface{} {
 			var bodyReader io.Reader
 			if !fpgo.IsNil(body) {
 				var newBodyReaderErr error
 				bodyReader, newBodyReaderErr = bodySerializer(body)
+				if newBodyReaderErr != nil {
+					return &ResponseWithError{
+						// Request: request,
+						Err: newBodyReaderErr,
+					}
+				}
+			}
+
+			ctx, cancel := simpleAPISelf.GetSimpleHTTP().GetContextTimeout()
+			defer cancel()
+			response := simpleAPISelf.simpleHTTP.DoNewRequestWithBodyOptions(ctx, simpleAPISelf.DefaultHeader.Clone(), method, simpleAPISelf.replacePathParams(relativeURL, pathParam), bodyReader, contentType)
+			if response.Err != nil {
+				return response
+			}
+			return simpleAPISelf.decodeResponseBody(response, target)
+		})
+	})
+}
+
+// MakeDoNewRequestWithMultipartSerializer Make a API with request body options
+func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithMultipartSerializer(method string, relativeURL string, multipartSerializer MultipartSerializer) APIMultipart {
+	return APIMultipart(func(pathParam PathParam, body *MultipartForm, target interface{}) *fpgo.MonadIODef {
+		return fpgo.MonadIO.New(func() interface{} {
+			var bodyReader io.Reader
+			var contentType string
+			if !fpgo.IsNil(body) {
+				var newBodyReaderErr error
+				bodyReader, contentType, newBodyReaderErr = multipartSerializer(body)
 				if newBodyReaderErr != nil {
 					return &ResponseWithError{
 						// Request: request,
