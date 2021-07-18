@@ -7,6 +7,13 @@ import (
 	"strconv"
 )
 
+var (
+	// ErrConversionUnsupported Conversion Unsupported
+	ErrConversionUnsupported = errors.New("unsupported")
+	// ErrConversionNil Conversion Nil
+	ErrConversionNil = errors.New("<nil>")
+)
+
 // Maybe
 
 // MaybeDef Maybe inspired by Rx/Optional/Guava/Haskell
@@ -30,6 +37,7 @@ type MaybeDef[T any] interface {
 	IsPresent() bool
 	IsNil() bool
 	IsValid() bool
+	IsPtr() bool
 	Type() reflect.Type
 	Kind() reflect.Kind
 	IsType(t reflect.Type) bool
@@ -117,7 +125,7 @@ func (maybeSelf someDef[T]) ToString() string {
 
 // ToPtr Maybe to Ptr
 func (maybeSelf someDef[T]) ToPtr() *T {
-	if maybeSelf.Kind() == reflect.Ptr {
+	if maybeSelf.IsPtr() {
 		val := reflect.Indirect(reflect.ValueOf(maybeSelf.ref)).Interface()
 		switch val.(type) {
 		case *T:
@@ -149,13 +157,13 @@ func (maybeSelf someDef[T]) ToMaybe() MaybeDef[T] {
 // ToFloat64 Maybe to Float64
 func (maybeSelf someDef[T]) ToFloat64() (float64, error) {
 	if maybeSelf.IsNil() {
-		return float64(0), errors.New("<nil>")
+		return float64(0), ErrConversionNil
 	}
 
 	var ref interface{} = maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return float64(0), errors.New("unsupported")
+		return float64(0), ErrConversionUnsupported
 	case string:
 		return strconv.ParseFloat(maybeSelf.ToString(), 64)
 	case bool:
@@ -184,13 +192,13 @@ func (maybeSelf someDef[T]) ToFloat64() (float64, error) {
 // ToFloat32 Maybe to Float32
 func (maybeSelf someDef[T]) ToFloat32() (float32, error) {
 	if maybeSelf.IsNil() {
-		return float32(0), errors.New("<nil>")
+		return float32(0), ErrConversionNil
 	}
 
 	var ref interface{} = maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return float32(0), errors.New("unsupported")
+		return float32(0), ErrConversionUnsupported
 	case string:
 		val, err := strconv.ParseFloat(maybeSelf.ToString(), 32)
 		return float32(val), err
@@ -220,13 +228,13 @@ func (maybeSelf someDef[T]) ToFloat32() (float32, error) {
 // ToInt Maybe to Int
 func (maybeSelf someDef[T]) ToInt() (int, error) {
 	if maybeSelf.IsNil() {
-		return int(0), errors.New("<nil>")
+		return int(0), ErrConversionNil
 	}
 
 	var ref interface{} = maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return int(0), errors.New("unsupported")
+		return int(0), ErrConversionUnsupported
 	case string:
 		return strconv.Atoi(maybeSelf.ToString())
 	case bool:
@@ -255,13 +263,13 @@ func (maybeSelf someDef[T]) ToInt() (int, error) {
 // ToInt32 Maybe to Int32
 func (maybeSelf someDef[T]) ToInt32() (int32, error) {
 	if maybeSelf.IsNil() {
-		return int32(0), errors.New("<nil>")
+		return int32(0), ErrConversionNil
 	}
 
 	var ref interface{} = maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return int32(0), errors.New("unsupported")
+		return int32(0), ErrConversionUnsupported
 	case string:
 		val, err := maybeSelf.ToInt64()
 		return int32(val), err
@@ -291,13 +299,13 @@ func (maybeSelf someDef[T]) ToInt32() (int32, error) {
 // ToInt64 Maybe to Int64
 func (maybeSelf someDef[T]) ToInt64() (int64, error) {
 	if maybeSelf.IsNil() {
-		return int64(0), errors.New("<nil>")
+		return int64(0), ErrConversionNil
 	}
 
 	var ref interface{} = maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return int64(0), errors.New("unsupported")
+		return int64(0), ErrConversionUnsupported
 	case string:
 		return strconv.ParseInt(maybeSelf.ToString(), 10, 32)
 	case bool:
@@ -326,13 +334,13 @@ func (maybeSelf someDef[T]) ToInt64() (int64, error) {
 // ToBool Maybe to Bool
 func (maybeSelf someDef[T]) ToBool() (bool, error) {
 	if maybeSelf.IsNil() {
-		return bool(false), errors.New("<nil>")
+		return bool(false), ErrConversionNil
 	}
 
 	var ref interface{} = maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return bool(false), errors.New("unsupported")
+		return bool(false), ErrConversionUnsupported
 	case string:
 		return strconv.ParseBool(maybeSelf.ToString())
 	case bool:
@@ -406,6 +414,11 @@ func (maybeSelf someDef[T]) IsValid() bool {
 	return val.IsValid()
 }
 
+// IsPtr Check is it a Ptr
+func (maybeSelf someDef[T]) IsPtr() bool {
+	return IsPtr(maybeSelf.ref)
+}
+
 // Type Get its Type
 func (maybeSelf someDef[T]) Type() reflect.Type {
 	if maybeSelf.IsNil() {
@@ -469,32 +482,32 @@ func (noneSelf noneDef) ToMaybe() MaybeDef[interface{}] {
 
 // ToFloat64 Maybe to Float64
 func (noneSelf noneDef) ToFloat64() (float64, error) {
-	return float64(0), errors.New("<nil>")
+	return float64(0), ErrConversionNil
 }
 
 // ToFloat32 Maybe to Float32
 func (noneSelf noneDef) ToFloat32() (float32, error) {
-	return float32(0), errors.New("<nil>")
+	return float32(0), ErrConversionNil
 }
 
 // ToInt Maybe to Int
 func (noneSelf noneDef) ToInt() (int, error) {
-	return int(0), errors.New("<nil>")
+	return int(0), ErrConversionNil
 }
 
 // ToInt32 Maybe to Int32
 func (noneSelf noneDef) ToInt32() (int32, error) {
-	return int32(0), errors.New("<nil>")
+	return int32(0), ErrConversionNil
 }
 
 // ToInt64 Maybe to Int64
 func (noneSelf noneDef) ToInt64() (int64, error) {
-	return int64(0), errors.New("<nil>")
+	return int64(0), ErrConversionNil
 }
 
 // ToBool Maybe to Bool
 func (noneSelf noneDef) ToBool() (bool, error) {
-	return bool(false), errors.New("<nil>")
+	return bool(false), ErrConversionNil
 }
 
 // Let If the wrapped value is not nil, then do the given function
@@ -520,9 +533,19 @@ func (noneSelf noneDef) IsNil() bool {
 	return true
 }
 
+// IsPtr Check is it Ptr
+func (noneSelf noneDef) IsPtr() bool {
+	return false
+}
+
 // Type Get its Type
 func (noneSelf noneDef) Type() reflect.Type {
 	return reflect.TypeOf(nil)
+}
+
+// Kind Get its Kind
+func (noneSelf noneDef) Kind() reflect.Kind {
+	return reflect.Invalid
 }
 
 /**
@@ -540,10 +563,6 @@ func (noneSelf noneDef) FlatMap(fn func(interface{}) MaybeDef[interface{}]) Mayb
 // IsValid TODO NOTE !!Duplicated!! Check is its reflect.ValueOf(ref) valid
 func (noneSelf noneDef) IsValid() bool {
   return noneAsSome.IsValid()
-}
-// Kind TODO NOTE !!Duplicated!! Get its Kind
-func (noneSelf noneDef) Kind() reflect.Kind {
-  return noneAsSome.Kind()
 }
 // IsType TODO NOTE !!Duplicated!! Check is its Type equal to the given one
 func (noneSelf noneDef) IsType(t reflect.Type) bool {

@@ -1231,6 +1231,11 @@ func IsNil(obj interface{}) bool {
 	return !val.IsValid()
 }
 
+// IsPtr Check is it a Ptr
+func IsPtr(obj interface{}) bool {
+	return Kind(obj) == reflect.Ptr
+}
+
 // Kind Get Kind by reflection
 func Kind(obj interface{}) reflect.Kind {
 	return reflect.ValueOf(obj).Kind()
