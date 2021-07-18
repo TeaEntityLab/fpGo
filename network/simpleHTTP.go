@@ -245,6 +245,9 @@ type APINoBody func(pathParam PathParam, target interface{}) *fpgo.MonadIODef
 // APIHasBody API with request body options
 type APIHasBody func(pathParam PathParam, body interface{}, target interface{}) *fpgo.MonadIODef
 
+// // APIResponseOnly API with only response options
+// type APIResponseOnly func(target interface{}) *fpgo.MonadIODef
+
 // BodySerializer Serialize the body (for put/post etc)
 type BodySerializer func(body interface{}) (io.Reader, error)
 
@@ -347,16 +350,7 @@ func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithBodyOptions(method string
 			if response.Err != nil {
 				return response
 			}
-			responseBody, readResponseErr := ioutil.ReadAll(response.Response.Body)
-			if readResponseErr != nil {
-				return &ResponseWithError{
-					Request:  response.Request,
-					Response: response.Response,
-					Err:      readResponseErr,
-				}
-			}
-			response.TargetObject, response.Err = simpleAPISelf.ResponseDeserializer(responseBody, target)
-			return response
+			return simpleAPISelf.decodeResponseBody(response, target)
 		})
 	})
 }
@@ -372,18 +366,20 @@ func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequest(method string, relativeURL s
 			if response.Err != nil {
 				return response
 			}
-			responseBody, readResponseErr := ioutil.ReadAll(response.Response.Body)
-			if readResponseErr != nil {
-				return &ResponseWithError{
-					Request:  response.Request,
-					Response: response.Response,
-					Err:      readResponseErr,
-				}
-			}
-			response.TargetObject, response.Err = simpleAPISelf.ResponseDeserializer(responseBody, target)
-			return response
+			return simpleAPISelf.decodeResponseBody(response, target)
 		})
 	})
+}
+
+// decodeResponseBody Make a API without body options
+func (simpleAPISelf *SimpleAPIDef) decodeResponseBody(response *ResponseWithError, target interface{}) *ResponseWithError {
+	responseBody, readResponseErr := ioutil.ReadAll(response.Response.Body)
+	if readResponseErr != nil {
+		response.Err = readResponseErr
+		return response
+	}
+	response.TargetObject, response.Err = simpleAPISelf.ResponseDeserializer(responseBody, target)
+	return response
 }
 
 func (simpleAPISelf *SimpleAPIDef) replacePathParams(relativeURL string, pathParam PathParam) string {
