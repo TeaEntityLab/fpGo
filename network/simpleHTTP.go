@@ -196,13 +196,7 @@ func (simpleHTTPSelf *SimpleHTTPDef) DoNewRequest(context context.Context, heade
 		request.Header = header
 	}
 
-	response, err := simpleHTTPSelf.client.Do(request)
-
-	return &ResponseWithError{
-		Request:  request,
-		Response: response,
-		Err:      err,
-	}
+	return simpleHTTPSelf.DoRequest(request)
 }
 
 // DoNewRequestWithBodyOptions Do New HTTP Request with body options
@@ -221,6 +215,12 @@ func (simpleHTTPSelf *SimpleHTTPDef) DoNewRequestWithBodyOptions(context context
 	if contentType != "" {
 		request.Header.Add("Content-Type", contentType)
 	}
+
+	return simpleHTTPSelf.DoRequest(request)
+}
+
+// DoRequest Do HTTP Request with interceptors
+func (simpleHTTPSelf *SimpleHTTPDef) DoRequest(request *http.Request) *ResponseWithError {
 
 	response, err := simpleHTTPSelf.client.Do(request)
 
