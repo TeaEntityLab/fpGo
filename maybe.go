@@ -468,7 +468,7 @@ func (noneSelf noneDef) IsNil() bool {
 	return true
 }
 
-// IsPtr Check is it nil
+// IsPtr Check is it a Ptr
 func (noneSelf noneDef) IsPtr() bool {
 	return false
 }
