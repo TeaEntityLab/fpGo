@@ -119,39 +119,41 @@ func TestSimpleAPI(t *testing.T) {
 	api := NewSimpleAPI(server.URL)
 	api.GetSimpleHTTP().AddInterceptor(&interceptorForTest)
 
-	postsGet := api.MakeGet("posts")
-	response = postsGet(nil, &PostListResponse{}).Eval().(*ResponseWithError)
+  var apiResponse *APIResponse[PostListResponse]
+
+	postsGet := APIMakeGet[PostListResponse](api, "posts")
+	apiResponse = postsGet(nil, &PostListResponse{}).Eval()
 	assert.Equal(t, nil, response.Err)
 	assert.Equal(t, "/posts", actualPath)
-	assert.Equal(t, 2, len(response.TargetObject.(*PostListResponse).Data))
+	assert.Equal(t, 2, len(apiResponse.TargetObject.Data))
 
-	postsGetOne := api.MakeGet("posts/{id}")
-	response = postsGetOne(PathParam{"id": 1}, &struct{}{}).Eval().(*ResponseWithError)
+	postsGetOne := APIMakeGet[PostListResponse](api, "posts/{id}")
+	apiResponse = postsGetOne(PathParam{"id": 1}, &PostListResponse{}).Eval()
 	assert.Equal(t, "/posts/1", actualPath)
 	assert.Equal(t, nil, response.Err)
 
-	postsDeleteOne := api.MakeDelete("posts/{id}")
-	response = postsDeleteOne(PathParam{"id": 1}, &struct{}{}).Eval().(*ResponseWithError)
+	postsDeleteOne := APIMakeDelete[PostListResponse](api, "posts/{id}")
+	apiResponse = postsDeleteOne(PathParam{"id": 1}, &PostListResponse{}).Eval()
 	assert.Equal(t, "/posts/1", actualPath)
 	assert.Equal(t, nil, response.Err)
 
 	actualContentType = ""
-	postsPost := api.MakePostJSONBody("posts")
-	response = postsPost(nil, Post{ID: 5, Title: "aa"}, &struct{}{}).Eval().(*ResponseWithError)
+	postsPost := APIMakePostJSONBody[Post, PostListResponse](api, "posts")
+	apiResponse = postsPost(nil, Post{ID: 5, Title: "aa"}, &PostListResponse{}).Eval()
 	assert.Equal(t, nil, response.Err)
 	assert.Equal(t, "application/json", actualContentType)
 	assert.Equal(t, `{"userId":0,"id":5,"title":"aa","body":""}`, string(actualRequestBody))
 
 	actualContentType = ""
-	postsPut := api.MakePutJSONBody("posts")
-	response = postsPut(nil, Post{ID: 4, Title: "bb"}, &struct{}{}).Eval().(*ResponseWithError)
+	postsPut := APIMakePutJSONBody[Post, PostListResponse](api, "posts")
+	apiResponse = postsPut(nil, Post{ID: 4, Title: "bb"}, &PostListResponse{}).Eval()
 	assert.Equal(t, nil, response.Err)
 	assert.Equal(t, "application/json", actualContentType)
 	assert.Equal(t, `{"userId":0,"id":4,"title":"bb","body":""}`, string(actualRequestBody))
 
 	actualContentType = ""
-	postsPatch := api.MakePatchJSONBody("posts")
-	response = postsPatch(nil, Post{ID: 3, Title: "cc"}, &struct{}{}).Eval().(*ResponseWithError)
+	postsPatch := APIMakePatchJSONBody[Post, PostListResponse](api, "posts")
+	apiResponse = postsPatch(nil, Post{ID: 3, Title: "cc"}, &PostListResponse{}).Eval()
 	assert.Equal(t, nil, response.Err)
 	assert.Equal(t, "application/json", actualContentType)
 	assert.Equal(t, `{"userId":0,"id":3,"title":"cc","body":""}`, string(actualRequestBody))
@@ -159,7 +161,7 @@ func TestSimpleAPI(t *testing.T) {
 	// Test ClearInterceptor
 	api.GetSimpleHTTP().ClearInterceptor()
 	actualContentType = ""
-	response = postsPatch(nil, Post{ID: 3, Title: "cc"}, &struct{}{}).Eval().(*ResponseWithError)
+	apiResponse = postsPatch(nil, Post{ID: 3, Title: "cc"}, &PostListResponse{}).Eval()
 	assert.Equal(t, "", actualContentType)
 }
 
@@ -184,7 +186,7 @@ func TestSimpleAPIMultipart(t *testing.T) {
 	// router.GET("/posts", postsHandler)
 	// recorder := httptest.NewRecorder()
 
-	var response *ResponseWithError
+	var apiResponse *APIResponse[PostListResponse]
 
 	interceptorForTest := Interceptor(func(request *http.Request) error {
 		// actualPath = request.URL.Path
@@ -208,11 +210,11 @@ func TestSimpleAPIMultipart(t *testing.T) {
 	filePath := path.Join(fileDir, fileName)
 
 	actualContentType = ""
-	postsPost := api.MakePostMultipartBody("posts")
+	postsPost := APIMakePostMultipartBody[PostListResponse](api, "posts")
 	sentValues = map[string][]string{"userId": []string{"0"}, "id": []string{"5"}, "title": []string{"aa"}, "body": []string{""}}
 	sentFiles := map[string][]string{"file": []string{filePath}}
-	response = postsPost(nil, &MultipartForm{Value: sentValues, File: sentFiles}, &struct{}{}).Eval().(*ResponseWithError)
-	assert.Equal(t, nil, response.Err)
+	apiResponse = postsPost(nil, &MultipartForm{Value: sentValues, File: sentFiles}, &PostListResponse{}).Eval()
+	assert.Equal(t, nil, apiResponse.Err)
 	_, params, _ = mime.ParseMediaType(actualContentType)
 	multipartReader = multipart.NewReader(bytes.NewReader(actualRequestBody), params["boundary"])
 	actualForm, _ = multipartReader.ReadForm(1024)
@@ -220,10 +222,10 @@ func TestSimpleAPIMultipart(t *testing.T) {
 	assert.Equal(t, 1, len(actualForm.File["file"]))
 
 	actualContentType = ""
-	postsPut := api.MakePutMultipartBody("posts")
+	postsPut := APIMakePutMultipartBody[PostListResponse](api, "posts")
 	sentValues = map[string][]string{"userId": []string{"0"}, "id": []string{"4"}, "title": []string{"bb"}, "body": []string{""}}
-	response = postsPut(nil, &MultipartForm{Value: sentValues}, &struct{}{}).Eval().(*ResponseWithError)
-	assert.Equal(t, nil, response.Err)
+	apiResponse = postsPut(nil, &MultipartForm{Value: sentValues}, &PostListResponse{}).Eval()
+	assert.Equal(t, nil, apiResponse.Err)
 	_, params, _ = mime.ParseMediaType(actualContentType)
 	multipartReader = multipart.NewReader(bytes.NewReader(actualRequestBody), params["boundary"])
 	actualForm, _ = multipartReader.ReadForm(1024)
@@ -231,10 +233,10 @@ func TestSimpleAPIMultipart(t *testing.T) {
 	assert.Equal(t, 0, len(actualForm.File["file"]))
 
 	actualContentType = ""
-	postsPatch := api.MakePatchMultipartBody("posts")
+	postsPatch := APIMakePatchMultipartBody[PostListResponse](api, "posts")
 	sentValues = map[string][]string{"userId": []string{"0"}, "id": []string{"3"}, "title": []string{"cc"}, "body": []string{""}}
-	response = postsPatch(nil, &MultipartForm{Value: sentValues}, &struct{}{}).Eval().(*ResponseWithError)
-	assert.Equal(t, nil, response.Err)
+	apiResponse = postsPatch(nil, &MultipartForm{Value: sentValues}, &PostListResponse{}).Eval()
+	assert.Equal(t, nil, apiResponse.Err)
 	_, params, _ = mime.ParseMediaType(actualContentType)
 	multipartReader = multipart.NewReader(bytes.NewReader(actualRequestBody), params["boundary"])
 	actualForm, _ = multipartReader.ReadForm(1024)

@@ -27,6 +27,11 @@ func MonadIOJustGenerics[T any](in T) *MonadIODef[T] {
 
 // New New MonadIO by effect function
 func (monadIOSelf *MonadIODef[T]) New(effect func() T) *MonadIODef[T] {
+	return MonadIONewGenerics(effect)
+}
+
+// MonadIONewGenerics New MonadIO by effect function
+func MonadIONewGenerics[T any](effect func() T) *MonadIODef[T] {
 	return &MonadIODef[T]{effect: effect}
 }
 
@@ -89,7 +94,7 @@ func (monadIOSelf *MonadIODef[T]) doEffect() T {
 }
 
 // Eval Eval the value right now(sync)
-func (monadIOSelf *MonadIODef[T]) Eval() interface{} {
+func (monadIOSelf *MonadIODef[T]) Eval() T {
 	return monadIOSelf.doEffect()
 }
 

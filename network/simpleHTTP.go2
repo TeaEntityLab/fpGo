@@ -41,7 +41,6 @@ type SimpleHTTPDef struct {
 
 // ResponseWithError Response with Error
 type ResponseWithError struct {
-	TargetObject interface{}
 	Request      *http.Request
 	Response     *http.Response
 
@@ -245,17 +244,23 @@ type MultipartForm struct {
 	File map[string][]string
 }
 
+// APIResponse Response with Error & Type
+type APIResponse[R any] struct {
+	ResponseWithError
+	TargetObject *R
+}
+
 // APINoBody API without request body options
-type APINoBody func(pathParam PathParam, target interface{}) *fpgo.MonadIODef[interface{}]
+type APINoBody[R any] func(pathParam PathParam, target *R) *fpgo.MonadIODef[*APIResponse[R]]
 
 // APIHasBody API with request body options
-type APIHasBody func(pathParam PathParam, body interface{}, target interface{}) *fpgo.MonadIODef[interface{}]
+type APIHasBody[T any, R any] func(pathParam PathParam, body T, target *R) *fpgo.MonadIODef[*APIResponse[R]]
 
 // APIMultipart API with request body options
-type APIMultipart func(pathParam PathParam, body *MultipartForm, target interface{}) *fpgo.MonadIODef[interface{}]
+type APIMultipart[R any] func(pathParam PathParam, body *MultipartForm, target *R) *fpgo.MonadIODef[*APIResponse[R]]
 
 // // APIResponseOnly API with only response options
-// type APIResponseOnly func(target interface{}) *fpgo.MonadIODef[interface{}]
+// type APIResponseOnly[R any] func(target *R) *fpgo.MonadIODef[*APIResponse[R]]
 
 // BodySerializer Serialize the body (for put/post/patch etc)
 type BodySerializer func(body interface{}) (io.Reader, error)
@@ -351,58 +356,60 @@ func (simpleAPISelf *SimpleAPIDef) GetSimpleHTTP() *SimpleHTTPDef {
 	return simpleAPISelf.simpleHTTP
 }
 
-// MakeGet Make a Get API
-func (simpleAPISelf *SimpleAPIDef) MakeGet(relativeURL string) APINoBody {
-	return simpleAPISelf.MakeDoNewRequest(http.MethodGet, relativeURL)
+// APIMakeGet Make a Get API
+func APIMakeGet[R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APINoBody[R] {
+	return APIMakeDoNewRequest[R](simpleAPISelf, http.MethodGet, relativeURL)
 }
 
-// MakeDelete Make a Delete API
-func (simpleAPISelf *SimpleAPIDef) MakeDelete(relativeURL string) APINoBody {
-	return simpleAPISelf.MakeDoNewRequest(http.MethodDelete, relativeURL)
+// APIMakeDelete Make a Delete API
+func APIMakeDelete[R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APINoBody[R] {
+	return APIMakeDoNewRequest[R](simpleAPISelf, http.MethodDelete, relativeURL)
 }
 
-// MakePostJSONBody Make a Post API with json Body
-func (simpleAPISelf *SimpleAPIDef) MakePostJSONBody(relativeURL string) APIHasBody {
-	return simpleAPISelf.MakeDoNewRequestWithBodySerializer(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+// APIMakePostJSONBody Make a Post API with json Body
+func APIMakePostJSONBody[T any, R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APIHasBody[T, R] {
+	return APIMakeDoNewRequestWithBodySerializer[T, R](simpleAPISelf, http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
 }
 
-// MakePutJSONBody Make a Put API with json Body
-func (simpleAPISelf *SimpleAPIDef) MakePutJSONBody(relativeURL string) APIHasBody {
-	return simpleAPISelf.MakeDoNewRequestWithBodySerializer(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+// APIMakePutJSONBody Make a Put API with json Body
+func APIMakePutJSONBody[T any, R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APIHasBody[T, R] {
+	return APIMakeDoNewRequestWithBodySerializer[T, R](simpleAPISelf, http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
 }
 
-// MakePatchJSONBody Make a Patch API with json Body
-func (simpleAPISelf *SimpleAPIDef) MakePatchJSONBody(relativeURL string) APIHasBody {
-	return simpleAPISelf.MakeDoNewRequestWithBodySerializer(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+// APIMakePatchJSONBody Make a Patch API with json Body
+func APIMakePatchJSONBody[T any, R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APIHasBody[T, R] {
+	return APIMakeDoNewRequestWithBodySerializer[T, R](simpleAPISelf, http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
 }
 
-// MakePostMultipartBody Make a Post API with multipart Body
-func (simpleAPISelf *SimpleAPIDef) MakePostMultipartBody(relativeURL string) APIMultipart {
-	return simpleAPISelf.MakeDoNewRequestWithMultipartSerializer(http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
+// APIMakePostMultipartBody Make a Post API with multipart Body
+func APIMakePostMultipartBody[R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APIMultipart[R] {
+	return APIMakeDoNewRequestWithMultipartSerializer[R](simpleAPISelf, http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
 }
 
-// MakePutMultipartBody Make a Put API with multipart Body
-func (simpleAPISelf *SimpleAPIDef) MakePutMultipartBody(relativeURL string) APIMultipart {
-	return simpleAPISelf.MakeDoNewRequestWithMultipartSerializer(http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
+// APIMakePutMultipartBody Make a Put API with multipart Body
+func APIMakePutMultipartBody[R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APIMultipart[R] {
+	return APIMakeDoNewRequestWithMultipartSerializer[R](simpleAPISelf, http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
 }
 
-// MakePatchMultipartBody Make a Patch API with multipart Body
-func (simpleAPISelf *SimpleAPIDef) MakePatchMultipartBody(relativeURL string) APIMultipart {
-	return simpleAPISelf.MakeDoNewRequestWithMultipartSerializer(http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
+// APIMakePatchMultipartBody Make a Patch API with multipart Body
+func APIMakePatchMultipartBody[R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APIMultipart[R] {
+	return APIMakeDoNewRequestWithMultipartSerializer[R](simpleAPISelf, http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
 }
 
-// MakeDoNewRequestWithBodySerializer Make a API with request body options
-func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithBodySerializer(method string, relativeURL string, contentType string, bodySerializer BodySerializer) APIHasBody {
-	return APIHasBody(func(pathParam PathParam, body interface{}, target interface{}) *fpgo.MonadIODef[interface{}] {
-		return fpgo.MonadIO.New(func() interface{} {
+// APIMakeDoNewRequestWithBodySerializer Make a API with request body options
+func APIMakeDoNewRequestWithBodySerializer[T any, R any](simpleAPISelf *SimpleAPIDef, method string, relativeURL string, contentType string, bodySerializer BodySerializer) APIHasBody[T, R] {
+	return APIHasBody[T, R](func(pathParam PathParam, body T, target *R) *fpgo.MonadIODef[*APIResponse[R]] {
+		return fpgo.MonadIONewGenerics[*APIResponse[R]](func() *APIResponse[R] {
 			var bodyReader io.Reader
 			if !fpgo.IsNil(body) {
 				var newBodyReaderErr error
 				bodyReader, newBodyReaderErr = bodySerializer(body)
 				if newBodyReaderErr != nil {
-					return &ResponseWithError{
+					return &APIResponse[R]{
 						// Request: request,
-						Err: newBodyReaderErr,
+						ResponseWithError: ResponseWithError{
+							Err: newBodyReaderErr,
+						},
 					}
 				}
 			}
@@ -411,26 +418,32 @@ func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithBodySerializer(method str
 			defer cancel()
 			response := simpleAPISelf.simpleHTTP.DoNewRequestWithBodyOptions(ctx, simpleAPISelf.DefaultHeader.Clone(), method, simpleAPISelf.replacePathParams(relativeURL, pathParam), bodyReader, contentType)
 			if response.Err != nil {
-				return response
+				return &APIResponse[R]{
+					ResponseWithError: *response,
+				}
 			}
-			return simpleAPISelf.decodeResponseBody(response, target)
+			return decodeResponseBody[R](simpleAPISelf, &APIResponse[R]{
+				ResponseWithError: *response,
+			}, target)
 		})
 	})
 }
 
-// MakeDoNewRequestWithMultipartSerializer Make a API with request body options
-func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithMultipartSerializer(method string, relativeURL string, multipartSerializer MultipartSerializer) APIMultipart {
-	return APIMultipart(func(pathParam PathParam, body *MultipartForm, target interface{}) *fpgo.MonadIODef[interface{}] {
-		return fpgo.MonadIO.New(func() interface{} {
+// APIMakeDoNewRequestWithMultipartSerializer Make a API with request body options
+func APIMakeDoNewRequestWithMultipartSerializer[R any](simpleAPISelf *SimpleAPIDef, method string, relativeURL string, multipartSerializer MultipartSerializer) APIMultipart[R] {
+	return APIMultipart[R](func(pathParam PathParam, body *MultipartForm, target *R) *fpgo.MonadIODef[*APIResponse[R]] {
+		return fpgo.MonadIONewGenerics[*APIResponse[R]](func() *APIResponse[R] {
 			var bodyReader io.Reader
 			var contentType string
 			if !fpgo.IsNil(body) {
 				var newBodyReaderErr error
 				bodyReader, contentType, newBodyReaderErr = multipartSerializer(body)
 				if newBodyReaderErr != nil {
-					return &ResponseWithError{
+					return &APIResponse[R]{
 						// Request: request,
-						Err: newBodyReaderErr,
+						ResponseWithError: ResponseWithError{
+							Err: newBodyReaderErr,
+						},
 					}
 				}
 			}
@@ -439,37 +452,48 @@ func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequestWithMultipartSerializer(metho
 			defer cancel()
 			response := simpleAPISelf.simpleHTTP.DoNewRequestWithBodyOptions(ctx, simpleAPISelf.DefaultHeader.Clone(), method, simpleAPISelf.replacePathParams(relativeURL, pathParam), bodyReader, contentType)
 			if response.Err != nil {
-				return response
+				return &APIResponse[R]{
+					ResponseWithError: *response,
+				}
 			}
-			return simpleAPISelf.decodeResponseBody(response, target)
+			return decodeResponseBody[R](simpleAPISelf, &APIResponse[R]{
+				ResponseWithError: *response,
+			}, target)
 		})
 	})
 }
 
-// MakeDoNewRequest Make a API without body options
-func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequest(method string, relativeURL string) APINoBody {
-	return APINoBody(func(pathParam PathParam, target interface{}) *fpgo.MonadIODef[interface{}] {
-		return fpgo.MonadIO.New(func() interface{} {
+// APIMakeDoNewRequest Make a API without body options
+func APIMakeDoNewRequest[R any](simpleAPISelf *SimpleAPIDef, method string, relativeURL string) APINoBody[R] {
+	return APINoBody[R](func(pathParam PathParam, target *R) *fpgo.MonadIODef[*APIResponse[R]] {
+		return fpgo.MonadIONewGenerics[*APIResponse[R]](func() *APIResponse[R] {
 
 			ctx, cancel := simpleAPISelf.GetSimpleHTTP().GetContextTimeout()
 			defer cancel()
 			response := simpleAPISelf.simpleHTTP.DoNewRequest(ctx, simpleAPISelf.DefaultHeader.Clone(), method, simpleAPISelf.replacePathParams(relativeURL, pathParam))
 			if response.Err != nil {
-				return response
+				return &APIResponse[R]{
+					ResponseWithError: *response,
+				}
 			}
-			return simpleAPISelf.decodeResponseBody(response, target)
+			return decodeResponseBody[R](simpleAPISelf, &APIResponse[R]{
+				ResponseWithError: *response,
+			}, target)
 		})
 	})
 }
 
 // decodeResponseBody Make a API without body options
-func (simpleAPISelf *SimpleAPIDef) decodeResponseBody(response *ResponseWithError, target interface{}) *ResponseWithError {
+func decodeResponseBody[R any](simpleAPISelf *SimpleAPIDef, response *APIResponse[R], target *R) *APIResponse[R] {
 	responseBody, readResponseErr := ioutil.ReadAll(response.Response.Body)
 	if readResponseErr != nil {
 		response.Err = readResponseErr
 		return response
 	}
-	response.TargetObject, response.Err = simpleAPISelf.ResponseDeserializer(responseBody, target)
+
+	var tempTarget interface{}
+	tempTarget, response.Err = simpleAPISelf.ResponseDeserializer(responseBody, target)
+	response.TargetObject = tempTarget.(*R)
 	return response
 }
 
