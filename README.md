@@ -12,6 +12,12 @@
 
 Monad, Functional Programming features for Golang
 
+Active Branches:
+
+For Generics version(>=go1.18):[generics](https://github.com/TeaEntityLab/fpGo/tree/generics)
+
+For NonGenerics version(<=go1.17):[non-generics](https://github.com/TeaEntityLab/fpGo/tree/non_generic)
+
 # Why
 
 I love functional programing, Rx-style coding, and Optional usages.
@@ -40,6 +46,7 @@ Thus I implemented fpGo. I hope you would like it :)
 
 * PythonicGenerator-like Coroutine(yield/yieldFrom)
 
+* Akka/Erlang-like Actor model(send/receive/spawn/states)
 
 # Usage
 
@@ -129,6 +136,79 @@ for _, v := range s.ToArray() {
   tempString += Maybe.Just(v).ToMaybe().ToString()
 }
 fmt.Println(tempString) // tempString would be "1234"
+```
+
+## Actor (inspired by Akka/Erlang)
+
+Example:
+
+```go
+actual := 0
+// Channel for results
+resultChannel := make(chan interface{}, 1)
+// Message CMDs
+cmdSpawn := "spawn"
+cmdShutdown := "shutdown"
+// Testee
+actorRoot := Actor.New(func(self *ActorDef, input interface{}) {
+  // SPAWN: for ROOT
+  if input == cmdSpawn {
+    self.Spawn(func(self *ActorDef, input interface{}) {
+      // SHUTDOWN: for Children
+      if input == cmdShutdown {
+        self.Close()
+        return
+      }
+
+      // INT cases: Children
+      val, _ := Maybe.Just(input).ToInt()
+      resultChannel <- val * 10
+    })
+    return
+  }
+  // SHUTDOWN: for ROOT
+  if input == cmdShutdown {
+    for _, child := range self.children {
+      child.Send(cmdShutdown)
+    }
+    self.Close()
+
+    close(resultChannel)
+    return
+  }
+
+  // INT cases: ROOT
+  intVal, _ := Maybe.Just(input).ToInt()
+  if intVal > 0 {
+    for _, child := range self.children {
+      child.Send(intVal)
+    }
+  }
+})
+
+// Sequential Send messages(async)
+go func() {
+  actorRoot.Send(cmdSpawn)
+  actorRoot.Send(10)
+  actorRoot.Send(cmdSpawn)
+  actorRoot.Send(20)
+  actorRoot.Send(cmdSpawn)
+  actorRoot.Send(30)
+}()
+
+i := 0
+for val := range resultChannel {
+  intVal, _ := Maybe.Just(val).ToInt()
+  actual += intVal
+
+  i++
+  if i == 5 {
+    go actorRoot.Send(cmdShutdown)
+  }
+}
+
+// Result would be 1400 (=10*10+20*10+20*10+30*10+30*10+30*10)
+fmt.Println(actual)
 ```
 
 ## Compose
