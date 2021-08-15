@@ -112,27 +112,24 @@ func TestActorAsk(t *testing.T) {
 	// Normal cases
 	actual = 0
 	expectedInt = 10
-	actual, _ = Maybe.Just(AskNewGenerics(1, nil).AskOnce(actorRoot)).ToInt()
+	actual, _ = Maybe.Just(AskNewGenerics(1).AskOnce(actorRoot, nil)).ToInt()
 	assert.Equal(t, expectedInt, actual)
 	// Ask with Timeout
 	actual = 0
 	expectedInt = 20
-	actual, _ = Maybe.Just(AskNewGenerics(2, &timeout).AskOnce(actorRoot)).ToInt()
+	actual, _ = Maybe.Just(AskNewGenerics(2).AskOnce(actorRoot, &timeout)).ToInt()
 	assert.Equal(t, expectedInt, actual)
 	// Ask channel
 	actual = 0
 	expectedInt = 30
-	ch, timer := AskNewGenerics(3, &timeout).AskChannel(actorRoot)
+	ch := AskNewGenerics(3).AskChannel(actorRoot)
 	actual, _ = Maybe.Just(<-*ch).ToInt()
 	close(*ch)
-	if timer != nil {
-		timer.Stop()
-	}
 	assert.Equal(t, expectedInt, actual)
 
 	// Timeout cases
 	actual = 9999
 	expectedInt = 0
-	actual, _ = Maybe.Just(AskNewGenerics(-1, &timeout).AskOnce(actorRoot)).ToInt()
+	actual, _ = Maybe.Just(AskNewGenerics(-1).AskOnce(actorRoot, &timeout)).ToInt()
 	assert.Equal(t, expectedInt, actual)
 }
