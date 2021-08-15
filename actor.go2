@@ -191,8 +191,9 @@ func (askSelf *AskDef[T, R]) Reply(response R) {
 var Ask AskDef[interface{}, interface{}]
 
 func init() {
-	Ask = *Ask.New(0, nil)
-	Actor = *Actor.New(func(_ *ActorDef[interface{}], _ interface{}) {})
-	Actor.Close()
+	// Ask = *Ask.New(0, nil)
+	// Actor = *Actor.New(func(_ *ActorDef[interface{}], _ interface{}) {})
+	// Actor.Close()
+	Actor.isClosed = true
 	defaultActor = &Actor
 }
