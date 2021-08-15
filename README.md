@@ -243,19 +243,19 @@ timeout = 10 * time.Millisecond
 
 // Normal cases
 // Result would be 10
-actual, _ = Maybe.Just(AskNewGenerics[interface{}, int](1).AskOnce(actorRoot, nil)).ToInt()
+actual = AskNewGenerics[interface{}, int](1).AskOnce(actorRoot, nil)
 // Ask with Timeout
 // Result would be 20
-actual, _ = Maybe.Just(AskNewGenerics[interface{}, int](2).AskOnce(actorRoot, &timeout)).ToInt()
+actual = AskNewGenerics[interface{}, int](2).AskOnce(actorRoot, &timeout)
 // Ask channel
 // Result would be 30
 ch := AskNewGenerics[interface{}, int](3).AskChannel(actorRoot)
-actual, _ = Maybe.Just(<-*ch).ToInt()
+actual = <- *ch
 close(*ch)
 
 // Timeout cases
 // Result would be 0 (zero value, timeout)
-actual, _ = Maybe.Just(AskNewGenerics[interface{}, int](-1).AskOnce(actorRoot, &timeout)).ToInt()
+actual = AskNewGenerics[interface{}, int](-1).AskOnce(actorRoot, &timeout)
 ```
 
 ## Compose
