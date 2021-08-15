@@ -6,6 +6,7 @@ import (
 
 // ActorDef Actor model inspired by Erlang/Akka
 type ActorDef struct {
+	id       time.Time
 	isClosed bool
 	ch       *chan interface{}
 	effect   func(*ActorDef, interface{})
@@ -31,7 +32,13 @@ func (actorSelf *ActorDef) New(effect func(*ActorDef, interface{})) *ActorDef {
 
 // NewByOptions New Actor by its options
 func (actorSelf *ActorDef) NewByOptions(effect func(*ActorDef, interface{}), ioCh *chan interface{}, context map[string]interface{}) *ActorDef {
-	newOne := ActorDef{ch: ioCh, effect: effect, context: context, children: map[time.Time]*ActorDef{}}
+	newOne := ActorDef{
+		id:       time.Now(),
+		ch:       ioCh,
+		effect:   effect,
+		context:  context,
+		children: map[time.Time]*ActorDef{},
+	}
 	go newOne.run()
 
 	return &newOne
@@ -54,7 +61,7 @@ func (actorSelf *ActorDef) Spawn(effect func(*ActorDef, interface{})) *ActorDef 
 	}
 
 	newOne.parent = actorSelf
-	actorSelf.children[time.Now()] = newOne
+	actorSelf.children[newOne.id] = newOne
 
 	return newOne
 }
@@ -67,6 +74,11 @@ func (actorSelf *ActorDef) GetChild(id time.Time) *ActorDef {
 // GetParent Get its parent Actor
 func (actorSelf *ActorDef) GetParent() *ActorDef {
 	return actorSelf.parent
+}
+
+// GetID Get ID time.Time
+func (actorSelf *ActorDef) GetID() time.Time {
+	return actorSelf.id
 }
 
 // Close Close the Actor
