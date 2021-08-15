@@ -221,10 +221,10 @@ fmt.Println(actual)
 ### Actor Ask (inspired by Akka/Erlang)
 
 ```go
-actorRoot := Actor.New(func(self *ActorDef, input interface{}) {
+actorRoot := Actor.New(func(self *ActorDef[interface{}], input interface{}) {
     // Ask cases: ROOT
     switch val := input.(type) {
-    case *AskDef:
+    case *AskDef[interface{}, int]:
         intVal, _ := Maybe.Just(val.Message).ToInt()
 
         // NOTE If negative, hanging for testing Ask.timeout
@@ -243,14 +243,14 @@ timeout = 10 * time.Millisecond
 
 // Normal cases
 // Result would be 10
-actual, _ = Maybe.Just(Ask.New(1, nil).AskOnce(actorRoot)).ToInt()
+actual = AskNewGenerics[interface{}, int](1, nil).AskOnce(actorRoot)
 // Ask with Timeout
 // Result would be 20
-actual, _ = Maybe.Just(Ask.New(2, &timeout).AskOnce(actorRoot)).ToInt()
+actual = AskNewGenerics[interface{}, int](2, &timeout).AskOnce(actorRoot)
 // Ask channel
 // Result would be 30
-ch, timer := Ask.New(3, &timeout).AskChannel(actorRoot)
-actual, _ = Maybe.Just(<-*ch).ToInt()
+ch, timer := AskNewGenerics[interface{}, int](3, &timeout).AskChannel(actorRoot)
+actual = <- *ch
 close(*ch)
 if timer != nil {
     timer.Stop()
@@ -258,7 +258,7 @@ if timer != nil {
 
 // Timeout cases
 // Result would be 0 (zero value, timeout)
-actual, _ = Maybe.Just(Ask.New(-1, &timeout).AskOnce(actorRoot)).ToInt()
+actual = AskNewGenerics[interface{}, int](-1, &timeout).AskOnce(actorRoot)
 ```
 
 ## Compose
