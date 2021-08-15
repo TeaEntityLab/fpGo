@@ -4,41 +4,51 @@ import (
 	"time"
 )
 
-// ActorDef Actor model inspired by Erlang/Akka
-type ActorDef struct {
+// ActorDef[T] Actor model inspired by Erlang/Akka
+type ActorDef[T any] struct {
 	isClosed bool
-	ch       *chan interface{}
-	effect   func(*ActorDef, interface{})
+	ch       *chan T
+	effect   func(*ActorDef[T], T)
 
 	context map[string]interface{}
 
-	children map[time.Time]*ActorDef
-	parent   *ActorDef
+	children map[time.Time]*ActorDef[T]
+	parent   *ActorDef[T]
 }
 
-var defaultActor *ActorDef
+var defaultActor *ActorDef[interface{}]
 
 // GetDefault Get Default Actor
-func (actorSelf *ActorDef) GetDefault() *ActorDef {
+func (actorSelf *ActorDef[T]) GetDefault() *ActorDef[interface{}] {
 	return defaultActor
 }
 
 // New New Actor instance
-func (actorSelf *ActorDef) New(effect func(*ActorDef, interface{})) *ActorDef {
-	ch := make(chan interface{})
-	return actorSelf.NewByOptions(effect, &ch, map[string]interface{}{})
+func (actorSelf *ActorDef[T]) New(effect func(*ActorDef[T], T)) *ActorDef[T] {
+	return ActorNewGenerics(effect)
 }
 
 // NewByOptions New Actor by its options
-func (actorSelf *ActorDef) NewByOptions(effect func(*ActorDef, interface{}), ioCh *chan interface{}, context map[string]interface{}) *ActorDef {
-	newOne := ActorDef{ch: ioCh, effect: effect, context: context, children: map[time.Time]*ActorDef{}}
+func (actorSelf *ActorDef[T]) NewByOptions(effect func(*ActorDef[T], T), ioCh *chan T, context map[string]interface{}) *ActorDef[T] {
+	return ActorNewByOptionsGenerics(effect, ioCh, context)
+}
+
+// ActorNewGenerics New Actor instance
+func ActorNewGenerics[T any](effect func(*ActorDef[T], T)) *ActorDef[T] {
+	ch := make(chan T)
+	return ActorNewByOptionsGenerics(effect, &ch, map[string]interface{}{})
+}
+
+// ActorNewByOptionsGenerics New Actor by its options
+func ActorNewByOptionsGenerics[T any](effect func(*ActorDef[T], T), ioCh *chan T, context map[string]interface{}) *ActorDef[T] {
+	newOne := ActorDef[T]{ch: ioCh, effect: effect, context: context, children: map[time.Time]*ActorDef[T]{}}
 	go newOne.run()
 
 	return &newOne
 }
 
 // Send Send a message to the Actor
-func (actorSelf *ActorDef) Send(message interface{}) {
+func (actorSelf *ActorDef[T]) Send(message T) {
 	if actorSelf.isClosed {
 		return
 	}
@@ -47,8 +57,8 @@ func (actorSelf *ActorDef) Send(message interface{}) {
 }
 
 // Spawn Spawn a new Actor with parent(this actor)
-func (actorSelf *ActorDef) Spawn(effect func(*ActorDef, interface{})) *ActorDef {
-	newOne := Actor.New(effect)
+func (actorSelf *ActorDef[T]) Spawn(effect func(*ActorDef[T], T)) *ActorDef[T] {
+	newOne := actorSelf.New(effect)
 	if actorSelf.isClosed {
 		return newOne
 	}
@@ -60,38 +70,38 @@ func (actorSelf *ActorDef) Spawn(effect func(*ActorDef, interface{})) *ActorDef 
 }
 
 // GetChild Get a child Actor by ID
-func (actorSelf *ActorDef) GetChild(id time.Time) *ActorDef {
+func (actorSelf *ActorDef[T]) GetChild(id time.Time) *ActorDef[T] {
 	return actorSelf.children[id]
 }
 
 // GetParent Get its parent Actor
-func (actorSelf *ActorDef) GetParent() *ActorDef {
+func (actorSelf *ActorDef[T]) GetParent() *ActorDef[T] {
 	return actorSelf.parent
 }
 
 // Close Close the Actor
-func (actorSelf *ActorDef) Close() {
+func (actorSelf *ActorDef[T]) Close() {
 	actorSelf.isClosed = true
 
 	close(*actorSelf.ch)
 }
 
 // IsClosed Check is Closed
-func (actorSelf *ActorDef) IsClosed() bool {
+func (actorSelf *ActorDef[T]) IsClosed() bool {
 	return actorSelf.isClosed
 }
 
-func (actorSelf *ActorDef) run() {
+func (actorSelf *ActorDef[T]) run() {
 	for message := range *actorSelf.ch {
 		actorSelf.effect(actorSelf, message)
 	}
 }
 
 // Actor Actor utils instance
-var Actor ActorDef
+var Actor ActorDef[interface{}]
 
 func init() {
-	Actor = *Actor.New(func(_ *ActorDef, _ interface{}) {})
+	Actor = *Actor.New(func(_ *ActorDef[interface{}], _ interface{}) {})
 	Actor.Close()
 	defaultActor = &Actor
 }
