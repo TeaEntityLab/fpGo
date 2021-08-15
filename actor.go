@@ -4,6 +4,11 @@ import (
 	"time"
 )
 
+// ActorHandle A target could send messages
+type ActorHandle interface {
+	Send(message interface{})
+}
+
 // ActorDef Actor model inspired by Erlang/Akka
 type ActorDef struct {
 	id       time.Time
@@ -102,8 +107,83 @@ func (actorSelf *ActorDef) run() {
 // Actor Actor utils instance
 var Actor ActorDef
 
+// AskDef Ask inspired by Erlang/Akka
+type AskDef struct {
+	id      time.Time
+	ch      *chan interface{}
+	timeout *time.Duration
+
+	Message interface{}
+}
+
+// New New Ask instance
+func (askSelf *AskDef) New(message interface{}, timeout *time.Duration) *AskDef {
+	return AskNewGenerics(message, timeout)
+}
+
+// NewByOptions New Ask by its options
+func (askSelf *AskDef) NewByOptions(message interface{}, ioCh *chan interface{}, timeout *time.Duration) *AskDef {
+	return AskNewByOptionsGenerics(message, ioCh, timeout)
+}
+
+// AskNewGenerics New Ask instance
+func AskNewGenerics(message interface{}, timeout *time.Duration) *AskDef {
+	ch := make(chan interface{})
+	return AskNewByOptionsGenerics(message, &ch, timeout)
+}
+
+// AskNewByOptionsGenerics New Ask by its options
+func AskNewByOptionsGenerics(message interface{}, ioCh *chan interface{}, timeout *time.Duration) *AskDef {
+	newOne := AskDef{
+		id:      time.Now(),
+		ch:      ioCh,
+		timeout: timeout,
+
+		Message: message,
+	}
+
+	return &newOne
+}
+
+// AskOnce Sender Ask
+func (askSelf *AskDef) AskOnce(target ActorHandle) interface{} {
+	ch, timer := askSelf.AskChannel(target)
+	result, success := <-*ch
+	if success && timer != nil {
+		timer.Stop()
+		close(*ch)
+	}
+
+	return result
+}
+
+// AskChannel Sender Ask
+func (askSelf *AskDef) AskChannel(target ActorHandle) (*chan interface{}, *time.Timer) {
+	var timer *time.Timer
+	target.Send(askSelf)
+	if askSelf.timeout != nil {
+		timer = time.NewTimer(time.Second)
+		go func() {
+			<-timer.C
+			close(*askSelf.ch)
+		}()
+	}
+
+	return askSelf.ch, timer
+}
+
+// Reply Receiver Reply
+func (askSelf *AskDef) Reply(response interface{}) {
+	*askSelf.ch <- response
+}
+
+// Ask Ask utils instance
+var Ask AskDef
+
 func init() {
-	Actor = *Actor.New(func(_ *ActorDef, _ interface{}) {})
-	Actor.Close()
+	//Ask = *Ask.New(0, nil)
+	//Actor = *Actor.New(func(_ *ActorDef, _ interface{}) {})
+	//Actor.Close()
+	Actor.isClosed = true
 	defaultActor = &Actor
 }

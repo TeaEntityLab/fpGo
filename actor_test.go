@@ -2,6 +2,7 @@ package fpgo
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -81,4 +82,57 @@ func TestActorCommon(t *testing.T) {
 
 		assert.Equal(t, expectedInt, actual)
 	}
+}
+
+func TestActorAsk(t *testing.T) {
+	var expectedInt int
+	var actual int
+
+	// Testee
+	actorRoot := Actor.New(func(self *ActorDef, input interface{}) {
+		// Ask cases: ROOT
+		switch val := input.(type) {
+		case *AskDef:
+			intVal, _ := Maybe.Just(val.Message).ToInt()
+
+			// NOTE If negative, hanging for testing Ask.timeout
+			if intVal < 0 {
+				break
+			}
+
+			val.Reply(intVal * 10)
+			break
+		}
+	})
+
+	// var timer *time.Timer
+	var timeout time.Duration
+	timeout = 10 * time.Millisecond
+
+	// Normal cases
+	actual = 0
+	expectedInt = 10
+	actual, _ = Maybe.Just(AskNewGenerics(1, nil).AskOnce(actorRoot)).ToInt()
+	assert.Equal(t, expectedInt, actual)
+	// Ask with Timeout
+	actual = 0
+	expectedInt = 20
+	actual, _ = Maybe.Just(AskNewGenerics(2, &timeout).AskOnce(actorRoot)).ToInt()
+	assert.Equal(t, expectedInt, actual)
+	// Ask channel
+	actual = 0
+	expectedInt = 30
+	ch, timer := AskNewGenerics(3, &timeout).AskChannel(actorRoot)
+	actual, _ = Maybe.Just(<-*ch).ToInt()
+	close(*ch)
+	if timer != nil {
+		timer.Stop()
+	}
+	assert.Equal(t, expectedInt, actual)
+
+	// Timeout cases
+	actual = 9999
+	expectedInt = 0
+	actual, _ = Maybe.Just(AskNewGenerics(-1, &timeout).AskOnce(actorRoot)).ToInt()
+	assert.Equal(t, expectedInt, actual)
 }
