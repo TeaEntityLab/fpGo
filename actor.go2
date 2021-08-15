@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// ActorHandle A target could send messages
 type ActorHandle[T any] interface {
 	Send(message T)
 }
