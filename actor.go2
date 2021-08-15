@@ -122,33 +122,31 @@ var Actor ActorDef[interface{}]
 type AskDef[T any, R any] struct {
 	id      time.Time
 	ch      *chan R
-	timeout *time.Duration
 
 	Message T
 }
 
 // New New Ask instance
-func (askSelf *AskDef[T, R]) New(message T, timeout *time.Duration) *AskDef[T, R] {
-	return AskNewGenerics[T, R](message, timeout)
+func (askSelf *AskDef[T, R]) New(message T) *AskDef[T, R] {
+	return AskNewGenerics[T, R](message)
 }
 
 // NewByOptions New Ask by its options
-func (askSelf *AskDef[T, R]) NewByOptions(message T, ioCh *chan R, timeout *time.Duration) *AskDef[T, R] {
-	return AskNewByOptionsGenerics[T, R](message, ioCh, timeout)
+func (askSelf *AskDef[T, R]) NewByOptions(message T, ioCh *chan R) *AskDef[T, R] {
+	return AskNewByOptionsGenerics[T, R](message, ioCh)
 }
 
 // AskNewGenerics New Ask instance
-func AskNewGenerics[T any, R any](message T, timeout *time.Duration) *AskDef[T, R] {
+func AskNewGenerics[T any, R any](message T) *AskDef[T, R] {
 	ch := make(chan R)
-	return AskNewByOptionsGenerics[T, R](message, &ch, timeout)
+	return AskNewByOptionsGenerics[T, R](message, &ch)
 }
 
 // AskNewByOptionsGenerics New Ask by its options
-func AskNewByOptionsGenerics[T any, R any](message T, ioCh *chan R, timeout *time.Duration) *AskDef[T, R] {
+func AskNewByOptionsGenerics[T any, R any](message T, ioCh *chan R) *AskDef[T, R] {
 	newOne := AskDef[T, R]{
 		id:      time.Now(),
 		ch:      ioCh,
-		timeout: timeout,
 
 		Message: message,
 	}
@@ -157,30 +155,27 @@ func AskNewByOptionsGenerics[T any, R any](message T, ioCh *chan R, timeout *tim
 }
 
 // AskOnce Sender Ask
-func (askSelf *AskDef[T, R]) AskOnce(target ActorHandle[interface{}]) R {
-	ch, timer := askSelf.AskChannel(target)
-	result, success := <- *ch
-	if success && timer != nil {
-		timer.Stop()
-		close(*ch)
+func (askSelf *AskDef[T, R]) AskOnce(target ActorHandle[interface{}], timeout *time.Duration) R {
+	ch := askSelf.AskChannel(target)
+	var result R
+	if timeout == nil {
+		result = <-*ch
+	} else {
+		select {
+			case result = <-*ch:
+			case <-time.After(*timeout):
+		}
 	}
+	close(*ch)
 
 	return result
 }
 
 // AskChannel Sender Ask
-func (askSelf *AskDef[T, R]) AskChannel(target ActorHandle[interface{}]) (*chan R, *time.Timer) {
-	var timer *time.Timer
+func (askSelf *AskDef[T, R]) AskChannel(target ActorHandle[interface{}]) *chan R {
 	target.Send(askSelf)
-	if askSelf.timeout != nil {
-		timer = time.NewTimer(*askSelf.timeout)
-		go func() {
-			<-timer.C
-			close(*askSelf.ch)
-		}()
-	}
 
-	return askSelf.ch, timer
+	return askSelf.ch
 }
 
 // Reply Receiver Reply
