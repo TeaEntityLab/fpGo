@@ -162,7 +162,7 @@ func (askSelf *AskDef) AskChannel(target ActorHandle) (*chan interface{}, *time.
 	var timer *time.Timer
 	target.Send(askSelf)
 	if askSelf.timeout != nil {
-		timer = time.NewTimer(time.Second)
+		timer = time.NewTimer(*askSelf.timeout)
 		go func() {
 			<-timer.C
 			close(*askSelf.ch)
