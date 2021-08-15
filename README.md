@@ -12,11 +12,11 @@
 
 Monad, Functional Programming features for Golang
 
-Active Branches:
+# Active Branches:
 
-For Generics version(>=go1.18):[generics](https://github.com/TeaEntityLab/fpGo/tree/generics)
+For *Generics* version(*`>=go1.18`*):[generics](https://github.com/TeaEntityLab/fpGo/tree/generics)
 
-For NonGenerics version(<=go1.17):[non-generics](https://github.com/TeaEntityLab/fpGo/tree/non_generic)
+For *NonGenerics* version(*`<=go1.17`*):[non-generics](https://github.com/TeaEntityLab/fpGo/tree/non_generic)
 
 # Why
 
