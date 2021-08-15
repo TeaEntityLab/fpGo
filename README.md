@@ -140,6 +140,8 @@ fmt.Println(tempString) // tempString would be "1234"
 
 ## Actor (inspired by Akka/Erlang)
 
+### Actor common(send/receive/spawn/states)
+
 Example:
 
 ```go
@@ -209,6 +211,49 @@ for val := range resultChannel {
 
 // Result would be 1400 (=10*10+20*10+20*10+30*10+30*10+30*10)
 fmt.Println(actual)
+```
+
+### Actor Ask (inspired by Akka/Erlang)
+
+```go
+actorRoot := Actor.New(func(self *ActorDef, input interface{}) {
+    // Ask cases: ROOT
+    switch val := input.(type) {
+    case *AskDef:
+        intVal, _ := Maybe.Just(val.Message).ToInt()
+
+        // NOTE If negative, hanging for testing Ask.timeout
+        if intVal < 0 {
+            break
+        }
+
+        val.Reply(intVal * 10)
+        break
+    }
+})
+
+// var timer *time.Timer
+var timeout time.Duration
+timeout = 10 * time.Millisecond
+
+// Normal cases
+// Result would be 10
+actual, _ = Maybe.Just(Ask.New(1, nil).AskOnce(actorRoot)).ToInt()
+// Ask with Timeout
+// Result would be 20
+actual, _ = Maybe.Just(Ask.New(2, &timeout).AskOnce(actorRoot)).ToInt()
+// Ask channel
+// Result would be 30
+ch, timer := Ask.New(3, &timeout).AskChannel(actorRoot)
+actual, _ = Maybe.Just(<-*ch).ToInt()
+close(*ch)
+if timer != nil {
+    timer.Stop()
+}
+
+// Timeout cases
+// Result would be 0 (zero value, timeout)
+actual, _ = Maybe.Just(Ask.New(-1, &timeout).AskOnce(actorRoot)).ToInt()
 ```
 
 ## Compose
