@@ -87,6 +87,7 @@ func TestActorCommon(t *testing.T) {
 func TestActorAsk(t *testing.T) {
 	var expectedInt int
 	var actual int
+	var err error
 
 	// Testee
 	actorRoot := Actor.New(func(self *ActorDef[interface{}], input interface{}) {
@@ -112,12 +113,12 @@ func TestActorAsk(t *testing.T) {
 	// Normal cases
 	actual = 0
 	expectedInt = 10
-	actual = AskNewGenerics[interface{}, int](1).AskOnce(actorRoot, nil)
+	actual, _ = AskNewGenerics[interface{}, int](1).AskOnce(actorRoot, nil)
 	assert.Equal(t, expectedInt, actual)
 	// Ask with Timeout
 	actual = 0
 	expectedInt = 20
-	actual = AskNewGenerics[interface{}, int](2).AskOnce(actorRoot, &timeout)
+	actual, _ = AskNewGenerics[interface{}, int](2).AskOnce(actorRoot, &timeout)
 	assert.Equal(t, expectedInt, actual)
 	// Ask channel
 	actual = 0
@@ -130,6 +131,7 @@ func TestActorAsk(t *testing.T) {
 	// Timeout cases
 	actual = 9999
 	expectedInt = 0
-	actual = AskNewGenerics[interface{}, int](-1).AskOnce(actorRoot, &timeout)
+	actual, err = AskNewGenerics[interface{}, int](-1).AskOnce(actorRoot, &timeout)
 	assert.Equal(t, expectedInt, actual)
+	assert.Equal(t, ErrActorAskTimeout, err)
 }
