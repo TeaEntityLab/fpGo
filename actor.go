@@ -1,7 +1,12 @@
 package fpgo
 
 import (
+	"fmt"
 	"time"
+)
+
+var (
+	ErrActorAskTimeout = fmt.Errorf("ErrActorAskTimeout")
 )
 
 // ActorHandle A target could send messages
@@ -144,20 +149,22 @@ func AskNewByOptionsGenerics(message interface{}, ioCh *chan interface{}) *AskDe
 }
 
 // AskOnce Sender Ask
-func (askSelf *AskDef) AskOnce(target ActorHandle, timeout *time.Duration) interface{} {
+func (askSelf *AskDef) AskOnce(target ActorHandle, timeout *time.Duration) (interface{}, error) {
 	ch := askSelf.AskChannel(target)
+	defer close(*ch)
 	var result interface{}
+	// var err error
 	if timeout == nil {
 		result = <-*ch
 	} else {
 		select {
 		case result = <-*ch:
 		case <-time.After(*timeout):
+			return result, ErrActorAskTimeout
 		}
 	}
-	close(*ch)
 
-	return result
+	return result, nil
 }
 
 // AskChannel Sender Ask
