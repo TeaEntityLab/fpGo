@@ -238,10 +238,13 @@ timeout = 10 * time.Millisecond
 
 // Normal cases
 // Result would be 10
-actual, _ = Maybe.Just(Ask.New(1).AskOnce(actorRoot, nil)).ToInt()
+result, _ = Ask.New(1).AskOnce(actorRoot, nil)
+actual, _ = Maybe.Just(result).ToInt()
+assert.Equal(t, expectedInt, actual)
 // Ask with Timeout
 // Result would be 20
-actual, _ = Maybe.Just(Ask.New(2).AskOnce(actorRoot, &timeout)).ToInt()
+result, _ = Ask.New(2).AskOnce(actorRoot, &timeout)
+actual, _ = Maybe.Just(result).ToInt()
 // Ask channel
 // Result would be 30
 ch := Ask.New(3).AskChannel(actorRoot)
@@ -250,7 +253,8 @@ close(*ch)
 
 // Timeout cases
 // Result would be 0 (zero value, timeout)
-actual, _ = Maybe.Just(Ask.New(-1).AskOnce(actorRoot, &timeout)).ToInt()
+result, err = Ask.New(-1).AskOnce(actorRoot, &timeout)
+actual, _ = Maybe.Just(result).ToInt()
 ```
 
 ## Compose
