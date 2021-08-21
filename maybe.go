@@ -242,6 +242,9 @@ func (maybeSelf MaybeDef) ToInt32() (int32, error) {
 		return int32(0), err
 	case int:
 		val, err := maybeSelf.ToInt()
+		if val > math.MaxInt32 {
+			return 0, ErrConversionSizeOverflow
+		}
 		return int32(val), err
 	case int32:
 		return (ref).(int32), nil
@@ -313,26 +316,26 @@ func (maybeSelf MaybeDef) ToBool() (bool, error) {
 	ref := maybeSelf.ref
 	switch (ref).(type) {
 	default:
-		return bool(false), errors.New("unsupported")
+		return false, errors.New("unsupported")
 	case string:
 		return strconv.ParseBool(maybeSelf.ToString())
 	case bool:
 		return (ref).(bool), nil
 	case int:
 		val, err := maybeSelf.ToInt()
-		return bool(val != 0), err
+		return val != 0, err
 	case int32:
 		val, err := maybeSelf.ToInt32()
-		return bool(val != 0), err
+		return val != 0, err
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		return bool(val != 0), err
+		return val != 0, err
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		return bool(val != 0), err
+		return val != 0, err
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		return bool(val != 0), err
+		return val != 0, err
 	}
 }
 
