@@ -3,8 +3,13 @@ package fpgo
 import (
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"strconv"
+)
+
+var (
+	ErrConversionSizeOverflow = errors.New("size overflow")
 )
 
 // MaybeDef Maybe inspired by Rx/Optional/Guava/Haskell
@@ -184,23 +189,35 @@ func (maybeSelf MaybeDef) ToInt() (int, error) {
 	case bool:
 		val, err := maybeSelf.ToBool()
 		if val {
-			return int(1), err
+			return 1, err
 		}
-		return int(0), err
+		return 0, err
 	case int:
 		return (ref).(int), nil
 	case int32:
 		val, err := maybeSelf.ToInt32()
+		if val > math.MaxInt32 {
+			return 0, ErrConversionSizeOverflow
+		}
 		return int(val), err
 	case int64:
 		val, err := maybeSelf.ToInt64()
+		if val > math.MaxInt32 {
+			return 0, ErrConversionSizeOverflow
+		}
 		return int(val), err
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		return int(val), err
+		if val > math.MaxInt32 {
+			return 0, ErrConversionSizeOverflow
+		}
+		return int(math.Round(float64(val))), err
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		return int(val), err
+		if val > math.MaxInt32 {
+			return 0, ErrConversionSizeOverflow
+		}
+		return int(math.Round(val)), err
 	}
 }
 
@@ -230,13 +247,19 @@ func (maybeSelf MaybeDef) ToInt32() (int32, error) {
 		return (ref).(int32), nil
 	case int64:
 		val, err := maybeSelf.ToInt64()
+		if val > math.MaxInt32 {
+			return 0, ErrConversionSizeOverflow
+		}
 		return int32(val), err
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		return int32(val), err
+		if val > math.MaxInt32 {
+			return 0, ErrConversionSizeOverflow
+		}
+		return int32(math.Round(float64(val))), err
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		return int32(val), err
+		return int32(math.Round(val)), err
 	}
 }
 
@@ -268,10 +291,16 @@ func (maybeSelf MaybeDef) ToInt64() (int64, error) {
 		return (ref).(int64), nil
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		return int64(val), err
+		if val > math.MaxInt64 {
+			return 0, ErrConversionSizeOverflow
+		}
+		return int64(math.Round(float64(val))), err
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		return int64(val), err
+		if val > math.MaxInt64 {
+			return 0, ErrConversionSizeOverflow
+		}
+		return int64(math.Round(val)), err
 	}
 }
 
