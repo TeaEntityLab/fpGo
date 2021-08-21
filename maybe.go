@@ -232,8 +232,8 @@ func (maybeSelf MaybeDef) ToInt32() (int32, error) {
 	default:
 		return int32(0), errors.New("unsupported")
 	case string:
-		val, err := maybeSelf.ToInt64()
-		return int32(val), err
+		parseInt, err := strconv.ParseInt((ref).(string), 10, 32)
+		return int32(parseInt), err
 	case bool:
 		val, err := maybeSelf.ToBool()
 		if val {
@@ -274,7 +274,7 @@ func (maybeSelf MaybeDef) ToInt64() (int64, error) {
 	default:
 		return int64(0), errors.New("unsupported")
 	case string:
-		return strconv.ParseInt(maybeSelf.ToString(), 10, 32)
+		return strconv.ParseInt((ref).(string), 10, 64)
 	case bool:
 		val, err := maybeSelf.ToBool()
 		if val {
