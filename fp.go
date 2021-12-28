@@ -43,20 +43,12 @@ type Comparable[T any] interface {
 
 // Numeric Define Numeric types for Generics
 type Numeric interface {
-    type int,
-		int8, int16, int32, int64,
-		uint8, uint16, uint32, uint64,
-		float32, float64
+    int|int8|int16|int32|int64|uint8|uint16|uint32|uint64|float32|float64
 }
 
 // Ordered Define Ordered types for Generics
 type Ordered interface {
-    type int,
-		int8, int16, int32, int64,
-		uint8, uint16, uint32, uint64,
-		uintptr,
-		string,
-		float32, float64
+    int|int8| int16| int32| int64|uint8| uint16| uint32| uint64|uintptr|string|float32| float64
 }
 // CompareToOrdered A general Compare function for Ordered
 func CompareToOrdered[T Ordered](a, b T) int {
