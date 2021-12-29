@@ -276,9 +276,9 @@ func TestStreamSetOperation(t *testing.T) {
 }
 
 func TestSetSetOperation(t *testing.T) {
-	var s *SetDef[int, bool]
-	var s2 *SetDef[int, bool]
-	var s3 *SetDef[int, bool]
+	var s *MapSetDef[int, bool]
+	var s2 *MapSetDef[int, bool]
+	var s3 *MapSetDef[int, bool]
 	var tempString string
 
 	s = SetFrom[int, bool](11, 2, 3, 4, 5)
@@ -332,11 +332,11 @@ func TestStreamSetSetOperation(t *testing.T) {
 
 	assert.Equal(t, true, s.ContainsKey(4))
 	assert.Equal(t, false, s.ContainsKey(6))
-	assert.Equal(t, true, s.IsSupersetByKey(s3))
-	assert.Equal(t, true, s2.IsSupersetByKey(s3))
-	assert.Equal(t, true, s3.IsSubsetByKey(s))
-	assert.Equal(t, true, s3.IsSubsetByKey(s2))
-	assert.Equal(t, false, s.IsSupersetByKey(s2))
+	assert.Equal(t, true, s.IsSupersetByKey(s3.AsMapSet()))
+	assert.Equal(t, true, s2.IsSupersetByKey(s3.AsMapSet()))
+	assert.Equal(t, true, s3.IsSubsetByKey(s.AsMapSet()))
+	assert.Equal(t, true, s3.IsSubsetByKey(s2.AsMapSet()))
+	assert.Equal(t, false, s.IsSupersetByKey(s2.AsMapSet()))
 	tempString = ""
 	for _, v := range SortOrderedAscending(s.Clone().Intersection(s2).Keys()...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
@@ -350,12 +350,12 @@ func TestStreamSetSetOperation(t *testing.T) {
 	assert.Equal(t, "2/3/4/5/6/9/11/", tempString)
 	assert.Equal(t, 7, s.Union(s2).Size())
 	tempString = ""
-	for _, v := range SortOrderedAscending(s.Minus(s2).Keys()...) {
+	for _, v := range SortOrderedAscending(s.Minus(s2.AsMapSet()).Keys()...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "3/4/11/", tempString)
 	tempString = ""
-	for _, v := range SortOrderedAscending(s2.Minus(s).Keys()...) {
+	for _, v := range SortOrderedAscending(s2.Minus(s.AsMapSet()).Keys()...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "6/9/", tempString)
@@ -366,7 +366,7 @@ func TestStreamSetSetOperation(t *testing.T) {
 	}
 	assert.Equal(t, "6,6,6,end/70,71,72,73,74,75,end/9,9,9,end/end/end/end/end/", tempString)
 	tempString = ""
-	for _, v := range SortOrderedAscending(Map(streamIntTransformer, s2.Minus(s).Values()...)...) {
+	for _, v := range SortOrderedAscending(Map(streamIntTransformer, s2.Minus(s.AsMapSet()).Values()...)...) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "6,6,6,end/9,9,9,end/", tempString)
