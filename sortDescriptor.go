@@ -37,8 +37,7 @@ func (obj ComparableString) CompareTo(input interface{}) int {
 
 // SortDescriptor Define a Transformer Pattern SortDescriptor
 type SortDescriptor[T any] interface {
-	// Transformer[T, Comparable] // TODO NOTE go2go still can't use this. ref( https://groups.google.com/g/golang-nuts/c/gX5KC-DF_dQ )
-	TransformedBy() TransformerFunctor[T, Comparable[interface{}]] // Use this for go2go temporarily
+	Transformer[T, Comparable[any]]
 
 	IsAscending() bool
 	SetAscending(bool)
@@ -133,10 +132,9 @@ func (descriptor SimpleSortDescriptor[T]) TransformedBy() TransformerFunctor[T, 
 // NewFieldSortDescriptor Generate a new FieldSortDescriptor by FieldName & ascending(true)/descending(false)
 func NewFieldSortDescriptor[T any](fieldName string, ascending bool) FieldSortDescriptor[T] {
 	return FieldSortDescriptor[T]{
-		// SimpleSortDescriptor: SimpleSortDescriptor[T]{
-		// 	ascending: ascending,
-		// },
-		ascending: ascending,
+		SimpleSortDescriptor: SimpleSortDescriptor[T]{
+			ascending: ascending,
+		},
 
 		fieldName: fieldName,
 	}
@@ -144,22 +142,9 @@ func NewFieldSortDescriptor[T any](fieldName string, ascending bool) FieldSortDe
 
 // FieldSortDescriptor FieldSortDescriptor implemented by Reflection(by FieldName)
 type FieldSortDescriptor[T any] struct {
-	// SimpleSortDescriptor[T] // TODO NOTE go2go still can't use this. ref( https://groups.google.com/g/golang-nuts/c/gX5KC-DF_dQ )
-	ascending bool
+	SimpleSortDescriptor[T]
 
 	fieldName string
-}
-
-// IsAscending Check is this SortDescriptor sorting by ascending
-// TODO NOTE Deprecated
-func (descriptor FieldSortDescriptor[T]) IsAscending() bool {
-	return descriptor.ascending
-}
-
-// SetAscending Set this SortDescriptor sorting by ascending(true) or descending(false)
-// TODO NOTE Deprecated
-func (descriptor FieldSortDescriptor[T]) SetAscending(val bool) {
-	descriptor.ascending = val
 }
 
 // GetFieldName Get the fieldName to sort

@@ -1307,7 +1307,9 @@ var Maybe someDef[interface{}]
 // None
 
 // noneDef None inspired by Rx/Optional/Guava/Haskell
-type noneDef someDef[interface{}] // TODO Make it a struct to inheritance (for go2go temporarily)
+type noneDef struct {
+	someDef[interface{}]
+}
 
 // Or Check the value wrapped by Maybe, if it's nil then return a given fallback value
 func (noneSelf noneDef) Or(or interface{}) interface{} {
@@ -1407,35 +1409,7 @@ func (noneSelf noneDef) Kind() reflect.Kind {
 	return reflect.Invalid
 }
 
-/**
-TODO DUPLICATED ZONE (for go2go temporarily)
-BEGIN
-**/
-// Just TODO NOTE !!Duplicated!! New Maybe by a given value
-func (noneSelf noneDef) Just(in interface{}) MaybeDef[interface{}] {
-  return noneAsSome.Just(in)
-}
-// FlatMap TODO NOTE !!Duplicated!! FlatMap Maybe by function
-func (noneSelf noneDef) FlatMap(fn func(interface{}) MaybeDef[interface{}]) MaybeDef[interface{}] {
-  return noneAsSome.FlatMap(fn)
-}
-// IsValid TODO NOTE !!Duplicated!! Check is its reflect.ValueOf(ref) valid
-func (noneSelf noneDef) IsValid() bool {
-  return noneAsSome.IsValid()
-}
-// IsType TODO NOTE !!Duplicated!! Check is its Type equal to the given one
-func (noneSelf noneDef) IsType(t reflect.Type) bool {
-  return noneAsSome.IsType(t)
-}
-// IsKind TODO NOTE !!Duplicated!! Check is its Kind equal to the given one
-func (noneSelf noneDef) IsKind(t reflect.Kind) bool {
-  return noneAsSome.IsKind(t)
-}
-/**
-TODO DUPLICATED ZONE (for go2go temporarily)
-END
-**/
-
 // None None utils instance
-var None = noneDef{isNil: true, isPresent: false}
-var noneAsSome = someDef[interface{}](None)
+var None = noneDef{someDef[any]{isNil: true, isPresent: false}}
+//var noneAsSome = someDef[interface{}](None)
+var noneAsSome = None.someDef
