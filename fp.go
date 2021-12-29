@@ -30,6 +30,7 @@ type ReducerFunctor[T any, R any] func(R, T) R
 
 // Predicate Predicate Functor
 type Predicate[T any] func(T) bool
+
 // PredicateErr Predicate Functor
 type PredicateErr[T any] func(T, int) (bool, error)
 
@@ -43,13 +44,14 @@ type Comparable[T any] interface {
 
 // Numeric Define Numeric types for Generics
 type Numeric interface {
-    int|int8|int16|int32|int64|uint8|uint16|uint32|uint64|float32|float64
+	int | int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64 | float32 | float64
 }
 
 // Ordered Define Ordered types for Generics
 type Ordered interface {
-    int|int8| int16| int32| int64|uint8| uint16| uint32| uint64|uintptr|string|float32| float64
+	int | int8 | int16 | int32 | int64 | uint8 | uint16 | uint32 | uint64 | uintptr | string | float32 | float64
 }
+
 // CompareToOrdered A general Compare function for Ordered
 func CompareToOrdered[T Ordered](a, b T) int {
 	if b > a {
@@ -167,7 +169,7 @@ func Filter[T any](fn func(T, int) bool, input ...T) []T {
 
 // Reject Reject the values by the given predicate function (predicate func, slice)
 func Reject[T any](fn func(T, int) bool, input ...T) []T {
-	return Filter(func (val T, i int) bool {
+	return Filter(func(val T, i int) bool {
 		return !fn(val, i)
 	}, input...)
 }
@@ -177,7 +179,7 @@ func Concat[T any](mine []T, slices ...[]T) []T {
 	var mineLen = len(mine)
 	var totalLen = mineLen
 
-	for _, slice := range(slices) {
+	for _, slice := range slices {
 		if slice == nil {
 			continue
 		}
@@ -192,7 +194,7 @@ func Concat[T any](mine []T, slices ...[]T) []T {
 	}
 	totalIndex := mineLen
 
-	for _, slice := range(slices) {
+	for _, slice := range slices {
 		if slice == nil {
 			continue
 		}
@@ -232,11 +234,11 @@ func SortOrderedDescending[T Ordered](input ...T) []T {
 // SortOrdered Sort items by Comparator
 func SortOrdered[T Ordered](ascending bool, input ...T) []T {
 	if ascending {
-		Sort(func (a, b T) bool {
+		Sort(func(a, b T) bool {
 			return CompareToOrdered(a, b) > 0
 		}, input)
 	} else {
-		Sort(func (a, b T) bool {
+		Sort(func(a, b T) bool {
 			return CompareToOrdered(a, b) < 0
 		}, input)
 	}
@@ -317,12 +319,12 @@ func Distinct[T comparable](list ...T) []T {
 	if maxLen > 0 {
 		s := make(map[T]bool)
 
-		for _, v := range(list) {
+		for _, v := range list {
 			if !s[v] {
 				result[resultIndex] = v
 				s[v] = true
 
-				resultIndex ++
+				resultIndex++
 			}
 		}
 
@@ -371,12 +373,12 @@ func DropEq[T comparable](num T, list ...T) []T {
 // Drop drops N item(s) from the list and returns new list.
 // Returns empty list if there is only one item in the list or list empty
 func Drop[T any](count int, list ...T) []T {
-	if count <=0 {
-	return list
+	if count <= 0 {
+		return list
 	}
 
 	if count >= len(list) {
-	return make([]T, 0)
+		return make([]T, 0)
 	}
 
 	return list[count:]
@@ -391,7 +393,7 @@ func DropLast[T any](count int, list ...T) []T {
 		return make([]T, 0)
 	}
 
-	return list[:(listLen-count)]
+	return list[:(listLen - count)]
 }
 
 // DropWhile drops the items from the list as long as condition satisfies.
@@ -579,25 +581,24 @@ func IntersectionMapByKey[T comparable, R any](inputList ...map[T]R) map[T]R {
 
 	if inputLen == 1 {
 		resultMap := make(map[T]R, len(inputList[0]))
-		for k, v := range(inputList[0]) {
+		for k, v := range inputList[0] {
 			resultMap[k] = v
 		}
 		return resultMap
 	}
 
-
 	resultMap := make(map[T]R)
 	countMap := make(map[T]int)
-	for _, mapItem := range(inputList) {
-		for k, v := range(mapItem) {
+	for _, mapItem := range inputList {
+		for k, v := range mapItem {
 			_, exists := resultMap[k]
 			if !exists {
 				resultMap[k] = v
 			}
-			countMap[k] ++
+			countMap[k]++
 		}
 	}
-	for k, v := range(countMap) {
+	for k, v := range countMap {
 		if v < inputLen {
 			delete(resultMap, k)
 		}
@@ -612,11 +613,11 @@ func Minus[T comparable](set1, set2 []T) []T {
 	result := make([]T, maxLen)
 	set2Map := SliceToMap(true, set2...)
 
-	for _, item := range(set1) {
+	for _, item := range set1 {
 		_, exists := set2Map[item]
 		if !exists {
 			result[resultIndex] = item
-			resultIndex ++
+			resultIndex++
 		}
 	}
 
@@ -627,7 +628,7 @@ func Minus[T comparable](set1, set2 []T) []T {
 func MinusMapByKey[T comparable, R any](set1, set2 map[T]R) map[T]R {
 	resultMap := make(map[T]R, len(set1))
 
-	for k, v := range(set1) {
+	for k, v := range set1 {
 		_, exists := set2[k]
 		if !exists {
 			resultMap[k] = v
@@ -988,7 +989,7 @@ func IsSubsetMapByKey[T comparable, R any](item1, item2 map[T]R) bool {
 		return false
 	}
 
-	for k1 := range(item1) {
+	for k1 := range item1 {
 		_, found := item2[k1]
 		if !found {
 			return false
@@ -1004,7 +1005,7 @@ func IsSupersetMapByKey[T comparable, R any](item1, item2 map[T]R) bool {
 
 // Take returns the first n elements of the slice
 func Take[T any](count int, list ...T) []T {
-	if count >= len(list) || count <=0 {
+	if count >= len(list) || count <= 0 {
 		return list
 	}
 
@@ -1015,11 +1016,11 @@ func Take[T any](count int, list ...T) []T {
 func TakeLast[T any](count int, list ...T) []T {
 	listLen := len(list)
 
-	if count >= listLen || count <=0 {
+	if count >= listLen || count <= 0 {
 		return list
 	}
 
-	return list[(listLen-count):]
+	return list[(listLen - count):]
 }
 
 // Union return a set that is the union of the input sets
@@ -1149,7 +1150,7 @@ func Head[T any](list ...T) T {
 }
 
 // SplitEvery returns elements in equal length slices
-func SplitEvery[T any](size int, list ...T)  [][]T {
+func SplitEvery[T any](size int, list ...T) [][]T {
 	if size <= 0 || len(list) <= 1 {
 		return [][]T{list}
 	}
@@ -1203,7 +1204,7 @@ func DuplicateSlice[T any](list []T) []T {
 func DuplicateMap[T comparable, R any](input map[T]R) map[T]R {
 	if len(input) > 0 {
 		newOne := make(map[T]R, len(input))
-		for k, v := range(input) {
+		for k, v := range input {
 			newOne[k] = v
 		}
 
@@ -1246,7 +1247,7 @@ func SliceOf[T any](args ...T) []T {
 // SliceToMap Return Slice of varargs
 func SliceToMap[T comparable, R any](defaultValue R, input ...T) map[T]R {
 	resultMap := make(map[T]R)
-	for _, key := range(input) {
+	for _, key := range input {
 		if _, ok := resultMap[key]; !ok {
 			resultMap[key] = defaultValue
 		}
@@ -1255,8 +1256,8 @@ func SliceToMap[T comparable, R any](defaultValue R, input ...T) map[T]R {
 }
 
 // MakeNumericReturnForVariadicParamReturnBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
-func MakeNumericReturnForVariadicParamReturnBool1[T any, R Numeric](fn func (...T) bool) func (...T) []R {
-	return func (args ...T) []R {
+func MakeNumericReturnForVariadicParamReturnBool1[T any, R Numeric](fn func(...T) bool) func(...T) []R {
+	return func(args ...T) []R {
 		if fn(args...) {
 			return SliceOf(R(1))
 		}
@@ -1264,9 +1265,10 @@ func MakeNumericReturnForVariadicParamReturnBool1[T any, R Numeric](fn func (...
 		return SliceOf(R(0))
 	}
 }
+
 // MakeNumericReturnForSliceParamReturnBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
-func MakeNumericReturnForSliceParamReturnBool1[T any, R Numeric](fn func ([]T) bool) func (...T) []R {
-	return func (args ...T) []R {
+func MakeNumericReturnForSliceParamReturnBool1[T any, R Numeric](fn func([]T) bool) func(...T) []R {
+	return func(args ...T) []R {
 		if fn(args) {
 			return SliceOf(R(1))
 		}
@@ -1274,9 +1276,10 @@ func MakeNumericReturnForSliceParamReturnBool1[T any, R Numeric](fn func ([]T) b
 		return SliceOf(R(0))
 	}
 }
+
 // MakeNumericReturnForParam1ReturnBool1 Make Numeric 1 bool Return (for compose() general fp functions simply)
-func MakeNumericReturnForParam1ReturnBool1[T any, R Numeric](fn func (T) bool) func (...T) []R {
-	return func (args ...T) []R {
+func MakeNumericReturnForParam1ReturnBool1[T any, R Numeric](fn func(T) bool) func(...T) []R {
+	return func(args ...T) []R {
 		if fn(args[0]) {
 			return SliceOf(R(1))
 		}
@@ -1286,124 +1289,139 @@ func MakeNumericReturnForParam1ReturnBool1[T any, R Numeric](fn func (T) bool) f
 }
 
 // MakeVariadicParam1 MakeVariadic for 1 Param (for compose() general fp functions simply)
-func MakeVariadicParam1[T any, R any](fn func (T) []R) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicParam1[T any, R any](fn func(T) []R) func(...T) []R {
+	return func(args ...T) []R {
 		return fn(args[0])
 	}
 }
+
 // MakeVariadicParam2 MakeVariadic for 2 Params (for compose() general fp functions simply)
-func MakeVariadicParam2[T any, R any](fn func (T, T) []R) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicParam2[T any, R any](fn func(T, T) []R) func(...T) []R {
+	return func(args ...T) []R {
 		return fn(args[0], args[1])
 	}
 }
+
 // MakeVariadicParam3 MakeVariadic for 3 Params (for compose() general fp functions simply)
-func MakeVariadicParam3[T any, R any](fn func (T, T, T) []R) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicParam3[T any, R any](fn func(T, T, T) []R) func(...T) []R {
+	return func(args ...T) []R {
 		return fn(args[0], args[1], args[2])
 	}
 }
+
 // MakeVariadicParam4 MakeVariadic for 4 Params (for compose() general fp functions simply)
-func MakeVariadicParam4[T any, R any](fn func (T, T, T, T) []R) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicParam4[T any, R any](fn func(T, T, T, T) []R) func(...T) []R {
+	return func(args ...T) []R {
 		return fn(args[0], args[1], args[2], args[3])
 	}
 }
+
 // MakeVariadicParam5 MakeVariadic for 5 Params (for compose() general fp functions simply)
-func MakeVariadicParam5[T any, R any](fn func (T, T, T, T, T) []R) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicParam5[T any, R any](fn func(T, T, T, T, T) []R) func(...T) []R {
+	return func(args ...T) []R {
 		return fn(args[0], args[1], args[2], args[3], args[4])
 	}
 }
+
 // MakeVariadicParam6 MakeVariadic for 6 Params (for compose() general fp functions simply)
-func MakeVariadicParam6[T any, R any](fn func (T, T, T, T, T, T) []R) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicParam6[T any, R any](fn func(T, T, T, T, T, T) []R) func(...T) []R {
+	return func(args ...T) []R {
 		return fn(args[0], args[1], args[2], args[3], args[4], args[5])
 	}
 }
 
 // MakeVariadicReturn1 MakeVariadic for 1 Return value (for compose() general fp functions simply)
-func MakeVariadicReturn1[T any, R any](fn func (...T) R) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicReturn1[T any, R any](fn func(...T) R) func(...T) []R {
+	return func(args ...T) []R {
 		return []R{fn(args...)}
 	}
 }
+
 // MakeVariadicReturn2 MakeVariadic for 2 Return values (for compose() general fp functions simply)
-func MakeVariadicReturn2[T any, R any](fn func (...T) (R, R)) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicReturn2[T any, R any](fn func(...T) (R, R)) func(...T) []R {
+	return func(args ...T) []R {
 		r1, r2 := fn(args...)
 		return []R{r1, r2}
 	}
 }
+
 // MakeVariadicReturn3 MakeVariadic for 3 Return values (for compose() general fp functions simply)
-func MakeVariadicReturn3[T any, R any](fn func (...T) (R, R, R)) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicReturn3[T any, R any](fn func(...T) (R, R, R)) func(...T) []R {
+	return func(args ...T) []R {
 		r1, r2, r3 := fn(args...)
 		return []R{r1, r2, r3}
 	}
 }
+
 // MakeVariadicReturn4 MakeVariadic for 4 Return values (for compose() general fp functions simply)
-func MakeVariadicReturn4[T any, R any](fn func (...T) (R, R, R, R)) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicReturn4[T any, R any](fn func(...T) (R, R, R, R)) func(...T) []R {
+	return func(args ...T) []R {
 		r1, r2, r3, r4 := fn(args...)
 		return []R{r1, r2, r3, r4}
 	}
 }
+
 // MakeVariadicReturn5 MakeVariadic for 5 Return values (for compose() general fp functions simply)
-func MakeVariadicReturn5[T any, R any](fn func (...T) (R, R, R, R, R)) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicReturn5[T any, R any](fn func(...T) (R, R, R, R, R)) func(...T) []R {
+	return func(args ...T) []R {
 		r1, r2, r3, r4, r5 := fn(args...)
 		return []R{r1, r2, r3, r4, r5}
 	}
 }
+
 // MakeVariadicReturn6 MakeVariadic for 6 Return values (for compose() general fp functions simply)
-func MakeVariadicReturn6[T any, R any](fn func (...T) (R, R, R, R, R, R)) func (...T) []R {
-	return func (args ...T) []R {
+func MakeVariadicReturn6[T any, R any](fn func(...T) (R, R, R, R, R, R)) func(...T) []R {
+	return func(args ...T) []R {
 		r1, r2, r3, r4, r5, r6 := fn(args...)
 		return []R{r1, r2, r3, r4, r5, r6}
 	}
 }
 
 // CurryParam1ForSlice1 Curry for 1 Param (for currying general fp functions simply)
-func CurryParam1ForSlice1[T any, R any, A any](fn func (A, []T) R, a A) func (...T) R {
-	return func (args ...T) R {
+func CurryParam1ForSlice1[T any, R any, A any](fn func(A, []T) R, a A) func(...T) R {
+	return func(args ...T) R {
 		return fn(a, args)
 	}
 }
 
 // CurryParam1 Curry for 1 Param (for currying general fp functions simply)
-func CurryParam1[T any, R any, A any](fn func (A, ...T) R, a A) func (...T) R {
-	return func (args ...T) R {
+func CurryParam1[T any, R any, A any](fn func(A, ...T) R, a A) func(...T) R {
+	return func(args ...T) R {
 		return fn(a, args...)
 	}
 }
+
 // CurryParam2 Curry for 2 Params (for currying general fp functions simply)
-func CurryParam2[T any, R any, A any, B any](fn func (A, B, ...T) R, a A, b B) func (...T) R {
-	return func (args ...T) R {
+func CurryParam2[T any, R any, A any, B any](fn func(A, B, ...T) R, a A, b B) func(...T) R {
+	return func(args ...T) R {
 		return fn(a, b, args...)
 	}
 }
+
 // CurryParam3 Curry for 3 Params (for currying general fp functions simply)
-func CurryParam3[T any, R any, A any, B any, C any](fn func (A, B, C, ...T) R, a A, b B, c C) func (...T) R {
-	return func (args ...T) R {
+func CurryParam3[T any, R any, A any, B any, C any](fn func(A, B, C, ...T) R, a A, b B, c C) func(...T) R {
+	return func(args ...T) R {
 		return fn(a, b, c, args...)
 	}
 }
+
 // CurryParam4 Curry for 4 Params (for currying general fp functions simply)
-func CurryParam4[T any, R any, A any, B any, C any, D any](fn func (A, B, C, D, ...T) R, a A, b B, c C, d D) func (...T) R {
-	return func (args ...T) R {
+func CurryParam4[T any, R any, A any, B any, C any, D any](fn func(A, B, C, D, ...T) R, a A, b B, c C, d D) func(...T) R {
+	return func(args ...T) R {
 		return fn(a, b, c, d, args...)
 	}
 }
+
 // CurryParam5 Curry for 5 Params (for currying general fp functions simply)
-func CurryParam5[T any, R any, A any, B any, C any, D any, E any](fn func (A, B, C, D, E, ...T) R, a A, b B, c C, d D, e E) func (...T) R {
-	return func (args ...T) R {
+func CurryParam5[T any, R any, A any, B any, C any, D any, E any](fn func(A, B, C, D, E, ...T) R, a A, b B, c C, d D, e E) func(...T) R {
+	return func(args ...T) R {
 		return fn(a, b, c, d, e, args...)
 	}
 }
+
 // CurryParam6 Curry for 6 Params (for currying general fp functions simply)
-func CurryParam6[T any, R any, A any, B any, C any, D any, E any, F any](fn func (A, B, C, D, E, F, ...T) R, a A, b B, c C, d D, e E, f F) func (...T) R {
-	return func (args ...T) R {
+func CurryParam6[T any, R any, A any, B any, C any, D any, E any, F any](fn func(A, B, C, D, E, F, ...T) R, a A, b B, c C, d D, e E, f F) func(...T) R {
+	return func(args ...T) R {
 		return fn(a, b, c, d, e, f, args...)
 	}
 }

@@ -125,8 +125,8 @@ var Actor ActorDef[interface{}]
 
 // AskDef[T, R] Ask inspired by Erlang/Akka
 type AskDef[T any, R any] struct {
-	id      time.Time
-	ch      *chan R
+	id time.Time
+	ch *chan R
 
 	Message T
 }
@@ -150,8 +150,8 @@ func AskNewGenerics[T any, R any](message T) *AskDef[T, R] {
 // AskNewByOptionsGenerics New Ask by its options
 func AskNewByOptionsGenerics[T any, R any](message T, ioCh *chan R) *AskDef[T, R] {
 	newOne := AskDef[T, R]{
-		id:      time.Now(),
-		ch:      ioCh,
+		id: time.Now(),
+		ch: ioCh,
 
 		Message: message,
 	}
@@ -169,8 +169,8 @@ func (askSelf *AskDef[T, R]) AskOnce(target ActorHandle[interface{}], timeout *t
 		result = <-*ch
 	} else {
 		select {
-			case result = <-*ch:
-			case <-time.After(*timeout):
+		case result = <-*ch:
+		case <-time.After(*timeout):
 			return result, ErrActorAskTimeout
 		}
 	}

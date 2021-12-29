@@ -48,8 +48,8 @@ type MaybeDef[T any] interface {
 
 // someDef Maybe inspired by Rx/Optional/Guava/Haskell
 type someDef[T any] struct {
-	ref T
-	isNil bool
+	ref       T
+	isNil     bool
 	isPresent bool
 }
 
@@ -1411,5 +1411,6 @@ func (noneSelf noneDef) Kind() reflect.Kind {
 
 // None None utils instance
 var None = noneDef{someDef[any]{isNil: true, isPresent: false}}
+
 //var noneAsSome = someDef[interface{}](None)
 var noneAsSome = None.someDef

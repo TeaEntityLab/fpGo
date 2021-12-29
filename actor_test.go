@@ -93,22 +93,22 @@ func TestActorAsk(t *testing.T) {
 	actorRoot := Actor.New(func(self *ActorDef[interface{}], input interface{}) {
 		// Ask cases: ROOT
 		switch val := input.(type) {
-			case *AskDef[interface{}, int]:
-				intVal, _ := Maybe.Just(val.Message).ToInt()
+		case *AskDef[interface{}, int]:
+			intVal, _ := Maybe.Just(val.Message).ToInt()
 
-				// NOTE If negative, hanging for testing Ask.timeout
-				if intVal < 0 {
-					break
-				}
-
-				val.Reply(intVal * 10)
+			// NOTE If negative, hanging for testing Ask.timeout
+			if intVal < 0 {
 				break
+			}
+
+			val.Reply(intVal * 10)
+			break
 		}
 	})
 
 	// var timer *time.Timer
 	var timeout time.Duration
-	timeout = 10*time.Millisecond
+	timeout = 10 * time.Millisecond
 
 	// Normal cases
 	actual = 0
@@ -124,7 +124,7 @@ func TestActorAsk(t *testing.T) {
 	actual = 0
 	expectedInt = 30
 	ch := AskNewGenerics[interface{}, int](3).AskChannel(actorRoot)
-	actual = <- *ch
+	actual = <-*ch
 	close(*ch)
 	assert.Equal(t, expectedInt, actual)
 

@@ -56,24 +56,24 @@ func TestFPFunctions(t *testing.T) {
 	expectedinteger = -10
 	assert.Equal(t, expectedinteger, Reduce(func(a, b int) int { return a - b }, 0, Map(func(a int) int { return a + 1 }, Filter(func(a int, i int) bool { return a >= 0 }, -1, 0, 1, 2, 3)...)...))
 
-	assert.Equal(t, []int{1, 2, 3, 4, 5}, SortSlice(func (a, b int) bool { return b - a > 0 }, 1, 4, 5, 2, 3))
+	assert.Equal(t, []int{1, 2, 3, 4, 5}, SortSlice(func(a, b int) bool { return b-a > 0 }, 1, 4, 5, 2, 3))
 
 	var actualInt int
 	var actualInt2 int
 	var actualMap map[int]int
 
-	fib := func (n int) int {
+	fib := func(n int) int {
 
 		result, _ := Trampoline(func(input ...int) ([]int, bool, error) {
 			n := input[0]
 			a := input[1]
 			b := input[2]
 
-			if (n == 0) {
-				return []int{ 0, a, b}, true, nil
+			if n == 0 {
+				return []int{0, a, b}, true, nil
 			}
 
-			return []int{ n-1, b, a+b }, false, nil
+			return []int{n - 1, b, a + b}, false, nil
 		}, n, 0, 1)
 
 		return result[1]
@@ -84,22 +84,22 @@ func TestFPFunctions(t *testing.T) {
 
 	assert.Equal(t, []int{3, 2}, Compose[int](
 		CurryParam1[int, []int, int](DropLast[int], 1), Reverse[int], SortOrderedAscending[int], DistinctRandom[int], SortOrderedAscending[int])(
-			1, 1, 2, 1, 3, 1, 2, 1,
-		),
+		1, 1, 2, 1, 3, 1, 2, 1,
+	),
 	)
 	assert.Equal(t, []int{3, 2}, Compose[int](
 		CurryParam1[int, []int, int](DropLast[int], 1), Reverse[int], SortOrderedAscending[int], Distinct[int], SortOrderedAscending[int])(
-			1, 1, 2, 1, 3, 1, 2, 1,
-		),
+		1, 1, 2, 1, 3, 1, 2, 1,
+	),
 	)
 	assert.Equal(t, []int{1, 2, 3}, Pipe[int](
 		CurryParam1[int, []int, int](DropLast[int], 1), Reverse[int], SortOrderedAscending[int], Distinct[int], SortOrderedAscending[int])(
-			1, 1, 2, 1, 3, 1, 2, 1,
-		),
+		1, 1, 2, 1, 3, 1, 2, 1,
+	),
 	)
 	assert.Equal(t, []int{1}, Compose(
 		MakeNumericReturnForParam1ReturnBool1[int, int](IsNeg[int]),
-		func (val ...int) []int {
+		func(val ...int) []int {
 			return SliceOf(Reduce(func(a, b int) int { return a - b }, 0, val...))
 		},
 	)(1, 2, 3, 4))
@@ -117,39 +117,39 @@ func TestFPFunctions(t *testing.T) {
 	assert.Equal(t, []int{2, 3, 2}, DropEq(1, 1, 1, 2, 1, 3, 1, 2, 1))
 	assert.Equal(t, []int{1, 2, 1}, Drop(5, 1, 1, 2, 1, 3, 1, 2, 1))
 	assert.Equal(t, []int{1, 1, 2}, DropLast(5, 1, 1, 2, 1, 3, 1, 2, 1))
-	assert.Equal(t, []int{3, 1, 2, 1}, DropWhile(func (a int) bool { return a < 3 }, 1, 1, 2, 1, 3, 1, 2, 1))
-	assert.Equal(t, true, IsEqual([]int{1, 1, 2},[]int{1, 1, 2}))
-	assert.Equal(t, false, IsEqual([]int{1, 1, 2},[]int{1, 1, 3}))
-	assert.Equal(t, true, IsEqualMap(map[int]int{2:1, 3:1, 1:2},map[int]int{1:2, 2:1, 3:1}))
-	assert.Equal(t, false, IsEqualMap(map[int]int{2:1, 3:1, 1:2},map[int]int{1:1, 2:1, 3:2}))
-	assert.Equal(t, true, Every(func (a int) bool { return a % 2 == 0 }, 8, 2, 10, 4))
-	assert.Equal(t, false, Every(func (a int) bool { return a % 2 == 0 }, 8, 3, 10, 4))
+	assert.Equal(t, []int{3, 1, 2, 1}, DropWhile(func(a int) bool { return a < 3 }, 1, 1, 2, 1, 3, 1, 2, 1))
+	assert.Equal(t, true, IsEqual([]int{1, 1, 2}, []int{1, 1, 2}))
+	assert.Equal(t, false, IsEqual([]int{1, 1, 2}, []int{1, 1, 3}))
+	assert.Equal(t, true, IsEqualMap(map[int]int{2: 1, 3: 1, 1: 2}, map[int]int{1: 2, 2: 1, 3: 1}))
+	assert.Equal(t, false, IsEqualMap(map[int]int{2: 1, 3: 1, 1: 2}, map[int]int{1: 1, 2: 1, 3: 2}))
+	assert.Equal(t, true, Every(func(a int) bool { return a%2 == 0 }, 8, 2, 10, 4))
+	assert.Equal(t, false, Every(func(a int) bool { return a%2 == 0 }, 8, 3, 10, 4))
 	assert.Equal(t, true, Exists(10, 8, 3, 10, 4))
 	assert.Equal(t, false, Exists(9, 8, 3, 10, 4))
 	assert.Equal(t, []int{1, 3, 2}, Intersection([]int{5, 1, 3, 2, 8}, []int{7, 6, 4, 3, 1, 2}))
-	assert.Equal(t, []int{2, 5}, SortOrderedAscending(Keys(IntersectionMapByKey(map[int]int{2:11, 5:11, 1:12},map[int]int{41:1, 2: 77, 42:1, 5:66, 43:2}))...))
-	assert.Equal(t, []int{1, 2, 3}, SortOrderedAscending(Keys(map[int]int{2:8, 1:5, 3:4})...))
-	assert.Equal(t, []int{4, 5, 8}, SortOrderedAscending(Values(map[int]int{2:8, 1:5, 3:4})...))
+	assert.Equal(t, []int{2, 5}, SortOrderedAscending(Keys(IntersectionMapByKey(map[int]int{2: 11, 5: 11, 1: 12}, map[int]int{41: 1, 2: 77, 42: 1, 5: 66, 43: 2}))...))
+	assert.Equal(t, []int{1, 2, 3}, SortOrderedAscending(Keys(map[int]int{2: 8, 1: 5, 3: 4})...))
+	assert.Equal(t, []int{4, 5, 8}, SortOrderedAscending(Values(map[int]int{2: 8, 1: 5, 3: 4})...))
 	assert.Equal(t, []int{5, 8, 8}, Minus([]int{5, 1, 8, 3, 2, 8}, []int{7, 6, 4, 3, 1, 2}))
 	assert.Equal(t, []int{7, 6, 4}, Minus([]int{7, 6, 4, 3, 1, 2}, []int{5, 1, 8, 3, 2, 8}))
-	assert.Equal(t, []int{1}, SortOrderedAscending(Keys(MinusMapByKey(map[int]int{2:11, 5:11, 1:12}, map[int]int{41:1, 2: 77, 42:1, 5:66, 43:2}))...))
-	assert.Equal(t, []int{41, 42, 43}, SortOrderedAscending(Keys(MinusMapByKey(map[int]int{41:1, 2: 77, 42:1, 5:66, 43:2}, map[int]int{2:11, 5:11, 1:12}))...))
+	assert.Equal(t, []int{1}, SortOrderedAscending(Keys(MinusMapByKey(map[int]int{2: 11, 5: 11, 1: 12}, map[int]int{41: 1, 2: 77, 42: 1, 5: 66, 43: 2}))...))
+	assert.Equal(t, []int{41, 42, 43}, SortOrderedAscending(Keys(MinusMapByKey(map[int]int{41: 1, 2: 77, 42: 1, 5: 66, 43: 2}, map[int]int{2: 11, 5: 11, 1: 12}))...))
 	assert.Equal(t, true, IsSubset([]int{1, 2, 3}, []int{4, 5, 1, 2, 3, 6}))
 	assert.Equal(t, true, IsSubset([]int{1, 2, 2, 3}, []int{4, 5, 1, 2, 3, 6}))
 	assert.Equal(t, false, IsSubset([]int{5, 1, 8, 3, 2, 8}, []int{7, 6, 4, 3, 1, 2}))
 	assert.Equal(t, true, IsSuperset([]int{4, 5, 1, 2, 3, 6}, []int{1, 2, 3}))
 	assert.Equal(t, true, IsSuperset([]int{4, 5, 1, 2, 3, 6}, []int{1, 2, 2, 3}))
 	assert.Equal(t, false, IsSuperset([]int{5, 1, 8, 3, 2, 8}, []int{7, 6, 4, 3, 1, 2}))
-	assert.Equal(t, true, IsSubsetMapByKey(map[int]int{1: 3, 2:4}, map[int]int{5:6, 1:4, 3:5, 2:7, 8:9}))
-	assert.Equal(t, false, IsSubsetMapByKey(map[int]int{5:6, 1:4, 3:5, 2:7, 8:9}, map[int]int{7:8, 6:9, 4:10, 3:11, 1:13, 2:12}))
-	assert.Equal(t, true, IsSupersetMapByKey(map[int]int{5:6, 1:4, 3:5, 2:7, 8:9}, map[int]int{1: 3, 2:4}))
-	assert.Equal(t, false, IsSupersetMapByKey(map[int]int{5:6, 1:4, 3:5, 2:7, 8:9}, map[int]int{7:8, 6:9, 4:10, 3:11, 1:13, 2:12}))
+	assert.Equal(t, true, IsSubsetMapByKey(map[int]int{1: 3, 2: 4}, map[int]int{5: 6, 1: 4, 3: 5, 2: 7, 8: 9}))
+	assert.Equal(t, false, IsSubsetMapByKey(map[int]int{5: 6, 1: 4, 3: 5, 2: 7, 8: 9}, map[int]int{7: 8, 6: 9, 4: 10, 3: 11, 1: 13, 2: 12}))
+	assert.Equal(t, true, IsSupersetMapByKey(map[int]int{5: 6, 1: 4, 3: 5, 2: 7, 8: 9}, map[int]int{1: 3, 2: 4}))
+	assert.Equal(t, false, IsSupersetMapByKey(map[int]int{5: 6, 1: 4, 3: 5, 2: 7, 8: 9}, map[int]int{7: 8, 6: 9, 4: 10, 3: 11, 1: 13, 2: 12}))
 	assert.Equal(t, []int{1, 2, 3, 4, 5, 6, 7, 8}, SortOrderedAscending(Union([]int{5, 1, 3, 2, 8}, []int{7, 6, 4, 3, 1, 2})...))
 	assert.Equal(t, 3, Max(2, 1, 2, 1, 3, 1, 2, 1))
 	assert.Equal(t, 1, Min(2, 1, 2, 1, 3, 1, 2, 1))
 	actualInt, actualInt2 = MinMax(2, 1, 2, 1, 3, 1, 2, 1)
 	assert.Equal(t, []int{1, 3}, []int{actualInt, actualInt2})
-	actualMap = Merge(map[int]int{2:11, 5:11, 1:12},map[int]int{41:1, 42:1, 43:2})
+	actualMap = Merge(map[int]int{2: 11, 5: 11, 1: 12}, map[int]int{41: 1, 42: 1, 43: 2})
 	assert.Equal(t, []int{1, 2, 5, 41, 42, 43}, SortOrderedAscending(Keys(actualMap)...))
 	assert.Equal(t, []int{1, 1, 2, 11, 11, 12}, SortOrderedAscending(Values(actualMap)...))
 	assert.Equal(t, true, IsNeg(-1))
@@ -171,12 +171,12 @@ func TestFPFunctions(t *testing.T) {
 	assert.Equal(t, []int{2, 3, 4, 5, 6}, PMap(func(a int) int { return a + 1 }, nil, 1, 2, 3, 4, 5))
 	assert.Equal(t, []int{2, 3, 4, 5, 6}, PMap(func(a int) int { return a + 1 }, &PMapOption{FixedPool: 3, RandomOrder: false}, 1, 2, 3, 4, 5))
 	assert.Equal(t, []int{2, 3, 4, 5, 6}, SortOrderedAscending(PMap(func(a int) int { return a + 1 }, &PMapOption{FixedPool: 3, RandomOrder: true}, 1, 2, 3, 4, 5)...))
-	assert.Equal(t, true, Some(func(a int) bool { return a % 2 == 0 }, 1, 2, 3, 4, 5))
-	assert.Equal(t, false, Some(func(a int) bool { return a % 2 == 0 }, 1, 3, 5, 7, 9))
-	assert.Equal(t, map[int]string{1:"a", 2:"b", 3:"c"}, Zip([]int{1, 2, 3}, []string{"a", "b", "c"}))
-	assert.Equal(t, [][]int{{1, 3, 5, 7}, {2, 4, 6, 8}}, Partition(func(a int) bool { return a % 2 == 1 }, 1, 2, 3, 4, 5, 6, 7, 8))
+	assert.Equal(t, true, Some(func(a int) bool { return a%2 == 0 }, 1, 2, 3, 4, 5))
+	assert.Equal(t, false, Some(func(a int) bool { return a%2 == 0 }, 1, 3, 5, 7, 9))
+	assert.Equal(t, map[int]string{1: "a", 2: "b", 3: "c"}, Zip([]int{1, 2, 3}, []string{"a", "b", "c"}))
+	assert.Equal(t, [][]int{{1, 3, 5, 7}, {2, 4, 6, 8}}, Partition(func(a int) bool { return a%2 == 1 }, 1, 2, 3, 4, 5, 6, 7, 8))
 	assert.Equal(t, [][]int{{1, 2, 3}, {4, 5, 6}, {7, 8}}, SplitEvery(3, 1, 2, 3, 4, 5, 6, 7, 8))
-	assert.Equal(t, map[int][]int{1:{1, 3, 5, 7}, 0:{2, 4, 6, 8}}, GroupBy(func(a int) int { return a % 2 }, 1, 2, 3, 4, 5, 6, 7, 8))
+	assert.Equal(t, map[int][]int{1: {1, 3, 5, 7}, 0: {2, 4, 6, 8}}, GroupBy(func(a int) int { return a % 2 }, 1, 2, 3, 4, 5, 6, 7, 8))
 	assert.Equal(t, []int{1, 2}, UniqBy(func(a int) int { return a % 2 }, 1, 2, 3, 4, 5, 6, 7, 8))
 }
 

@@ -11,10 +11,12 @@ func NewComparableOrdered[T Ordered](val T) ComparableOrdered[T] {
 		Val: val,
 	}
 }
+
 // ComparableOrdered A Ordered Comparable for Comparator
 type ComparableOrdered[T Ordered] struct {
 	Val T
 }
+
 // CompareTo Compare with an another object
 func (obj ComparableOrdered[T]) CompareTo(input interface{}) int {
 	return CompareToOrdered(obj.Val, input.(ComparableOrdered[T]).Val)
@@ -26,10 +28,12 @@ func NewComparableString(val string) ComparableString {
 		Val: val,
 	}
 }
+
 // ComparableString A String Comparable for Comparator
 type ComparableString struct {
 	Val string
 }
+
 // CompareTo Compare with an another object
 func (obj ComparableString) CompareTo(input interface{}) int {
 	return strings.Compare(string(obj.Val), string(input.(ComparableString).Val))
@@ -53,7 +57,7 @@ func SortedListBySortDescriptors[T any](sortDescriptors []SortDescriptor[T], inp
 
 // SortBySortDescriptors Sort items by sortDescriptors
 func SortBySortDescriptors[T any](sortDescriptors []SortDescriptor[T], input []T) {
-	Sort(func (item1 T, item2 T) bool {
+	Sort(func(item1 T, item2 T) bool {
 		return _compareBySortDescriptors(item1, item2, sortDescriptors, 0) >= 0
 	}, input)
 }
@@ -84,8 +88,8 @@ func _compareBySortDescriptors[T any](item1 T, item2 T, sortDescriptors []SortDe
 
 		return 1
 	}
-	if (result == 0 && _hasNextDescriptor(sortDescriptors, descriptorIndex)) {
-		return _compareBySortDescriptors(item1, item2, sortDescriptors, descriptorIndex + 1)
+	if result == 0 && _hasNextDescriptor(sortDescriptors, descriptorIndex) {
+		return _compareBySortDescriptors(item1, item2, sortDescriptors, descriptorIndex+1)
 	}
 
 	return result
@@ -101,7 +105,7 @@ func _hasNextDescriptor[T any](sortDescriptors []SortDescriptor[T], index int) b
 func NewSimpleSortDescriptor[T any](transformFn TransformerFunctor[T, Comparable[interface{}]], ascending bool) SimpleSortDescriptor[T] {
 	return SimpleSortDescriptor[T]{
 		transformFn: transformFn,
-		ascending: ascending,
+		ascending:   ascending,
 	}
 }
 
@@ -159,7 +163,7 @@ func (descriptor FieldSortDescriptor[T]) SetFieldName(val string) {
 
 // TransformedBy Get the TransformerFunctor of this SortDescriptor
 func (descriptor FieldSortDescriptor[T]) TransformedBy() TransformerFunctor[T, Comparable[interface{}]] {
-	return func (input T) Comparable[interface{}] {
+	return func(input T) Comparable[interface{}] {
 		r := reflect.ValueOf(input)
 		f := reflect.Indirect(r).FieldByName(descriptor.fieldName).Interface()
 

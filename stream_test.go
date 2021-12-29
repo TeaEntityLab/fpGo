@@ -398,9 +398,9 @@ func TestStreamSetSetOperation(t *testing.T) {
 }
 
 func streamIntTransformer(s *StreamDef[int]) string {
- result := ""
- for _, item := range(SortOrderedAscending(s.ToArray()...)) {
-	 result += Maybe.Just(item).ToMaybe().ToString() + ","
- }
- return result + "end"
+	result := ""
+	for _, item := range SortOrderedAscending(s.ToArray()...) {
+		result += Maybe.Just(item).ToMaybe().ToString() + ","
+	}
+	return result + "end"
 }

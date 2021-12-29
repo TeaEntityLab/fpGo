@@ -8,8 +8,8 @@ import (
 )
 
 type TestCustomObject struct {
-	Name ComparableString
-	Age int
+	Name   ComparableString
+	Age    int
 	Height float64
 }
 
@@ -17,19 +17,19 @@ func TestSortDescriptor(t *testing.T) {
 	objects := []TestCustomObject{
 		TestCustomObject{
 			Name: NewComparableString("BC"),
-			Age: 30,
+			Age:  30,
 		},
 		TestCustomObject{
 			Name: NewComparableString("AD"),
-			Age: 30,
+			Age:  30,
 		},
 		TestCustomObject{
 			Name: NewComparableString("AB"),
-			Age: 50,
+			Age:  50,
 		},
 	}
 	objects = NewSortDescriptorsBuilder[TestCustomObject]().
-		ThenWithTransformerFunctor(func (obj TestCustomObject) Comparable[interface{}] {
+		ThenWithTransformerFunctor(func(obj TestCustomObject) Comparable[interface{}] {
 			return NewComparableOrdered(obj.Age)
 		}, false).
 		ThenWithFieldName("Name", true).
@@ -38,7 +38,7 @@ func TestSortDescriptor(t *testing.T) {
 	assert.Equal(t, 3, len(objects))
 
 	testOrder := ""
-	for _, object := range(objects) {
+	for _, object := range objects {
 		testOrder += fmt.Sprintf("%v%v/", object.Name.Val, object.Age)
 	}
 	assert.Equal(t, "AB50/AD30/BC30/", testOrder)

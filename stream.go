@@ -126,7 +126,7 @@ func (streamSelf *StreamDef[T]) Minus(input *StreamDef[T]) *StreamDef[T] {
 // RemoveItem Remove items from the Stream
 func (streamSelf *StreamDef[T]) RemoveItem(input ...T) *StreamDef[T] {
 	inputLen := len(input)
-	if (inputLen > 0) {
+	if inputLen > 0 {
 		result := StreamDef[T](Minus(*streamSelf, input))
 
 		return &result
@@ -175,7 +175,7 @@ func (streamSelf *StreamDef[T]) Extend(streams ...*StreamDef[T]) *StreamDef[T] {
 	var mineLen = len(mine)
 	var totalLen = mineLen
 
-	for _, stream := range(streams) {
+	for _, stream := range streams {
 		if stream == nil {
 			continue
 		}
@@ -190,7 +190,7 @@ func (streamSelf *StreamDef[T]) Extend(streams ...*StreamDef[T]) *StreamDef[T] {
 	}
 	totalIndex := mineLen
 
-	for _, stream := range(streams) {
+	for _, stream := range streams {
 		if stream == nil {
 			continue
 		}
@@ -263,12 +263,12 @@ type SetDef[T comparable, R comparable] interface {
 	Size() int
 	Keys() []T
 	Values() []R
-    AsMap() map[T] R
-    AsMapSet() *MapSetDef[T, R]
+	AsMap() map[T]R
+	AsMapSet() *MapSetDef[T, R]
 }
 
 // MapSetDef Set inspired by Collection utils
-type MapSetDef[T comparable, R comparable] map[T] R
+type MapSetDef[T comparable, R comparable] map[T]R
 
 // SetFrom New Set instance from a T array
 func SetFrom[T comparable, R comparable](list ...T) *MapSetDef[T, R] {
@@ -300,7 +300,7 @@ func SetFromArrayInterface(list []interface{}) *MapSetDef[interface{}, interface
 // MapKey Map all keys of Set by function
 func (mapSetSelf *MapSetDef[T, R]) MapKey(fn TransformerFunctor[T, T]) *MapSetDef[T, R] {
 	result := make(MapSetDef[T, R], len(*mapSetSelf))
-	for k, v := range(*mapSetSelf) {
+	for k, v := range *mapSetSelf {
 		result[fn(k)] = v
 	}
 
@@ -310,7 +310,7 @@ func (mapSetSelf *MapSetDef[T, R]) MapKey(fn TransformerFunctor[T, T]) *MapSetDe
 // MapValue Map all values of Set by function
 func (mapSetSelf *MapSetDef[T, R]) MapValue(fn TransformerFunctor[R, R]) *MapSetDef[T, R] {
 	result := make(MapSetDef[T, R], len(*mapSetSelf))
-	for k, v := range(*mapSetSelf) {
+	for k, v := range *mapSetSelf {
 		result[k] = fn(v)
 	}
 
@@ -325,7 +325,7 @@ func (mapSetSelf *MapSetDef[T, R]) ContainsKey(input T) bool {
 
 // ContainsValue Check the value exists or not in the Set
 func (mapSetSelf *MapSetDef[T, R]) ContainsValue(input R) bool {
-	for _, v := range(*mapSetSelf) {
+	for _, v := range *mapSetSelf {
 		if v == input {
 			return true
 		}
@@ -346,9 +346,9 @@ func (mapSetSelf *MapSetDef[T, R]) IsSupersetByKey(input *MapSetDef[T, R]) bool 
 // Add Add items into the Set
 func (mapSetSelf *MapSetDef[T, R]) Add(input ...T) *MapSetDef[T, R] {
 	inputLen := len(input)
-	if (inputLen > 0) {
+	if inputLen > 0 {
 		result := mapSetSelf.Clone()
-		for _, v := range(input) {
+		for _, v := range input {
 			if _, ok := (*result)[v]; ok {
 				continue
 			}
@@ -364,9 +364,9 @@ func (mapSetSelf *MapSetDef[T, R]) Add(input ...T) *MapSetDef[T, R] {
 // RemoveKeys Remove keys from the Set
 func (mapSetSelf *MapSetDef[T, R]) RemoveKeys(input ...T) *MapSetDef[T, R] {
 	inputLen := len(input)
-	if (inputLen > 0) {
+	if inputLen > 0 {
 		result := mapSetSelf.Clone()
-		for _, v := range(input) {
+		for _, v := range input {
 			delete(*result, v)
 		}
 
@@ -379,10 +379,10 @@ func (mapSetSelf *MapSetDef[T, R]) RemoveKeys(input ...T) *MapSetDef[T, R] {
 // RemoveValues Remove values from the Set
 func (mapSetSelf *MapSetDef[T, R]) RemoveValues(input ...R) *MapSetDef[T, R] {
 	inputLen := len(input)
-	if (inputLen > 0) {
+	if inputLen > 0 {
 		result := mapSetSelf.Clone()
 		valueMap := SliceToMap(0, input...)
-		for k, v := range(*mapSetSelf) {
+		for k, v := range *mapSetSelf {
 			if _, ok := valueMap[v]; ok {
 				delete(*result, k)
 			}
@@ -415,7 +415,7 @@ func (mapSetSelf *MapSetDef[T, R]) Clone() *MapSetDef[T, R] {
 
 // Union Union an another Set object
 func (mapSetSelf *MapSetDef[T, R]) Union(input *MapSetDef[T, R]) *MapSetDef[T, R] {
-	if (input == nil || input.Size() == 0) {
+	if input == nil || input.Size() == 0 {
 		return mapSetSelf
 	}
 
@@ -426,7 +426,7 @@ func (mapSetSelf *MapSetDef[T, R]) Union(input *MapSetDef[T, R]) *MapSetDef[T, R
 
 // Intersection Get the Intersection with this Set and an another Set
 func (mapSetSelf *MapSetDef[T, R]) Intersection(input *MapSetDef[T, R]) *MapSetDef[T, R] {
-	if (input == nil || input.Size() == 0) {
+	if input == nil || input.Size() == 0 {
 		return new(MapSetDef[T, R])
 	}
 
@@ -442,7 +442,7 @@ func (mapSetSelf *MapSetDef[T, R]) Minus(input *MapSetDef[T, R]) *MapSetDef[T, R
 	}
 
 	result := mapSetSelf.Clone()
-	for k := range(*result) {
+	for k := range *result {
 		_, exists := (*input)[k]
 		if exists {
 			delete(*result, k)
@@ -468,7 +468,7 @@ func (mapSetSelf *MapSetDef[T, R]) Values() []R {
 }
 
 // AsMap Make Set an object typed as map[T] R
-func (mapSetSelf *MapSetDef[T, R]) AsMap() map[T] R {
+func (mapSetSelf *MapSetDef[T, R]) AsMap() map[T]R {
 	return *mapSetSelf
 }
 
@@ -479,7 +479,6 @@ func (mapSetSelf *MapSetDef[T, R]) AsMapSet() *MapSetDef[T, R] {
 
 // // Set Set utils instance
 // var Set MapSetDef[interface{}]
-
 
 // StreamSet
 
@@ -503,9 +502,9 @@ func StreamSetFrom[T comparable, R comparable](list ...T) *StreamSetDef[T, R] {
 // StreamSetFromArray New StreamSet instance from a T array
 func StreamSetFromArray[T comparable, R comparable](list []T) *StreamSetDef[T, R] {
 	newOne := NewStreamSet[T, R]()
-  for _, v := range(list) {
-    newOne.MapSetDef[v] = new(StreamDef[R])
-  }
+	for _, v := range list {
+		newOne.MapSetDef[v] = new(StreamDef[R])
+	}
 	return newOne
 }
 
@@ -528,80 +527,80 @@ func StreamSetFromArrayInterface(list []interface{}) *StreamSetDef[interface{}, 
 // Clone Clone this StreamSet
 func (streamSetSelf *StreamSetDef[T, R]) Clone() *StreamSetDef[T, R] {
 	result := StreamSetFromMap(DuplicateMap(streamSetSelf.MapSetDef))
-  for k, v := range result.MapSetDef {
-    if (v != nil) {
-      v = v.Clone()
-      result.MapSetDef[k] = v
-    }
-  }
+	for k, v := range result.MapSetDef {
+		if v != nil {
+			v = v.Clone()
+			result.MapSetDef[k] = v
+		}
+	}
 
 	return result
 }
 
 // Union Union an another StreamSet object
 func (streamSetSelf *StreamSetDef[T, R]) Union(input *StreamSetDef[T, R]) *StreamSetDef[T, R] {
-  if (input == nil || input.Size() == 0) {
-    return streamSetSelf
-  }
+	if input == nil || input.Size() == 0 {
+		return streamSetSelf
+	}
 
 	result := StreamSetFromMap(Merge(streamSetSelf.MapSetDef, input.MapSetDef))
 
-  for k, v := range streamSetSelf.MapSetDef {
-    v2, ok := input.MapSetDef[k]
-    if (ok && v2 != nil && v2.Len() > 0) {
-			if (v == nil) {
+	for k, v := range streamSetSelf.MapSetDef {
+		v2, ok := input.MapSetDef[k]
+		if ok && v2 != nil && v2.Len() > 0 {
+			if v == nil {
 				v = new(StreamDef[R])
 			}
-      v = v.Extend(v2)
-      result.MapSetDef[k] = v
-    }
-  }
+			v = v.Extend(v2)
+			result.MapSetDef[k] = v
+		}
+	}
 
 	return result
 }
 
 // Intersection Get the Intersection with this StreamSet and an another StreamSet
 func (streamSetSelf *StreamSetDef[T, R]) Intersection(input *StreamSetDef[T, R]) *StreamSetDef[T, R] {
-  if (input == nil || input.Size() == 0) {
-    return NewStreamSet[T, R]()
-  }
+	if input == nil || input.Size() == 0 {
+		return NewStreamSet[T, R]()
+	}
 
 	result := StreamSetFromMap(IntersectionMapByKey(streamSetSelf.MapSetDef, input.MapSetDef))
 
-  for k, v := range result.MapSetDef {
-    v2, ok := input.MapSetDef[k]
-    if (ok && v2 != nil && v2.Len() > 0) {
-			if (v == nil) {
+	for k, v := range result.MapSetDef {
+		v2, ok := input.MapSetDef[k]
+		if ok && v2 != nil && v2.Len() > 0 {
+			if v == nil {
 				v = new(StreamDef[R])
 			}
 
-      v = v.Intersection(v2)
-      result.MapSetDef[k] = v
-    }
-  }
+			v = v.Intersection(v2)
+			result.MapSetDef[k] = v
+		}
+	}
 
 	return result
 }
 
 // MinusStreams Minus the Stream values by their keys(keys will not be changed but Stream values will)
 func (streamSetSelf *StreamSetDef[T, R]) MinusStreams(input *StreamSetDef[T, R]) *StreamSetDef[T, R] {
-  if (input == nil || input.Size() == 0) {
-    return NewStreamSet[T, R]()
-  }
+	if input == nil || input.Size() == 0 {
+		return NewStreamSet[T, R]()
+	}
 
 	result := streamSetSelf.Clone()
 
-  for k, v := range result.MapSetDef {
-    v2, ok := input.MapSetDef[k]
-    if (ok && v2 != nil && v2.Len() > 0) {
-			if (v == nil) {
+	for k, v := range result.MapSetDef {
+		v2, ok := input.MapSetDef[k]
+		if ok && v2 != nil && v2.Len() > 0 {
+			if v == nil {
 				v = new(StreamDef[R])
 			}
 
-      v = v.Minus(v2)
-      result.MapSetDef[k] = v
-    }
-  }
+			v = v.Minus(v2)
+			result.MapSetDef[k] = v
+		}
+	}
 
 	return result
 }
