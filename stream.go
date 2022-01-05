@@ -243,6 +243,7 @@ func (streamSelf *StreamDef[T]) Get(i int) T {
 
 // Set
 
+/*
 // SetDef Set inspired by Collection utils
 type SetDef[T comparable, R comparable] interface {
 	MapKey(fn TransformerFunctor[T, T]) SetDef[T, R]
@@ -266,6 +267,7 @@ type SetDef[T comparable, R comparable] interface {
 	AsMap() map[T]R
 	AsMapSet() *MapSetDef[T, R]
 }
+*/
 
 // MapSetDef Set inspired by Collection utils
 type MapSetDef[T comparable, R comparable] map[T]R
@@ -298,7 +300,7 @@ func SetFromArrayInterface(list []interface{}) *MapSetDef[interface{}, interface
 }
 
 // MapKey Map all keys of Set by function
-func (mapSetSelf *MapSetDef[T, R]) MapKey(fn TransformerFunctor[T, T]) SetDef[T, R] {
+func (mapSetSelf *MapSetDef[T, R]) MapKey(fn TransformerFunctor[T, T]) *MapSetDef[T, R] {
 	result := make(MapSetDef[T, R], len(*mapSetSelf))
 	for k, v := range *mapSetSelf {
 		result[fn(k)] = v
@@ -308,7 +310,7 @@ func (mapSetSelf *MapSetDef[T, R]) MapKey(fn TransformerFunctor[T, T]) SetDef[T,
 }
 
 // MapValue Map all values of Set by function
-func (mapSetSelf *MapSetDef[T, R]) MapValue(fn TransformerFunctor[R, R]) SetDef[T, R] {
+func (mapSetSelf *MapSetDef[T, R]) MapValue(fn TransformerFunctor[R, R]) *MapSetDef[T, R] {
 	result := make(MapSetDef[T, R], len(*mapSetSelf))
 	for k, v := range *mapSetSelf {
 		result[k] = fn(v)
@@ -334,17 +336,17 @@ func (mapSetSelf *MapSetDef[T, R]) ContainsValue(input R) bool {
 }
 
 // IsSubsetByKey returns true or false by checking if set1 is a subset of set2
-func (mapSetSelf *MapSetDef[T, R]) IsSubsetByKey(input SetDef[T, R]) bool {
+func (mapSetSelf *MapSetDef[T, R]) IsSubsetByKey(input *MapSetDef[T, R]) bool {
 	return IsSubsetMapByKey(*mapSetSelf, input.AsMap())
 }
 
 // IsSupersetByKey returns true or false by checking if set1 is a superset of set2
-func (mapSetSelf *MapSetDef[T, R]) IsSupersetByKey(input SetDef[T, R]) bool {
+func (mapSetSelf *MapSetDef[T, R]) IsSupersetByKey(input *MapSetDef[T, R]) bool {
 	return IsSupersetMapByKey(*mapSetSelf, input.AsMap())
 }
 
 // Add Add items into the Set
-func (mapSetSelf *MapSetDef[T, R]) Add(input ...T) SetDef[T, R] {
+func (mapSetSelf *MapSetDef[T, R]) Add(input ...T) *MapSetDef[T, R] {
 	inputLen := len(input)
 	if inputLen > 0 {
 		result := mapSetSelf.Clone()
@@ -362,7 +364,7 @@ func (mapSetSelf *MapSetDef[T, R]) Add(input ...T) SetDef[T, R] {
 }
 
 // RemoveKeys Remove keys from the Set
-func (mapSetSelf *MapSetDef[T, R]) RemoveKeys(input ...T) SetDef[T, R] {
+func (mapSetSelf *MapSetDef[T, R]) RemoveKeys(input ...T) *MapSetDef[T, R] {
 	inputLen := len(input)
 	if inputLen > 0 {
 		result := mapSetSelf.Clone()
@@ -377,7 +379,7 @@ func (mapSetSelf *MapSetDef[T, R]) RemoveKeys(input ...T) SetDef[T, R] {
 }
 
 // RemoveValues Remove values from the Set
-func (mapSetSelf *MapSetDef[T, R]) RemoveValues(input ...R) SetDef[T, R] {
+func (mapSetSelf *MapSetDef[T, R]) RemoveValues(input ...R) *MapSetDef[T, R] {
 	inputLen := len(input)
 	if inputLen > 0 {
 		result := mapSetSelf.Clone()
@@ -407,14 +409,14 @@ func (mapSetSelf *MapSetDef[T, R]) Set(key T, value R) {
 }
 
 // Clone Clone this Set
-func (mapSetSelf *MapSetDef[T, R]) Clone() SetDef[T, R] {
+func (mapSetSelf *MapSetDef[T, R]) Clone() *MapSetDef[T, R] {
 	result := MapSetDef[T, R](DuplicateMap[T, R](*mapSetSelf))
 
 	return &result
 }
 
 // Union Union an another Set object
-func (mapSetSelf *MapSetDef[T, R]) Union(input SetDef[T, R]) SetDef[T, R] {
+func (mapSetSelf *MapSetDef[T, R]) Union(input *MapSetDef[T, R]) *MapSetDef[T, R] {
 	if input == nil || input.Size() == 0 {
 		return mapSetSelf
 	}
@@ -425,7 +427,7 @@ func (mapSetSelf *MapSetDef[T, R]) Union(input SetDef[T, R]) SetDef[T, R] {
 }
 
 // Intersection Get the Intersection with this Set and an another Set
-func (mapSetSelf *MapSetDef[T, R]) Intersection(input SetDef[T, R]) SetDef[T, R] {
+func (mapSetSelf *MapSetDef[T, R]) Intersection(input *MapSetDef[T, R]) *MapSetDef[T, R] {
 	if input == nil || input.Size() == 0 {
 		return new(MapSetDef[T, R])
 	}
@@ -436,7 +438,7 @@ func (mapSetSelf *MapSetDef[T, R]) Intersection(input SetDef[T, R]) SetDef[T, R]
 }
 
 // Minus Get all of this Set but not in the given Set
-func (mapSetSelf *MapSetDef[T, R]) Minus(input SetDef[T, R]) SetDef[T, R] {
+func (mapSetSelf *MapSetDef[T, R]) Minus(input *MapSetDef[T, R]) *MapSetDef[T, R] {
 	if input == nil || input.Size() == 0 {
 		return mapSetSelf
 	}
