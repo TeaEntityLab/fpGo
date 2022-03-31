@@ -7,18 +7,18 @@ import (
 )
 
 func TestFromArrayMapReduce(t *testing.T) {
-	var s *StreamDef[interface{}]
+	var s *StreamDef[string]
 	var tempString string
 
-	s = StreamFromInterface(Maybe.Just("1"), Maybe.Just("2"), Maybe.Just("3"), Maybe.Just("4"))
+	s = StreamFrom("1", "2", "3", "4")
 	tempString = ""
 	for _, v := range s.ToArray() {
-		tempString += Maybe.Just(v).ToMaybe().ToString()
+		tempString += v
 	}
 	assert.Equal(t, "1234", tempString)
-	s = s.Map(func(item interface{}, index int) interface{} {
-		var val = Maybe.Just(item).ToMaybe().ToString()
-		var result interface{} = "v" + val
+	s = s.Map(func(item string, index int) string {
+		val := item
+		result := "v" + val
 		return result
 	})
 	tempString = ""
@@ -44,117 +44,111 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "v1v2v3v4", tempString)
 
-	s = StreamFromInterface(1, 2, 3, 4)
+	s3 := StreamFrom(1, 2, 3, 4)
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s3.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
-	s = s.Map(func(item interface{}, index int) interface{} {
-		var val, _ = Maybe.Just(item).ToInt()
-		var result interface{} = val * val
-		return result
+	s3 = s3.Map(func(item int, index int) int {
+		return item * item
 	})
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s3.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "14916", tempString)
 
-	s = StreamFromInterface(1, 2, 3, 4)
+	s3 = StreamFrom(1, 2, 3, 4)
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s3.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
-	s = s.Map(func(item interface{}, index int) interface{} {
-		var val, _ = Maybe.Just(item).ToFloat32()
-		var result interface{} = val * val
-		return result
+	s3 = s3.Map(func(item int, index int) int {
+		return item * item
 	})
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s3.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "14916", tempString)
 
-	s = StreamFromInterface(1, 2, 3, 4)
+	s3 = StreamFrom(1, 2, 3, 4)
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s3.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = s.Map(func(item interface{}, index int) interface{} {
-		var val, _ = Maybe.Just(item).ToFloat64()
-		var result interface{} = val * val
-		return result
+	s3 = s3.Map(func(item int, index int) int {
+		return item * item
 	})
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s3.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "14916", tempString)
 
-	s = StreamFromInterface(true, false, true, false)
+	s4 := StreamFrom(true, false, true, false)
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s4.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "truefalsetruefalse", tempString)
 
-	s = StreamFromInterface(1, 2, 3, 4)
+	s3 = StreamFrom(1, 2, 3, 4)
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s3.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = StreamFromInterface(1, 2, 3, 4)
+	s3 = StreamFrom(1, 2, 3, 4)
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s3.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = StreamFromInterface(1, 2, 3, 4)
+	s3 = StreamFrom(1, 2, 3, 4)
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s3.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = StreamFromInterface(1, 2, 3, 4)
+	s3 = StreamFrom(1, 2, 3, 4)
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s3.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = StreamFromInterface(1, 2, 3, 4)
+	s3 = StreamFrom(1, 2, 3, 4)
 	tempString = ""
-	for _, v := range s.ToArray() {
+	for _, v := range s3.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "1234", tempString)
 }
 
 func TestFilter(t *testing.T) {
-	var s *StreamDef[interface{}]
+	var s *StreamDef[int]
 	var tempString string
 
-	s = StreamFromArray([]interface{}{}).Append(1, 1).Extend(StreamFromArray([]interface{}{2, 3, 4})).Extend(StreamFromArray([]interface{}{nil})).Extend(nil)
+	s = StreamFromArray([]int{}).Append(1, 1).Extend(StreamFromArray([]int{2, 3, 4}))
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
-	assert.Equal(t, "11234<nil>", tempString)
+	assert.Equal(t, "11234", tempString)
 	s = s.Distinct()
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
-	assert.Equal(t, "1234<nil>", tempString)
+	assert.Equal(t, "1234", tempString)
 	s = s.FilterNotNil()
 	tempString = ""
 	for _, v := range s.ToArray() {
@@ -162,20 +156,16 @@ func TestFilter(t *testing.T) {
 	}
 	assert.Equal(t, "1234", tempString)
 
-	s = s.Filter(func(item interface{}, index int) bool {
-		var val, err = Maybe.Just(item).ToInt()
-
-		return err == nil && val > 1 && val < 4
+	s = s.Filter(func(item int, index int) bool {
+		return item > 1 && item < 4
 	})
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "23", tempString)
-	s = s.Reject(func(item interface{}, index int) bool {
-		var val, err = Maybe.Just(item).ToInt()
-
-		return err == nil && val > 2
+	s = s.Reject(func(item int, index int) bool {
+		return item > 2
 	})
 	tempString = ""
 	for _, v := range s.ToArray() {
@@ -185,17 +175,17 @@ func TestFilter(t *testing.T) {
 }
 
 func TestSort(t *testing.T) {
-	var s *StreamDef[interface{}]
+	var s *StreamDef[int]
 	var tempString string
 
-	s = StreamFromInterface(11).Extend(StreamFromInterface(2, 3, 4, 5)).Remove(4)
+	s = StreamFrom(11).Extend(StreamFrom(2, 3, 4, 5)).Remove(4)
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
 	assert.Equal(t, "11234", tempString)
 
-	s = StreamFromInterface(11).Concat([]interface{}{2, 3, 4, 5}).RemoveItem(4)
+	s = StreamFrom(11).Concat([]int{2, 3, 4, 5}).RemoveItem(4)
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
@@ -207,7 +197,7 @@ func TestSort(t *testing.T) {
 	}
 	assert.Equal(t, "53211", tempString)
 
-	s = StreamFromInterface(11).Concat([]interface{}{2, 3, 4, 5}).Remove(4)
+	s = StreamFrom(11).Concat([]int{2, 3, 4, 5}).Remove(4)
 	tempString = ""
 	for _, v := range s.ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
@@ -224,10 +214,8 @@ func TestSort(t *testing.T) {
 	}
 	assert.Equal(t, "23411", tempString)
 	tempString = ""
-	for _, v := range s.Sort(func(a, b interface{}) bool {
-		var vali, _ = Maybe.Just(a).ToInt()
-		var valj, _ = Maybe.Just(b).ToInt()
-		return vali < valj
+	for _, v := range s.Sort(func(a, b int) bool {
+		return a < b
 	}).ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
 	}
@@ -235,14 +223,14 @@ func TestSort(t *testing.T) {
 }
 
 func TestStreamSetOperation(t *testing.T) {
-	var s *StreamDef[interface{}]
-	var s2 *StreamDef[interface{}]
-	var s3 *StreamDef[interface{}]
+	var s *StreamDef[int]
+	var s2 *StreamDef[int]
+	var s3 *StreamDef[int]
 	var tempString string
 
-	s = StreamFromInterface(11, 2, 3, 4, 5)
-	s2 = StreamFromInterface(9, 2, 5, 6)
-	s3 = StreamFromInterface(2, 5)
+	s = StreamFrom(11, 2, 3, 4, 5)
+	s2 = StreamFrom(9, 2, 5, 6)
+	s3 = StreamFrom(2, 5)
 	assert.Equal(t, true, s.Contains(4))
 	assert.Equal(t, false, s.Contains(6))
 	assert.Equal(t, true, s.IsSuperset(s3))

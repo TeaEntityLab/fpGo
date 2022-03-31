@@ -20,16 +20,6 @@ func StreamFromArray[T comparable](list []T) *StreamDef[T] {
 	return &result
 }
 
-// StreamFromInterface New Stream instance from an array
-func StreamFromInterface(list ...interface{}) *StreamDef[interface{}] {
-	return StreamFromArray(list)
-}
-
-// StreamFromArrayInterface New Stream instance from an array
-func StreamFromArrayInterface(list []interface{}) *StreamDef[interface{}] {
-	return StreamFromArray(list)
-}
-
 // ToArray Convert Stream to slice
 func (streamSelf *StreamDef[T]) ToArray() []T {
 	return DuplicateSlice(*streamSelf)
@@ -287,16 +277,6 @@ func SetFromMap[T comparable, R comparable](theMap map[T]R) *MapSetDef[T, R] {
 	return &result
 }
 
-// SetFromInterface New Set instance from an array
-func SetFromInterface(list ...interface{}) *MapSetDef[interface{}, interface{}] {
-	return SetFromArray[interface{}, interface{}](list)
-}
-
-// SetFromArrayInterface New Set instance from an array
-func SetFromArrayInterface(list []interface{}) *MapSetDef[interface{}, interface{}] {
-	return SetFromArray[interface{}, interface{}](list)
-}
-
 // MapKey Map all keys of Set by function
 func (mapSetSelf *MapSetDef[T, R]) MapKey(fn TransformerFunctor[T, T]) SetDef[T, R] {
 	result := make(MapSetDef[T, R], len(*mapSetSelf))
@@ -512,16 +492,6 @@ func StreamSetFromArray[T comparable, R comparable](list []T) *StreamSetDef[T, R
 func StreamSetFromMap[T comparable, R comparable](theMap map[T]*StreamDef[R]) *StreamSetDef[T, R] {
 	result := StreamSetDef[T, R]{MapSetDef[T, *StreamDef[R]](DuplicateMap(theMap))}
 	return &result
-}
-
-// StreamSetFromInterface New StreamSet instance from an array
-func StreamSetFromInterface(list ...interface{}) *StreamSetDef[interface{}, interface{}] {
-	return StreamSetFromArray[interface{}, interface{}](list)
-}
-
-// StreamSetFromArrayInterface New StreamSet instance from an array
-func StreamSetFromArrayInterface(list []interface{}) *StreamSetDef[interface{}, interface{}] {
-	return StreamSetFromArray[interface{}, interface{}](list)
 }
 
 // Clone Clone this StreamSet

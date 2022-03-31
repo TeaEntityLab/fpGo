@@ -126,15 +126,15 @@ fmt.Println(actualInt) // actualInt would be 2
 
 Example:
 ```go
-var s *StreamDef[interface{}]
+var s *StreamDef[int]
 var tempString = ""
 
-s = StreamFromArray([]interface{}{}).Append(1).Extend(StreamFromInterface(2, 3, 4)).Extend(StreamFromArray([]interface{}{nil}))
+s = StreamFromArray([]int{}).Append(1, 1).Extend(StreamFromArray([]int{2, 3, 4}))
 tempString = ""
 for _, v := range s.ToArray() {
   tempString += Maybe.Just(v).ToMaybe().ToString()
 }
-fmt.Println(tempString) // tempString would be "1234<nil>"
+fmt.Println(tempString) // tempString would be "11234"
 s = s.Distinct()
 tempString = ""
 for _, v := range s.ToArray() {
