@@ -41,8 +41,8 @@ type SimpleHTTPDef struct {
 
 // ResponseWithError Response with Error
 type ResponseWithError struct {
-	Request      *http.Request
-	Response     *http.Response
+	Request  *http.Request
+	Response *http.Response
 
 	Err error
 }

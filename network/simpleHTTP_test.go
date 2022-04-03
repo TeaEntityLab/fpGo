@@ -119,7 +119,7 @@ func TestSimpleAPI(t *testing.T) {
 	api := NewSimpleAPI(server.URL)
 	api.GetSimpleHTTP().AddInterceptor(&interceptorForTest)
 
-  var apiResponse *APIResponse[PostListResponse]
+	var apiResponse *APIResponse[PostListResponse]
 
 	postsGet := APIMakeGet[PostListResponse](api, "posts")
 	apiResponse = postsGet(nil, &PostListResponse{}).Eval()
