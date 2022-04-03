@@ -4,9 +4,30 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"strings"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func SortIntAscending(input ...interface{}) []interface{} {
+	Sort(func(a, b interface{}) bool {
+		aVal, _ := Maybe.Just(a).ToInt()
+		bVal, _ := Maybe.Just(b).ToInt()
+		return bVal > aVal
+	}, input)
+
+	return input
+}
+
+func SortStringAscending(input ...interface{}) []interface{} {
+	Sort(func(a, b interface{}) bool {
+		aVal := Maybe.Just(a).ToString()
+		bVal := Maybe.Just(b).ToString()
+		return strings.Compare(aVal, bVal) < 0
+	}, input)
+
+	return input
+}
 
 func TestCompose(t *testing.T) {
 	var expectedinteger int

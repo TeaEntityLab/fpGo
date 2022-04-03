@@ -334,6 +334,34 @@ func Distinct[T comparable](list ...T) []T {
 	return result
 }
 
+// DistinctForInterface removes duplicates.
+//
+// Example
+// 	list := []interface{}{8, 2, 8, 0, 2, 0}
+// 	DistinctForInterface(list...) // returns [8, 2, 0]
+func DistinctForInterface(list ...interface{}) []interface{} {
+	// Keep order
+	resultIndex := 0
+	maxLen := len(list)
+	result := make([]interface{}, maxLen)
+	if maxLen > 0 {
+		s := make(map[interface{}]bool)
+
+		for _, v := range list {
+			if !s[v] {
+				result[resultIndex] = v
+				s[v] = true
+
+				resultIndex++
+			}
+		}
+
+		return result[:resultIndex]
+	}
+
+	return result
+}
+
 // DistinctRandom removes duplicates.(RandomOrder)
 func DistinctRandom[T comparable](list ...T) []T {
 	s := SliceToMap(true, list...)
@@ -522,6 +550,20 @@ func Exists[T comparable](input T, list ...T) bool {
 	return false
 }
 
+// ExistsForInterface checks if given item exists in the list
+//
+// Example:
+//	ExistsForInterface(8, 8, 2, 10, 4) // Returns true
+//	ExistsForInterface(8) // Returns false
+func ExistsForInterface(input interface{}, list ...interface{}) bool {
+	for _, v := range list {
+		if v == input {
+			return true
+		}
+	}
+	return false
+}
+
 // Intersection return a set that is the intersection of the input sets
 // repeated value within list parameter will be ignored
 func Intersection[T comparable](inputList ...[]T) []T {
@@ -545,6 +587,55 @@ func Intersection[T comparable](inputList ...[]T) []T {
 
 	resultMap := make(map[T]interface{})
 	var newList []T
+	// 1st loop iterates items in 1st array
+	// 2nd loop iterates all the rest of the arrays
+	// 3rd loop iterates items in the rest of the arrays
+	for i := 0; i < len(inputList[0]); i++ {
+
+		matchCount := 0
+		for j := 1; j < inputLen; j++ {
+			for _, v := range inputList[j] {
+				// compare every items in 1st array to every items in the rest of the arrays
+				if inputList[0][i] == v {
+					matchCount++
+					break
+				}
+			}
+		}
+		if matchCount == inputLen-1 {
+			_, ok := resultMap[inputList[0][i]]
+			if !ok {
+				newList = append(newList, inputList[0][i])
+				resultMap[inputList[0][i]] = true
+			}
+		}
+	}
+	return newList
+}
+
+// IntersectionForInterface return a set that is the intersection of the input sets
+// repeated value within list parameter will be ignored
+func IntersectionForInterface(inputList ...[]interface{}) []interface{} {
+	inputLen := len(inputList)
+	if inputList == nil {
+		return make([]interface{}, 0)
+	}
+
+	if inputLen == 1 {
+		resultMap := make(map[interface{}]interface{}, len(inputList[0]))
+		var newList []interface{}
+		for i := 0; i < len(inputList[0]); i++ {
+			_, ok := resultMap[inputList[0][i]]
+			if !ok {
+				newList = append(newList, inputList[0][i])
+				resultMap[inputList[0][i]] = true
+			}
+		}
+		return newList
+	}
+
+	resultMap := make(map[interface{}]interface{})
+	var newList []interface{}
 	// 1st loop iterates items in 1st array
 	// 2nd loop iterates all the rest of the arrays
 	// 3rd loop iterates items in the rest of the arrays
@@ -606,12 +697,65 @@ func IntersectionMapByKey[T comparable, R any](inputList ...map[T]R) map[T]R {
 	return resultMap
 }
 
+// IntersectionMapByKeyForInterface return a set that is the intersection of the input sets
+func IntersectionMapByKeyForInterface[R any](inputList ...map[interface{}]R) map[interface{}]R {
+	inputLen := len(inputList)
+
+	if inputLen == 0 {
+		return make(map[interface{}]R)
+	}
+
+	if inputLen == 1 {
+		resultMap := make(map[interface{}]R, len(inputList[0]))
+		for k, v := range inputList[0] {
+			resultMap[k] = v
+		}
+		return resultMap
+	}
+
+	resultMap := make(map[interface{}]R)
+	countMap := make(map[interface{}]int)
+	for _, mapItem := range inputList {
+		for k, v := range mapItem {
+			_, exists := resultMap[k]
+			if !exists {
+				resultMap[k] = v
+			}
+			countMap[k]++
+		}
+	}
+	for k, v := range countMap {
+		if v < inputLen {
+			delete(resultMap, k)
+		}
+	}
+	return resultMap
+}
+
 // Minus all of set1 but not in set2
 func Minus[T comparable](set1, set2 []T) []T {
 	resultIndex := 0
 	maxLen := len(set1)
 	result := make([]T, maxLen)
 	set2Map := SliceToMap(true, set2...)
+
+	for _, item := range set1 {
+		_, exists := set2Map[item]
+		if !exists {
+			result[resultIndex] = item
+			resultIndex++
+		}
+	}
+
+	return result[:resultIndex]
+}
+
+// MinusForInterface all of set1 but not in set2
+func MinusForInterface(set1, set2 []interface{}) []interface{} {
+	resultIndex := 0
+	maxLen := len(set1)
+	result := make([]interface{}, maxLen)
+	set2Map := SliceToMapForInterface(true, set2...)
 
 	for _, item := range set1 {
 		_, exists := set2Map[item]
@@ -649,8 +793,30 @@ func Keys[T comparable, R any](m map[T]R) []T {
 	return keys
 }
 
+// KeysForInterface returns a slice of map's keys
+func KeysForInterface[R any](m map[interface{}]R) []interface{} {
+	keys := make([]interface{}, len(m))
+	i := 0
+	for k := range m {
+		keys[i] = k
+		i++
+	}
+	return keys
+}
+
 // Values returns a slice of map's values
 func Values[T comparable, R any](m map[T]R) []R {
+	keys := make([]R, len(m))
+	i := 0
+	for _, v := range m {
+		keys[i] = v
+		i++
+	}
+	return keys
+}
+
+// ValuesForInterface returns a slice of map's values
+func ValuesForInterface[R any](m map[interface{}]R) []R {
 	keys := make([]R, len(m))
 	i := 0
 	for _, v := range m {
@@ -716,6 +882,39 @@ func Merge[T comparable, R any](map1, map2 map[T]R) map[T]R {
 	}
 
 	newMap := make(map[T]R, len(map1)+len(map2))
+
+	if map1 == nil {
+		for k, v := range map2 {
+			newMap[k] = v
+		}
+		return newMap
+	}
+
+	if map2 == nil {
+		for k, v := range map1 {
+			newMap[k] = v
+		}
+		return newMap
+	}
+
+	for k, v := range map1 {
+		newMap[k] = v
+	}
+
+	for k, v := range map2 {
+		newMap[k] = v
+	}
+
+	return newMap
+}
+
+// MergeForInterface takes two inputs: map[T]R and map[T]R and merge two maps and returns a new map[T]R.
+func MergeForInterface[R any](map1, map2 map[interface{}]R) map[interface{}]R {
+	if map1 == nil && map2 == nil {
+		return map[interface{}]R{}
+	}
+
+	newMap := make(map[interface{}]R, len(map1)+len(map2))
 
 	if map1 == nil {
 		for k, v := range map2 {
@@ -977,10 +1176,43 @@ func IsSubset[T comparable](list1, list2 []T) bool {
 	return true
 }
 
+// IsSubsetForInterface returns true or false by checking if set1 is a subset of set2
+// repeated value within list parameter will be ignored
+func IsSubsetForInterface(list1, list2 []interface{}) bool {
+	if list1 == nil || len(list1) == 0 || list2 == nil || len(list2) == 0 {
+		return false
+	}
+
+	resultMap := make(map[interface{}]interface{})
+	for i := 0; i < len(list1); i++ {
+		_, ok := resultMap[list1[i]]
+		if !ok {
+			found := false
+			resultMap[list1[i]] = true
+			for j := 0; j < len(list2); j++ {
+				if list1[i] == list2[j] {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // IsSuperset returns true or false by checking if set1 is a superset of set2
 // repeated value within list parameter will be ignored
 func IsSuperset[T comparable](list1, list2 []T) bool {
 	return IsSubset(list2, list1)
+}
+
+// IsSupersetForInterface returns true or false by checking if set1 is a superset of set2
+// repeated value within list parameter will be ignored
+func IsSupersetForInterface(list1, list2 []interface{}) bool {
+	return IsSubsetForInterface(list2, list1)
 }
 
 // IsSubsetMapByKey returns true or false by checking if set1 is a subset of set2
@@ -998,9 +1230,29 @@ func IsSubsetMapByKey[T comparable, R any](item1, item2 map[T]R) bool {
 	return true
 }
 
+// IsSubsetMapByKeyForInterface returns true or false by checking if set1 is a subset of set2
+func IsSubsetMapByKeyForInterface[R any](item1, item2 map[interface{}]R) bool {
+	if item1 == nil || len(item1) == 0 || item2 == nil || len(item2) == 0 {
+		return false
+	}
+
+	for k1 := range item1 {
+		_, found := item2[k1]
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
 // IsSupersetMapByKey returns true or false by checking if set1 is a superset of set2
 func IsSupersetMapByKey[T comparable, R any](item1, item2 map[T]R) bool {
 	return IsSubsetMapByKey(item2, item1)
+}
+
+// IsSupersetMapByKeyForInterface returns true or false by checking if set1 is a superset of set2
+func IsSupersetMapByKeyForInterface[R any](item1, item2 map[interface{}]R) bool {
+	return IsSubsetMapByKeyForInterface(item2, item1)
 }
 
 // Take returns the first n elements of the slice
@@ -1214,6 +1466,20 @@ func DuplicateMap[T comparable, R any](input map[T]R) map[T]R {
 	return make(map[T]R)
 }
 
+// DuplicateMapForInterface Return a new Map
+func DuplicateMapForInterface[R any](input map[interface{}]R) map[interface{}]R {
+	if len(input) > 0 {
+		newOne := make(map[interface{}]R, len(input))
+		for k, v := range input {
+			newOne[k] = v
+		}
+
+		return newOne
+	}
+
+	return make(map[interface{}]R)
+}
+
 // IsNil Check is it nil
 func IsNil(obj interface{}) bool {
 	val := reflect.ValueOf(obj)
@@ -1247,6 +1513,17 @@ func SliceOf[T any](args ...T) []T {
 // SliceToMap Return Slice of varargs
 func SliceToMap[T comparable, R any](defaultValue R, input ...T) map[T]R {
 	resultMap := make(map[T]R)
+	for _, key := range input {
+		if _, ok := resultMap[key]; !ok {
+			resultMap[key] = defaultValue
+		}
+	}
+	return resultMap
+}
+
+// SliceToMapForInterface Return Slice of varargs
+func SliceToMapForInterface[R any](defaultValue R, input ...interface{}) map[interface{}]R {
+	resultMap := make(map[interface{}]R)
 	for _, key := range input {
 		if _, ok := resultMap[key]; !ok {
 			resultMap[key] = defaultValue
