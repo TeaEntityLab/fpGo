@@ -124,7 +124,7 @@ fmt.Println(actualInt) // actualInt would be 2
 
 ## Stream (inspired by Collection libs)
 
-Example:
+Example(Generics):
 ```go
 var s *StreamDef[int]
 var tempString = ""
@@ -136,6 +136,31 @@ for _, v := range s.ToArray() {
 }
 fmt.Println(tempString) // tempString would be "11234"
 s = s.Distinct()
+tempString = ""
+for _, v := range s.ToArray() {
+  tempString += Maybe.Just(v).ToMaybe().ToString()
+}
+fmt.Println(tempString) // tempString would be "1234"
+```
+
+Example(Non-Generics/interface{}):
+```go
+var s *StreamForInterfaceDef
+var tempString string
+
+s = StreamForInterface.FromArrayInt([]int{}).Append(1, 1).Extend(StreamForInterface.FromArrayInt([]int{2, 3, 4})).Extend(StreamForInterface.FromArray([]interface{}{nil})).Extend(nil)
+tempString = ""
+for _, v := range s.ToArray() {
+  tempString += Maybe.Just(v).ToMaybe().ToString()
+}
+fmt.Println(tempString) // tempString would be "11234<nil>"
+s = s.Distinct()
+tempString = ""
+for _, v := range s.ToArray() {
+  tempString += Maybe.Just(v).ToMaybe().ToString()
+}
+fmt.Println(tempString) // tempString would be "1234<nil>"
+s = s.FilterNotNil()
 tempString = ""
 for _, v := range s.ToArray() {
   tempString += Maybe.Just(v).ToMaybe().ToString()
