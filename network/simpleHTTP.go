@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	fpgo "github.com/TeaEntityLab/fpGo"
+	fpgo "github.com/TeaEntityLab/fpGo/v2"
 )
 
 // SimpleHTTP
