@@ -3,8 +3,8 @@ package fpgo
 import (
 	"fmt"
 	"reflect"
-	"testing"
 	"strings"
+	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
