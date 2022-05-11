@@ -100,35 +100,30 @@ func (q ChannelQueue[T]) Put(val T) error {
 }
 
 // PutWithTimeout Put the T val(blocking), with timeout
-func (q ChannelQueue[T]) PutWithTimeout(val T, timeout *time.Duration) error {
-	if timeout == nil {
-		return q.Put(val)
-	}
-
+func (q ChannelQueue[T]) PutWithTimeout(val T, timeout time.Duration) error {
 	select {
 	case q <- val:
 		return nil
-	case <-time.After(*timeout):
+	case <-time.After(timeout):
 		return ErrQueuePutTimeout
 	}
 }
 
 // Take Take the T val(blocking)
 func (q ChannelQueue[T]) Take() (T, error) {
-	val := <-q
+	val, ok := <-q
+	if !ok {
+		return *new(T), ErrQueueIsClosed
+	}
 	return val, nil
 }
 
 // TakeWithTimeout Take the T val(blocking), with timeout
-func (q ChannelQueue[T]) TakeWithTimeout(timeout *time.Duration) (T, error) {
-	if timeout == nil {
-		return q.Take()
-	}
-
+func (q ChannelQueue[T]) TakeWithTimeout(timeout time.Duration) (T, error) {
 	select {
 	case val := <-q:
 		return val, nil
-	case <-time.After(*timeout):
+	case <-time.After(timeout):
 		return *new(T), ErrQueueTakeTimeout
 	}
 }
