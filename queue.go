@@ -21,14 +21,22 @@ type Stack[T any] interface {
 }
 
 var (
-	ErrQueueIsEmpty     = errors.New("queue is empty")
-	ErrQueueIsFull      = errors.New("queue is full")
+	// ErrQueueIsEmpty Queue Is Empty
+	ErrQueueIsEmpty = errors.New("queue is empty")
+	// ErrQueueIsFull Queue Is Full
+	ErrQueueIsFull = errors.New("queue is full")
+	// ErrQueueTakeTimeout Queue Take Timeout
 	ErrQueueTakeTimeout = errors.New("queue take timeout")
-	ErrQueuePutTimeout  = errors.New("queue put timeout")
+	// ErrQueuePutTimeout Queue Put Timeout
+	ErrQueuePutTimeout = errors.New("queue put timeout")
 
-	ErrStackIsEmpty     = errors.New("stack is empty")
-	ErrStackIsFull      = errors.New("stack is full")
+	// ErrStackIsEmpty Stack Is Empty
+	ErrStackIsEmpty = errors.New("stack is empty")
+	// ErrStackIsFull Stack Is Full
+	ErrStackIsFull = errors.New("stack is full")
 )
+
+// ConcurrentQueue
 
 // ConcurrentQueue ConcurrentQueue inspired by Collection utils
 type ConcurrentQueue[T any] struct {
@@ -43,6 +51,7 @@ func NewConcurrentQueue[T any](queue Queue[T]) *ConcurrentQueue[T] {
 	}
 }
 
+// Put Put the T val(probably blocking)
 func (q *ConcurrentQueue[T]) Put(val T) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
@@ -50,6 +59,7 @@ func (q *ConcurrentQueue[T]) Put(val T) error {
 	return q.queue.Put(val)
 }
 
+// Take Take the T val(probably blocking)
 func (q *ConcurrentQueue[T]) Take() (T, error) {
 	q.lock.RLock()
 	defer q.lock.RUnlock()
@@ -57,6 +67,7 @@ func (q *ConcurrentQueue[T]) Take() (T, error) {
 	return q.queue.Take()
 }
 
+// Offer Offer the T val(non-blocking)
 func (q *ConcurrentQueue[T]) Offer(val T) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
@@ -64,6 +75,7 @@ func (q *ConcurrentQueue[T]) Offer(val T) error {
 	return q.queue.Offer(val)
 }
 
+// Poll Poll the T val(non-blocking)
 func (q *ConcurrentQueue[T]) Poll() (T, error) {
 	q.lock.RLock()
 	defer q.lock.RUnlock()
@@ -71,76 +83,86 @@ func (q *ConcurrentQueue[T]) Poll() (T, error) {
 	return q.queue.Poll()
 }
 
-type ChannelQueue[T any] struct {
-	channel chan T
+// ChannelQueue
+
+// ChannelQueue ChannelQueue inspired by Collection utils
+type ChannelQueue[T any] chan T
+
+// NewChannelQueue New ChannelQueue instance with capacity
+func NewChannelQueue[T any](capacity int) ChannelQueue[T] {
+	return make(ChannelQueue[T], capacity)
 }
 
-func NewChannelQueue[T any](capacity int) *ChannelQueue[T] {
-	return &ChannelQueue[T]{
-		channel: make(chan T, capacity),
-	}
-}
-
-func (q *ChannelQueue[T]) Put(val T) error {
-	q.channel <- val
+// Put Put the T val(blocking)
+func (q ChannelQueue[T]) Put(val T) error {
+	q <- val
 	return nil
 }
 
-func (q *ChannelQueue[T]) PutWithTimeout(val T, timeout *time.Duration) error {
+// PutWithTimeout Put the T val(blocking), with timeout
+func (q ChannelQueue[T]) PutWithTimeout(val T, timeout *time.Duration) error {
 	if timeout == nil {
 		return q.Put(val)
 	}
 
 	select {
-	case q.channel <- val:
+	case q <- val:
 		return nil
 	case <-time.After(*timeout):
 		return ErrQueuePutTimeout
 	}
 }
 
-func (q *ChannelQueue[T]) Take() (T, error) {
-	val := <-q.channel
+// Take Take the T val(blocking)
+func (q ChannelQueue[T]) Take() (T, error) {
+	val := <-q
 	return val, nil
 }
 
-func (q *ChannelQueue[T]) TakeWithTimeout(timeout *time.Duration) (T, error) {
+// TakeWithTimeout Take the T val(blocking), with timeout
+func (q ChannelQueue[T]) TakeWithTimeout(timeout *time.Duration) (T, error) {
 	if timeout == nil {
 		return q.Take()
 	}
 
 	select {
-	case val := <-q.channel:
+	case val := <-q:
 		return val, nil
 	case <-time.After(*timeout):
 		return *new(T), ErrQueueTakeTimeout
 	}
 }
 
-func (q *ChannelQueue[T]) Offer(val T) error {
+// Offer Offer the T val(non-blocking)
+func (q ChannelQueue[T]) Offer(val T) error {
 	select {
-	case q.channel <- val:
+	case q <- val:
 		return nil
 	default:
 		return ErrQueueIsFull
 	}
 }
 
-func (q *ChannelQueue[T]) Poll() (T, error) {
+// Poll Poll the T val(non-blocking)
+func (q ChannelQueue[T]) Poll() (T, error) {
 	select {
-	case val := <-q.channel:
+	case val := <-q:
 		return val, nil
 	default:
 		return *new(T), ErrQueueIsEmpty
 	}
 }
 
+// LinkedList & DoublyLinkedList
+
+// LinkedListItem LinkedListItem inspired by Collection utils
 type LinkedListItem[T any] struct {
 	Next *LinkedListItem[T]
 
 	Val *T
 }
 
+// Count Count items
 func (listItem *LinkedListItem[T]) Count() int {
 	count := 1
 	first := listItem
@@ -151,6 +173,7 @@ func (listItem *LinkedListItem[T]) Count() int {
 	return count
 }
 
+// Last Get the Last one
 func (listItem *LinkedListItem[T]) Last() *LinkedListItem[T] {
 	last := listItem
 	for last.Next != nil {
@@ -159,12 +182,14 @@ func (listItem *LinkedListItem[T]) Last() *LinkedListItem[T] {
 	return last
 }
 
+// AddLast Add the input item to the last
 func (listItem *LinkedListItem[T]) AddLast(input *LinkedListItem[T]) *LinkedListItem[T] {
 	last := listItem.Last()
 	last.Next = input
 	return last
 }
 
+// DoublyListItem DoublyListItem inspired by Collection utils
 type DoublyListItem[T any] struct {
 	Next *DoublyListItem[T]
 	Prev *DoublyListItem[T]
@@ -172,6 +197,7 @@ type DoublyListItem[T any] struct {
 	Val *T
 }
 
+// Count Count items
 func (listItem *DoublyListItem[T]) Count() int {
 	count := 1
 	first := listItem.First()
@@ -182,6 +208,7 @@ func (listItem *DoublyListItem[T]) Count() int {
 	return count
 }
 
+// Last Get the Last one
 func (listItem *DoublyListItem[T]) Last() *DoublyListItem[T] {
 	last := listItem
 	for last.Next != nil {
@@ -190,6 +217,7 @@ func (listItem *DoublyListItem[T]) Last() *DoublyListItem[T] {
 	return last
 }
 
+// First Get the First one
 func (listItem *DoublyListItem[T]) First() *DoublyListItem[T] {
 	first := listItem
 	for first.Prev != nil {
@@ -198,6 +226,7 @@ func (listItem *DoublyListItem[T]) First() *DoublyListItem[T] {
 	return first
 }
 
+// AddLast Add the input item to the last
 func (listItem *DoublyListItem[T]) AddLast(input *DoublyListItem[T]) *DoublyListItem[T] {
 	last := listItem.Last()
 	first := input.First()
@@ -206,6 +235,7 @@ func (listItem *DoublyListItem[T]) AddLast(input *DoublyListItem[T]) *DoublyList
 	return last
 }
 
+// AddFirst Add the input item to the first position
 func (listItem *DoublyListItem[T]) AddFirst(input *DoublyListItem[T]) *DoublyListItem[T] {
 	last := input.Last()
 	first := listItem.First()
@@ -214,6 +244,7 @@ func (listItem *DoublyListItem[T]) AddFirst(input *DoublyListItem[T]) *DoublyLis
 	return first
 }
 
+// LinkedListQueue LinkedListQueue inspired by Collection utils
 type LinkedListQueue[T any] struct {
 	first *LinkedListItem[T]
 	last  *LinkedListItem[T]
@@ -228,57 +259,69 @@ func NewLinkedListQueue[T any]() *LinkedListQueue[T] {
 	return new(LinkedListQueue[T])
 }
 
+// Count Count Items
 func (q *LinkedListQueue[T]) Count() int {
 	return q.count
 }
 
+// ClearNodePool Clear cached LinkedListItem nodes in nodePool
 func (q *LinkedListQueue[T]) ClearNodePool() {
 	q.nodeCount = 0
 	q.nodePoolFirst = nil
 }
 
+// KeepNodePoolCount Decrease/Increase LinkedListItem nodes to n items
 func (q *LinkedListQueue[T]) KeepNodePoolCount(n int) {
-  if n <= 0 {
-    q.ClearNodePool()
-    return
-  }
+	if n <= 0 {
+		q.ClearNodePool()
+		return
+	}
 
-  q.nodeCount = n
+	q.nodeCount = n
 
-  n--
-  last := q.nodePoolFirst
-  if last == nil {
-    last = new(LinkedListItem[T])
-    q.nodePoolFirst = last
-  }
+	n--
+	last := q.nodePoolFirst
+	if last == nil {
+		last = new(LinkedListItem[T])
+		q.nodePoolFirst = last
+	}
 
-  for n > 0 {
-    n--
-    if last.Next == nil {
-      last.Next = new(LinkedListItem[T])
-    }
-    last = last.Next
-  }
-  last.Next = nil
+	for n > 0 {
+		n--
+		if last.Next == nil {
+			last.Next = new(LinkedListItem[T])
+		}
+		last = last.Next
+	}
+	last.Next = nil
 }
 
+// CLear Clear all data
 func (q *LinkedListQueue[T]) Clear() {
 	q.nodePoolFirst = q.first
 	q.nodeCount = q.count
+	node := q.nodePoolFirst
+	for node != nil {
+		node.Val = nil
+		node = node.Next
+	}
 
 	q.first = nil
 	q.last = nil
 	q.count = 0
 }
 
+// Put Put the T val(no-blocking)
 func (q *LinkedListQueue[T]) Put(val T) error {
 	return q.Offer(val)
 }
 
+// Take Take the T val(no-blocking)
 func (q *LinkedListQueue[T]) Take() (T, error) {
 	return q.Poll()
 }
 
+// Offer Offer the T val(non-blocking)
 func (q *LinkedListQueue[T]) Offer(val T) error {
 	// Try get from pool or new one
 	node := q.generateNode()
@@ -297,10 +340,12 @@ func (q *LinkedListQueue[T]) Offer(val T) error {
 	return nil
 }
 
+// Poll Poll the T val(non-blocking)
 func (q *LinkedListQueue[T]) Poll() (T, error) {
-  return q.Shift()
+	return q.Shift()
 }
 
+// Shift Shift the T val from the first position (non-blocking)
 func (q *LinkedListQueue[T]) Shift() (T, error) {
 	node := q.first
 	if node == nil {
@@ -322,34 +367,37 @@ func (q *LinkedListQueue[T]) Shift() (T, error) {
 	return val, nil
 }
 
+// Unshift Unshift the T val to the first position(non-blocking)
 func (q *LinkedListQueue[T]) Unshift(val T) error {
 	// Try get from pool or new one
 	node := q.generateNode()
 	node.Val = &val
 
 	q.count++
-  first := q.first
-  q.first = node
-  node.Next = first
+	first := q.first
+	q.first = node
+	node.Next = first
 
 	return nil
 }
 
+// Pop Pop the data from the first position(non-blocking)
 func (q *LinkedListQueue[T]) Pop() (T, error) {
-  val, err := q.Take()
-  if err == ErrQueueIsEmpty {
-    return val, ErrStackIsEmpty
-  }
+	val, err := q.Take()
+	if err == ErrQueueIsEmpty {
+		return val, ErrStackIsEmpty
+	}
 
-  return val, err
+	return val, err
 }
 
+// Push Push the data from the first position(non-blocking)
 func (q *LinkedListQueue[T]) Push(val T) error {
-  return q.Unshift(val)
+	return q.Unshift(val)
 }
 
 func (q *LinkedListQueue[T]) generateNode() *LinkedListItem[T] {
-  node := q.nodePoolFirst
+	node := q.nodePoolFirst
 	if node == nil {
 		node = new(LinkedListItem[T])
 	} else {
@@ -358,5 +406,5 @@ func (q *LinkedListQueue[T]) generateNode() *LinkedListItem[T] {
 		node.Next = nil
 	}
 
-  return node
+	return node
 }

@@ -222,4 +222,19 @@ func TestLinkedListQueue(t *testing.T) {
 	}()
 
 	time.Sleep(2 * timeout)
+
+	assert.Equal(t, 3, linkedListQueue.Count())
+	assert.Equal(t, 0, linkedListQueue.nodeCount)
+	linkedListQueue.Clear()
+	assert.Equal(t, 0, linkedListQueue.Count())
+	assert.Equal(t, 3, linkedListQueue.nodeCount)
+	node := linkedListQueue.nodePoolFirst
+	for node != nil {
+		assert.Nil(t, node.Val)
+		node = node.Next
+	}
+	linkedListQueue.ClearNodePool()
+	assert.Equal(t, 0, linkedListQueue.Count())
+	assert.Equal(t, 0, linkedListQueue.nodeCount)
+	assert.Nil(t, linkedListQueue.nodePoolFirst)
 }
