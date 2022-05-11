@@ -211,7 +211,6 @@ type LinkedListQueue[T any] struct {
 	count int
 
 	nodePoolFirst *LinkedListItem[T]
-	nodePoolLast  *LinkedListItem[T]
 	nodeCount     int
 }
 
@@ -227,7 +226,6 @@ func (q *LinkedListQueue[T]) Count() int {
 func (q *LinkedListQueue[T]) ClearNodePool() {
 	q.nodeCount = 0
 	q.nodePoolFirst = nil
-	q.nodePoolLast = nil
 }
 
 func (q *LinkedListQueue[T]) KeepNodePoolCount(n int) {
@@ -257,7 +255,6 @@ func (q *LinkedListQueue[T]) KeepNodePoolCount(n int) {
 
 func (q *LinkedListQueue[T]) Clear() {
 	q.nodePoolFirst = q.first
-	q.nodePoolLast = q.last
 	q.nodeCount = q.count
 
 	q.first = nil
@@ -281,9 +278,6 @@ func (q *LinkedListQueue[T]) Offer(val T) error {
 	} else {
 		q.nodeCount--
 		q.nodePoolFirst = node.Next
-		if q.nodePoolFirst == nil {
-			q.nodePoolLast = nil
-		}
 		node.Next = nil
 	}
 	node.Val = &val
@@ -316,13 +310,8 @@ func (q *LinkedListQueue[T]) Poll() (T, error) {
 	// Recycle
 	q.nodeCount++
 	node.Val = nil
-	node.Next = nil
-	if q.nodePoolLast == nil {
-		q.nodePoolFirst = node
-	} else {
-		q.nodePoolLast.Next = node
-	}
-	q.nodePoolLast = node
+	node.Next = q.nodePoolFirst
+	q.nodePoolFirst = node
 
 	return val, nil
 }
