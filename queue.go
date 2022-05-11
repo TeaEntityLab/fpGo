@@ -14,11 +14,20 @@ type Queue[T any] interface {
 	Poll() (T, error)
 }
 
+// Stack Stack inspired by Collection utils
+type Stack[T any] interface {
+	Push(val T) error
+	Pop() (T, error)
+}
+
 var (
 	ErrQueueIsEmpty     = errors.New("queue is empty")
 	ErrQueueIsFull      = errors.New("queue is full")
 	ErrQueueTakeTimeout = errors.New("queue take timeout")
 	ErrQueuePutTimeout  = errors.New("queue put timeout")
+
+	ErrStackIsEmpty     = errors.New("stack is empty")
+	ErrStackIsFull      = errors.New("stack is full")
 )
 
 // ConcurrentQueue ConcurrentQueue inspired by Collection utils
@@ -272,14 +281,7 @@ func (q *LinkedListQueue[T]) Take() (T, error) {
 
 func (q *LinkedListQueue[T]) Offer(val T) error {
 	// Try get from pool or new one
-	node := q.nodePoolFirst
-	if node == nil {
-		node = new(LinkedListItem[T])
-	} else {
-		q.nodeCount--
-		q.nodePoolFirst = node.Next
-		node.Next = nil
-	}
+	node := q.generateNode()
 	node.Val = &val
 
 	q.count++
@@ -296,6 +298,10 @@ func (q *LinkedListQueue[T]) Offer(val T) error {
 }
 
 func (q *LinkedListQueue[T]) Poll() (T, error) {
+  return q.Shift()
+}
+
+func (q *LinkedListQueue[T]) Shift() (T, error) {
 	node := q.first
 	if node == nil {
 		return *new(T), ErrQueueIsEmpty
@@ -314,4 +320,43 @@ func (q *LinkedListQueue[T]) Poll() (T, error) {
 	q.nodePoolFirst = node
 
 	return val, nil
+}
+
+func (q *LinkedListQueue[T]) Unshift(val T) error {
+	// Try get from pool or new one
+	node := q.generateNode()
+	node.Val = &val
+
+	q.count++
+  first := q.first
+  q.first = node
+  node.Next = first
+
+	return nil
+}
+
+func (q *LinkedListQueue[T]) Pop() (T, error) {
+  val, err := q.Take()
+  if err == ErrQueueIsEmpty {
+    return val, ErrStackIsEmpty
+  }
+
+  return val, err
+}
+
+func (q *LinkedListQueue[T]) Push(val T) error {
+  return q.Unshift(val)
+}
+
+func (q *LinkedListQueue[T]) generateNode() *LinkedListItem[T] {
+  node := q.nodePoolFirst
+	if node == nil {
+		node = new(LinkedListItem[T])
+	} else {
+		q.nodeCount--
+		q.nodePoolFirst = node.Next
+		node.Next = nil
+	}
+
+  return node
 }

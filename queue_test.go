@@ -85,12 +85,14 @@ func TestChannelQueue(t *testing.T) {
 
 func TestLinkedListQueue(t *testing.T) {
 	var queue Queue[int]
+	var stack Stack[int]
 	var err error
 	var result int
 	var timeout time.Duration
 
 	linkedListQueue := NewLinkedListQueue[int]()
 	queue = linkedListQueue
+	stack = linkedListQueue
 	concurrentQueue := NewConcurrentQueue[int](queue)
 
 	err = queue.Offer(1)
@@ -114,6 +116,28 @@ func TestLinkedListQueue(t *testing.T) {
 	assert.NotEqual(t, nil, err)
 	assert.Equal(t, 0, result)
 	assert.Equal(t, ErrQueueIsEmpty, err)
+
+	err = stack.Push(1)
+	assert.Equal(t, nil, err)
+	err = stack.Push(2)
+	assert.Equal(t, nil, err)
+	err = stack.Push(3)
+	assert.Equal(t, nil, err)
+
+	result, err = stack.Pop()
+	assert.Equal(t, 3, result)
+	assert.Equal(t, nil, err)
+	result, err = stack.Pop()
+	assert.Equal(t, 2, result)
+	assert.Equal(t, nil, err)
+	result, err = stack.Pop()
+	assert.Equal(t, 1, result)
+	assert.Equal(t, nil, err)
+	result, err = stack.Pop()
+	assert.NotEqual(t, 4, result)
+	assert.NotEqual(t, nil, err)
+	assert.Equal(t, 0, result)
+	assert.Equal(t, ErrStackIsEmpty, err)
 
 	linkedListQueue.KeepNodePoolCount(10)
 	assert.Equal(t, 10, linkedListQueue.nodeCount)
