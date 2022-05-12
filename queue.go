@@ -25,6 +25,8 @@ var (
 	ErrQueueIsEmpty = errors.New("queue is empty")
 	// ErrQueueIsFull Queue Is Full
 	ErrQueueIsFull = errors.New("queue is full")
+	// ErrQueueIsClosed Queue Is Closed
+	ErrQueueIsClosed = errors.New("queue is closed")
 	// ErrQueueTakeTimeout Queue Take Timeout
 	ErrQueueTakeTimeout = errors.New("queue take timeout")
 	// ErrQueuePutTimeout Queue Put Timeout
@@ -441,4 +443,246 @@ func (q *LinkedListQueue[T]) recycleNode(node *DoublyListItem[T]) {
 	node.Next = q.nodePoolFirst
 	node.Prev = nil
 	q.nodePoolFirst = node
+}
+
+// BufferedChannelQueue BlockingQueue with ChannelQueue & scalable pool, inspired by Collection utils
+type BufferedChannelQueue[T any] struct {
+	lock     sync.RWMutex
+	isClosed AtomBool
+
+	loadWorkerCh     ChannelQueue[int]
+	freeNodeWorkerCh ChannelQueue[int]
+
+	loadFromPoolDuration             time.Duration
+	freeNodeHookPoolIntervalDuration time.Duration
+	nodeHookPoolSize                 int
+	bufferSizeMaximum                int
+
+	blockingQueue ChannelQueue[T]
+	pool          *LinkedListQueue[T]
+}
+
+// NewBufferedChannelQueue New BufferedChannelQueue instance from a Queue[T]
+func NewBufferedChannelQueue[T any](channelCapacity int, bufferSizeMaximum int, nodeHookPoolSize int) *BufferedChannelQueue[T] {
+	pool := NewLinkedListQueue[T]()
+
+	newOne := &BufferedChannelQueue[T]{
+		loadWorkerCh:     NewChannelQueue[int](1),
+		freeNodeWorkerCh: NewChannelQueue[int](1),
+
+		blockingQueue: NewChannelQueue[T](channelCapacity),
+		pool:          pool,
+
+		loadFromPoolDuration:             10 * time.Millisecond,
+		freeNodeHookPoolIntervalDuration: 10 * time.Millisecond,
+
+		nodeHookPoolSize:  nodeHookPoolSize,
+		bufferSizeMaximum: bufferSizeMaximum,
+	}
+	go newOne.freeNodePool()
+	go newOne.loadFromPool()
+
+	return newOne
+}
+
+func (q *BufferedChannelQueue[T]) freeNodePool() {
+	for code := range q.freeNodeWorkerCh {
+		if code > 0 {
+			time.Sleep(q.freeNodeHookPoolIntervalDuration)
+
+			if q.isClosed.Get() {
+				break
+			}
+
+			if q.pool.nodeCount > q.nodeHookPoolSize {
+				q.lock.Lock()
+				q.pool.KeepNodePoolCount(q.nodeHookPoolSize)
+				q.lock.Unlock()
+			}
+
+		} else {
+			break
+		}
+	}
+}
+func (q *BufferedChannelQueue[T]) loadFromPool() {
+	for code := range q.loadWorkerCh {
+		if code > 0 {
+
+			if q.isClosed.Get() {
+				break
+			}
+
+			var val T
+			var pollErr, offerErr error
+
+			q.lock.Lock()
+			for pollErr == nil {
+				// Try poll from the pool
+				val, pollErr = q.pool.Poll()
+				if pollErr != nil {
+					break
+				}
+
+				offerErr = q.blockingQueue.Offer(val)
+				// If failed, unshift it back
+				if offerErr != nil {
+					q.pool.Unshift(val)
+					break
+				}
+			}
+			q.lock.Unlock()
+
+			time.Sleep(q.loadFromPoolDuration)
+		} else {
+			break
+		}
+	}
+}
+
+// SetBufferSizeMaximum Set MaximumBufferSize(maximum number of buffered items outside the ChannelQueue)
+func (q *BufferedChannelQueue[T]) SetBufferSizeMaximum(size int) {
+	q.bufferSizeMaximum = size
+}
+
+// SetNodeHookPoolSize Set nodeHookPoolSize(the buffering node hooks ideal size)
+func (q *BufferedChannelQueue[T]) SetNodeHookPoolSize(size int) {
+	q.nodeHookPoolSize = size
+}
+
+// SetLoadFromPoolDuration Set loadFromPoolDuration(the interval to take buffered items into the ChannelQueue)
+func (q *BufferedChannelQueue[T]) SetLoadFromPoolDuration(duration time.Duration) {
+	q.loadFromPoolDuration = duration
+}
+
+// SetFreeNodeHookPoolIntervalDuration Set freeNodeHookPoolIntervalDuration(the interval to clear buffering node hooks down to nodeHookPoolSize)
+func (q *BufferedChannelQueue[T]) SetFreeNodeHookPoolIntervalDuration(duration time.Duration) {
+	q.freeNodeHookPoolIntervalDuration = duration
+}
+
+// Close Close the Handler
+func (q *BufferedChannelQueue[T]) Close() {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	q.isClosed.Set(true)
+	close(q.loadWorkerCh)
+	close(q.blockingQueue)
+}
+
+// Put Put the T val(non-blocking)
+func (q *BufferedChannelQueue[T]) Put(val T) error {
+	// q.lock.Lock()
+	// defer q.lock.Unlock()
+	//
+	// if q.isClosed.Get() {
+	// 	return ErrQueueIsClosed
+	// }
+	//
+	// return q.blockingQueue.Put(val)
+
+	return q.Offer(val)
+}
+
+// // PutWithTimeout Put the T val(blocking), with timeout
+// func (q BufferedChannelQueue[T]) PutWithTimeout(val T, timeout time.Duration) error {
+// //  	q.lock.Lock()
+// //  	defer q.lock.Unlock()
+//
+// 	if q.isClosed.Get() {
+// 		return ErrQueueIsClosed
+// 	}
+//
+// 	return q.blockingQueue.PutWithTimeout(val, timeout)
+// }
+
+// Take Take the T val(blocking)
+func (q *BufferedChannelQueue[T]) Take() (T, error) {
+	// q.lock.RLock()
+	// defer q.lock.RUnlock()
+
+	if q.isClosed.Get() {
+		return *new(T), ErrQueueIsClosed
+	}
+
+	q.lock.RLock()
+	if q.pool.Count() > 0 {
+		q.loadWorkerCh.Offer(1)
+	}
+	if q.pool.nodeCount > q.nodeHookPoolSize {
+		q.freeNodeWorkerCh.Offer(1)
+	}
+	q.lock.RUnlock()
+
+	return q.blockingQueue.Take()
+}
+
+// TakeWithTimeout Take the T val(blocking), with timeout
+func (q *BufferedChannelQueue[T]) TakeWithTimeout(timeout time.Duration) (T, error) {
+	// q.lock.RLock()
+	// defer q.lock.RUnlock()
+
+	if q.isClosed.Get() {
+		return *new(T), ErrQueueIsClosed
+	}
+
+	q.lock.RLock()
+	if q.pool.Count() > 0 {
+		q.loadWorkerCh.Offer(1)
+	}
+	if q.pool.nodeCount > q.nodeHookPoolSize {
+		q.freeNodeWorkerCh.Offer(1)
+	}
+	q.lock.RUnlock()
+
+	return q.blockingQueue.TakeWithTimeout(timeout)
+}
+
+// Offer Offer the T val(non-blocking)
+func (q *BufferedChannelQueue[T]) Offer(val T) error {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	if q.isClosed.Get() {
+		return ErrQueueIsClosed
+	}
+
+	// Before +1: >=, After +1: >
+	if q.pool.Count() >= q.bufferSizeMaximum {
+		return ErrQueueIsFull
+	}
+
+	q.pool.Offer(val)
+	q.loadWorkerCh.Offer(1)
+	return nil
+
+	// err := q.blockingQueue.Offer(val)
+	// if err == ErrQueueIsFull {
+	// 	q.pool.Offer(val)
+	// 	q.loadWorkerCh.Offer(1)
+	// 	return nil
+	// }
+	//
+	// return err
+}
+
+// Poll Poll the T val(non-blocking)
+func (q *BufferedChannelQueue[T]) Poll() (T, error) {
+	// q.lock.RLock()
+	// defer q.lock.RUnlock()
+
+	if q.isClosed.Get() {
+		return *new(T), ErrQueueIsClosed
+	}
+
+	q.lock.RLock()
+	if q.pool.Count() > 0 {
+		q.loadWorkerCh.Offer(1)
+	}
+	if q.pool.nodeCount > q.nodeHookPoolSize {
+		q.freeNodeWorkerCh.Offer(1)
+	}
+	q.lock.RUnlock()
+
+	return q.blockingQueue.Poll()
 }

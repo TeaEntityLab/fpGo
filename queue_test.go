@@ -256,3 +256,83 @@ func TestLinkedListQueue(t *testing.T) {
 
 	time.Sleep(2 * timeout)
 }
+
+func TestNewBufferedChannelQueue(t *testing.T) {
+	var queue Queue[int]
+	var err error
+	var result int
+	var timeout time.Duration
+
+	bufferedChannelQueue := NewBufferedChannelQueue[int](3, 10000, 100)
+	bufferedChannelQueue.SetLoadFromPoolDuration(time.Millisecond / 10)
+	bufferedChannelQueue.SetFreeNodeHookPoolIntervalDuration(1 * time.Millisecond)
+	queue = bufferedChannelQueue
+
+	// Sync
+
+	timeout = 1 * time.Millisecond
+	bufferedChannelQueue.SetBufferSizeMaximum(1)
+
+	err = queue.Offer(1)
+	assert.Equal(t, nil, err)
+	time.Sleep(1 * timeout)
+	err = queue.Offer(2)
+	assert.Equal(t, nil, err)
+	time.Sleep(1 * timeout)
+	err = queue.Offer(3)
+	assert.Equal(t, nil, err)
+	time.Sleep(1 * timeout)
+	// Channel: only 3 positions & Buffer: 1 position, now `4` is inserted into the buffer(buffer size： 1)
+	err = queue.Offer(4)
+	assert.Equal(t, nil, err)
+	time.Sleep(1 * timeout)
+	// Channel: only 3 positions & Buffer: 1 position, now `5` can't be inserted into the buffer(`4` is already inside)
+	err = queue.Offer(5)
+	assert.Equal(t, ErrQueueIsFull, err)
+
+	result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
+	assert.Equal(t, 1, result)
+	assert.Equal(t, nil, err)
+	result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
+	assert.Equal(t, 2, result)
+	assert.Equal(t, nil, err)
+	result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
+	assert.Equal(t, 3, result)
+	assert.Equal(t, nil, err)
+	result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
+	assert.Equal(t, 4, result)
+	assert.Equal(t, nil, err)
+
+	// Async
+
+	bufferedChannelQueue.SetBufferSizeMaximum(10000)
+	timeout = 1 * time.Millisecond
+	asyncTaskDone := make(chan bool)
+	go func() {
+		for i := 1; i <= 10000; i++ {
+			result, err := bufferedChannelQueue.TakeWithTimeout(timeout)
+			assert.Equal(t, nil, err)
+			assert.Equal(t, i, result)
+		}
+		asyncTaskDone <- true
+	}()
+	go func() {
+		for i := 1; i <= 10000; i++ {
+			// err := bufferedChannelQueue.PutWithTimeout(i, timeout)
+			err := bufferedChannelQueue.Offer(i)
+			assert.Equal(t, nil, err)
+		}
+		assert.Equal(t, 0, bufferedChannelQueue.pool.nodeCount)
+	}()
+
+	<-asyncTaskDone
+
+	result, err = bufferedChannelQueue.Poll()
+	assert.Equal(t, ErrQueueIsEmpty, err)
+	assert.Equal(t, 0, result)
+
+	time.Sleep(1 * timeout)
+
+	assert.GreaterOrEqual(t, 100, bufferedChannelQueue.pool.nodeCount)
+	close(asyncTaskDone)
+}
