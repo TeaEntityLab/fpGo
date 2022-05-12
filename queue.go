@@ -486,58 +486,61 @@ func NewBufferedChannelQueue[T any](channelCapacity int, bufferSizeMaximum int, 
 }
 
 func (q *BufferedChannelQueue[T]) freeNodePool() {
-	for code := range q.freeNodeWorkerCh {
-		if code > 0 {
-			time.Sleep(q.freeNodeHookPoolIntervalDuration)
+	for range q.freeNodeWorkerCh {
+		time.Sleep(q.freeNodeHookPoolIntervalDuration)
 
-			if q.isClosed.Get() {
-				break
-			}
-
-			if q.pool.nodeCount > q.nodeHookPoolSize {
-				q.lock.Lock()
-				q.pool.KeepNodePoolCount(q.nodeHookPoolSize)
-				q.lock.Unlock()
-			}
-
-		} else {
+		if q.isClosed.Get() {
 			break
+		}
+
+		if q.pool.nodeCount > q.nodeHookPoolSize {
+			q.lock.Lock()
+			q.pool.KeepNodePoolCount(q.nodeHookPoolSize)
+			q.lock.Unlock()
 		}
 	}
 }
 func (q *BufferedChannelQueue[T]) loadFromPool() {
-	for code := range q.loadWorkerCh {
-		if code > 0 {
+	for range q.loadWorkerCh {
 
-			if q.isClosed.Get() {
+		if q.isClosed.Get() {
+			break
+		}
+
+		q.lock.Lock()
+
+		var val T
+		var pollErr, offerErr error
+
+		for q.pool.Count() > 0 {
+			// Try poll from the pool
+			val, pollErr = q.pool.Poll()
+			if pollErr != nil {
 				break
 			}
 
-			var val T
-			var pollErr, offerErr error
-
-			q.lock.Lock()
-			for pollErr == nil {
-				// Try poll from the pool
-				val, pollErr = q.pool.Poll()
-				if pollErr != nil {
-					break
-				}
-
-				offerErr = q.blockingQueue.Offer(val)
-				// If failed, unshift it back
-				if offerErr != nil {
-					q.pool.Unshift(val)
-					break
-				}
+			offerErr = q.blockingQueue.Offer(val)
+			// If failed, unshift it back
+			if offerErr != nil {
+				q.pool.Unshift(val)
+				break
 			}
-			q.lock.Unlock()
-
-			time.Sleep(q.loadFromPoolDuration)
-		} else {
-			break
 		}
+		q.lock.Unlock()
+
+		time.Sleep(q.loadFromPoolDuration)
+
 	}
+}
+func (q *BufferedChannelQueue[T]) notifyWorkers() {
+	q.lock.RLock()
+	if q.pool.Count() > 0 {
+		q.loadWorkerCh.Offer(1)
+	}
+	if q.pool.nodeCount > q.nodeHookPoolSize {
+		q.freeNodeWorkerCh.Offer(1)
+	}
+	q.lock.RUnlock()
 }
 
 // SetBufferSizeMaximum Set MaximumBufferSize(maximum number of buffered items outside the ChannelQueue)
@@ -605,14 +608,7 @@ func (q *BufferedChannelQueue[T]) Take() (T, error) {
 		return *new(T), ErrQueueIsClosed
 	}
 
-	q.lock.RLock()
-	if q.pool.Count() > 0 {
-		q.loadWorkerCh.Offer(1)
-	}
-	if q.pool.nodeCount > q.nodeHookPoolSize {
-		q.freeNodeWorkerCh.Offer(1)
-	}
-	q.lock.RUnlock()
+	q.notifyWorkers()
 
 	return q.blockingQueue.Take()
 }
@@ -626,14 +622,7 @@ func (q *BufferedChannelQueue[T]) TakeWithTimeout(timeout time.Duration) (T, err
 		return *new(T), ErrQueueIsClosed
 	}
 
-	q.lock.RLock()
-	if q.pool.Count() > 0 {
-		q.loadWorkerCh.Offer(1)
-	}
-	if q.pool.nodeCount > q.nodeHookPoolSize {
-		q.freeNodeWorkerCh.Offer(1)
-	}
-	q.lock.RUnlock()
+	q.notifyWorkers()
 
 	return q.blockingQueue.TakeWithTimeout(timeout)
 }
@@ -675,14 +664,7 @@ func (q *BufferedChannelQueue[T]) Poll() (T, error) {
 		return *new(T), ErrQueueIsClosed
 	}
 
-	q.lock.RLock()
-	if q.pool.Count() > 0 {
-		q.loadWorkerCh.Offer(1)
-	}
-	if q.pool.nodeCount > q.nodeHookPoolSize {
-		q.freeNodeWorkerCh.Offer(1)
-	}
-	q.lock.RUnlock()
+	q.notifyWorkers()
 
 	return q.blockingQueue.Poll()
 }
