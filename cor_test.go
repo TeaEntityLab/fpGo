@@ -17,7 +17,7 @@ func logMessage(args ...interface{}) {
 
 func TestCorYield(t *testing.T) {
 	var expectedInt int
-	var actualInt = 0
+	actualInt := 0
 	var testee *CorDef[interface{}]
 	var wg sync.WaitGroup
 

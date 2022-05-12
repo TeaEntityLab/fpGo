@@ -500,6 +500,7 @@ func (q *BufferedChannelQueue[T]) freeNodePool() {
 		}
 	}
 }
+
 func (q *BufferedChannelQueue[T]) loadFromPool() {
 	for range q.loadWorkerCh {
 
@@ -532,6 +533,7 @@ func (q *BufferedChannelQueue[T]) loadFromPool() {
 
 	}
 }
+
 func (q *BufferedChannelQueue[T]) notifyWorkers() {
 	q.lock.RLock()
 	if q.pool.Count() > 0 {

@@ -37,12 +37,10 @@ func MonadIONewGenerics[T any](effect func() T) *MonadIODef[T] {
 
 // FlatMap FlatMap the MonadIO by function
 func (monadIOSelf *MonadIODef[T]) FlatMap(fn func(T) *MonadIODef[T]) *MonadIODef[T] {
-
 	return &MonadIODef[T]{effect: func() T {
 		next := fn(monadIOSelf.doEffect())
 		return next.doEffect()
 	}}
-
 }
 
 // Subscribe Subscribe the MonadIO by Subscription
@@ -63,8 +61,8 @@ func (monadIOSelf *MonadIODef[T]) ObserveOn(h *HandlerDef) *MonadIODef[T] {
 	monadIOSelf.obOn = h
 	return monadIOSelf
 }
-func (monadIOSelf *MonadIODef[T]) doSubscribe(s *Subscription[T], obOn *HandlerDef, subOn *HandlerDef) *Subscription[T] {
 
+func (monadIOSelf *MonadIODef[T]) doSubscribe(s *Subscription[T], obOn *HandlerDef, subOn *HandlerDef) *Subscription[T] {
 	if s.OnNext != nil {
 		var result T
 
@@ -89,6 +87,7 @@ func (monadIOSelf *MonadIODef[T]) doSubscribe(s *Subscription[T], obOn *HandlerD
 
 	return s
 }
+
 func (monadIOSelf *MonadIODef[T]) doEffect() T {
 	return monadIOSelf.effect()
 }

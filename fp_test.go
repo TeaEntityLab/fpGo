@@ -32,15 +32,15 @@ func SortStringAscending(input ...interface{}) []interface{} {
 func TestCompose(t *testing.T) {
 	var expectedinteger int
 
-	var fn01 = func(args ...int) []int {
+	fn01 := func(args ...int) []int {
 		val := args[0]
 		return SliceOf(val + 1)
 	}
-	var fn02 = func(args ...int) []int {
+	fn02 := func(args ...int) []int {
 		val := args[0]
 		return SliceOf(val + 2)
 	}
-	var fn03 = func(args ...int) []int {
+	fn03 := func(args ...int) []int {
 		val := args[0]
 		return SliceOf(val + 3)
 	}
@@ -68,7 +68,6 @@ func TestCompose(t *testing.T) {
 
 	expectedinteger = 6
 	assert.Equal(t, expectedinteger, Pipe(fn01, fn02, fn03)((0))[0])
-
 }
 
 func TestFPFunctions(t *testing.T) {
@@ -84,7 +83,6 @@ func TestFPFunctions(t *testing.T) {
 	var actualMap map[int]int
 
 	fib := func(n int) int {
-
 		result, _ := Trampoline(func(input ...int) ([]int, bool, error) {
 			n := input[0]
 			a := input[1]
@@ -287,9 +285,9 @@ func TestCurry(t *testing.T) {
 }
 
 func TestCompType(t *testing.T) {
-	var compTypeA = DefProduct(reflect.Int, reflect.String)
-	var compTypeB = DefProduct(reflect.String)
-	var myType = DefSum(NilType, compTypeA, compTypeB)
+	compTypeA := DefProduct(reflect.Int, reflect.String)
+	compTypeB := DefProduct(reflect.String)
+	myType := DefSum(NilType, compTypeA, compTypeB)
 
 	assert.Equal(t, true, myType.Matches((1), ("1")))
 	assert.Equal(t, true, myType.Matches(("2")))
@@ -302,9 +300,9 @@ func TestCompType(t *testing.T) {
 }
 
 func TestPatternMatching(t *testing.T) {
-	var compTypeA = DefProduct(reflect.Int, reflect.String)
-	var compTypeB = DefProduct(reflect.String, reflect.String)
-	var myType = DefSum(NilType, compTypeA, compTypeB)
+	compTypeA := DefProduct(reflect.Int, reflect.String)
+	compTypeB := DefProduct(reflect.String, reflect.String)
+	myType := DefSum(NilType, compTypeA, compTypeB)
 
 	assert.Equal(t, true, compTypeA.Matches(1, "3"))
 	assert.Equal(t, false, compTypeA.Matches(1, 3))
@@ -313,7 +311,7 @@ func TestPatternMatching(t *testing.T) {
 	assert.Equal(t, true, myType.Matches("1", "3"))
 	assert.Equal(t, false, myType.Matches(1, 3))
 
-	var patterns = []Pattern{
+	patterns := []Pattern{
 		InCaseOfKind(reflect.Int, func(x interface{}) interface{} {
 			return (fmt.Sprintf("Integer: %v", x))
 		}),
@@ -330,7 +328,7 @@ func TestPatternMatching(t *testing.T) {
 			return (fmt.Sprintf("got this object: %v", x))
 		}),
 	}
-	var pm = DefPattern(patterns...)
+	pm := DefPattern(patterns...)
 	assert.Equal(t, "Integer: 42", pm.MatchFor((42)))
 	assert.Equal(t, "Hello world", pm.MatchFor(("world")))
 	assert.Equal(t, "Matched: ccc", pm.MatchFor(("ccc")))

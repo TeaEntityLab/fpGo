@@ -34,7 +34,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "1234", tempString)
 	s2 = s2.Map(func(item string, index int) string {
-		var val = Maybe.Just(item).ToString()
+		val := Maybe.Just(item).ToString()
 		var result string = "v" + val
 		return result
 	})
@@ -206,8 +206,8 @@ func TestSort(t *testing.T) {
 
 	tempString = ""
 	for _, v := range s.SortByIndex(func(i, j int) bool {
-		var vali, _ = Maybe.Just(s.Get(i)).ToInt()
-		var valj, _ = Maybe.Just(s.Get(j)).ToInt()
+		vali, _ := Maybe.Just(s.Get(i)).ToInt()
+		valj, _ := Maybe.Just(s.Get(j)).ToInt()
 		return vali < valj
 	}).ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
@@ -260,7 +260,6 @@ func TestStreamSetOperation(t *testing.T) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "9/6/", tempString)
-
 }
 
 func TestSetSetOperation(t *testing.T) {

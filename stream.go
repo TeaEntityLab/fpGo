@@ -27,24 +27,21 @@ func (streamSelf *StreamDef[T]) ToArray() []T {
 
 // Map Map all items of Stream by function
 func (streamSelf *StreamDef[T]) Map(fn func(T, int) T) *StreamDef[T] {
-
-	var result = StreamFromArray(MapIndexed(fn, (*streamSelf)...))
+	result := StreamFromArray(MapIndexed(fn, (*streamSelf)...))
 
 	return result
 }
 
 // Filter Filter items of Stream by function
 func (streamSelf *StreamDef[T]) Filter(fn func(T, int) bool) *StreamDef[T] {
-
-	var result = StreamFromArray(Filter(fn, (*streamSelf)...))
+	result := StreamFromArray(Filter(fn, (*streamSelf)...))
 
 	return result
 }
 
 // Reject Reject items of Stream by function
 func (streamSelf *StreamDef[T]) Reject(fn func(T, int) bool) *StreamDef[T] {
-
-	var result = StreamFromArray(Reject(fn, (*streamSelf)...))
+	result := StreamFromArray(Reject(fn, (*streamSelf)...))
 
 	return result
 }
@@ -161,19 +158,19 @@ func (streamSelf *StreamDef[T]) Extend(streams ...*StreamDef[T]) *StreamDef[T] {
 		return streamSelf
 	}
 
-	var mine = *streamSelf
-	var mineLen = len(mine)
-	var totalLen = mineLen
+	mine := *streamSelf
+	mineLen := len(mine)
+	totalLen := mineLen
 
 	for _, stream := range streams {
 		if stream == nil {
 			continue
 		}
 
-		var targetLen = len(*stream)
+		targetLen := len(*stream)
 		totalLen += targetLen
 	}
-	var newOne = make(StreamDef[T], totalLen)
+	newOne := make(StreamDef[T], totalLen)
 
 	for i, item := range mine {
 		newOne[i] = item
@@ -185,8 +182,8 @@ func (streamSelf *StreamDef[T]) Extend(streams ...*StreamDef[T]) *StreamDef[T] {
 			continue
 		}
 
-		var target = *stream
-		var targetLen = len(target)
+		target := *stream
+		targetLen := len(target)
 		for j, item := range target {
 			newOne[totalIndex+j] = item
 		}

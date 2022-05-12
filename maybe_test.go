@@ -19,7 +19,7 @@ func TestIsPresent(t *testing.T) {
 	assert.Equal(t, false, m.IsPresent())
 	assert.Equal(t, true, m.IsNil())
 
-	var i = 1
+	i := 1
 	var iptr *int
 
 	iptr = nil
@@ -45,9 +45,9 @@ func TestOr(t *testing.T) {
 func TestClone(t *testing.T) {
 	var m MaybeDef[interface{}]
 
-	var i = 1
-	var i2 = 2
-	var temp = 3
+	i := 1
+	i2 := 2
+	temp := 3
 	var iptr *int
 	var iptr2 *int
 	iptr2 = &i2

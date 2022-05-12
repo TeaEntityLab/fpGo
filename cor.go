@@ -148,6 +148,7 @@ func (corSelf *CorDef[T]) YieldFrom(target *CorDef[T], in T) T {
 
 	return result
 }
+
 func (corSelf *CorDef[T]) receive(cor *CorDef[T], in T) {
 	corSelf.doCloseSafe(func() {
 		if corSelf.opCh != nil {
@@ -184,6 +185,7 @@ func (corSelf *CorDef[T]) IsDone() bool {
 func (corSelf *CorDef[T]) IsStarted() bool {
 	return corSelf.isStarted.Get()
 }
+
 func (corSelf *CorDef[T]) close() {
 	corSelf.isClosed.Set(true)
 
@@ -196,6 +198,7 @@ func (corSelf *CorDef[T]) close() {
 	}
 	corSelf.closedM.Unlock()
 }
+
 func (corSelf *CorDef[T]) doCloseSafe(fn func()) {
 	if corSelf.IsDone() {
 		return

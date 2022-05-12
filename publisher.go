@@ -95,6 +95,7 @@ func (publisherSelf *PublisherDef[T]) Publish(result T) {
 		}
 	}
 }
+
 func (publisherSelf *PublisherDef[T]) doSubscribeSafe(fn func()) {
 	publisherSelf.subscribeM.Lock()
 	fn()

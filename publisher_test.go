@@ -11,8 +11,8 @@ func TestPublisher(t *testing.T) {
 	p := Publisher.New()
 	p2 := p
 
-	var actual = 0
-	var expected = 0
+	actual := 0
+	expected := 0
 	assert.Equal(t, expected, actual)
 	assert.Equal(t, true, s == nil)
 

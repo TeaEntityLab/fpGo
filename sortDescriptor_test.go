@@ -15,15 +15,15 @@ type TestCustomObject struct {
 
 func TestSortDescriptor(t *testing.T) {
 	objects := []TestCustomObject{
-		TestCustomObject{
+		{
 			Name: NewComparableString("BC"),
 			Age:  30,
 		},
-		TestCustomObject{
+		{
 			Name: NewComparableString("AD"),
 			Age:  30,
 		},
-		TestCustomObject{
+		{
 			Name: NewComparableString("AB"),
 			Age:  50,
 		},

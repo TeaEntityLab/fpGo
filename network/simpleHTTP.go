@@ -219,7 +219,6 @@ func (simpleHTTPSelf *SimpleHTTPDef) DoNewRequestWithBodyOptions(context context
 
 // DoRequest Do HTTP Request with interceptors
 func (simpleHTTPSelf *SimpleHTTPDef) DoRequest(request *http.Request) *ResponseWithError {
-
 	response, err := simpleHTTPSelf.client.Do(request)
 
 	return &ResponseWithError{
@@ -467,7 +466,6 @@ func APIMakeDoNewRequestWithMultipartSerializer[R any](simpleAPISelf *SimpleAPID
 func APIMakeDoNewRequest[R any](simpleAPISelf *SimpleAPIDef, method string, relativeURL string) APINoBody[R] {
 	return APINoBody[R](func(pathParam PathParam, target *R) *fpgo.MonadIODef[*APIResponse[R]] {
 		return fpgo.MonadIONewGenerics[*APIResponse[R]](func() *APIResponse[R] {
-
 			ctx, cancel := simpleAPISelf.GetSimpleHTTP().GetContextTimeout()
 			defer cancel()
 			response := simpleAPISelf.simpleHTTP.DoNewRequest(ctx, simpleAPISelf.DefaultHeader.Clone(), method, simpleAPISelf.replacePathParams(relativeURL, pathParam))

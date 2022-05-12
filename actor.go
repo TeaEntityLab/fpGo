@@ -5,9 +5,7 @@ import (
 	"time"
 )
 
-var (
-	ErrActorAskTimeout = fmt.Errorf("ErrActorAskTimeout")
-)
+var ErrActorAskTimeout = fmt.Errorf("ErrActorAskTimeout")
 
 // ActorHandle A target could send messages
 type ActorHandle[T any] interface {

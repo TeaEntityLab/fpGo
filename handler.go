@@ -43,6 +43,7 @@ func (handlerSelf *HandlerDef) Close() {
 
 	close(*handlerSelf.ch)
 }
+
 func (handlerSelf *HandlerDef) run() {
 	for fn := range *handlerSelf.ch {
 		fn()

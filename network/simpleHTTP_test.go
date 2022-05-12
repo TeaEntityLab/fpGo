@@ -32,7 +32,6 @@ func TestSimpleAPI(t *testing.T) {
 	var actualContentType string
 
 	postsHandler := http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
-
 		actualRequestBody, _ = ioutil.ReadAll(req.Body)
 
 		// auth := req.Header.Get("Auth")
@@ -172,7 +171,6 @@ func TestSimpleAPIMultipart(t *testing.T) {
 	var actualContentType string
 
 	postsHandler := http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
-
 		actualRequestBody, _ = ioutil.ReadAll(req.Body)
 
 		// auth := req.Header.Get("Auth")
@@ -211,8 +209,8 @@ func TestSimpleAPIMultipart(t *testing.T) {
 
 	actualContentType = ""
 	postsPost := APIMakePostMultipartBody[PostListResponse](api, "posts")
-	sentValues = map[string][]string{"userId": []string{"0"}, "id": []string{"5"}, "title": []string{"aa"}, "body": []string{""}}
-	sentFiles := map[string][]string{"file": []string{filePath}}
+	sentValues = map[string][]string{"userId": {"0"}, "id": {"5"}, "title": {"aa"}, "body": {""}}
+	sentFiles := map[string][]string{"file": {filePath}}
 	apiResponse = postsPost(nil, &MultipartForm{Value: sentValues, File: sentFiles}, &PostListResponse{}).Eval()
 	assert.Equal(t, nil, apiResponse.Err)
 	_, params, _ = mime.ParseMediaType(actualContentType)
@@ -223,7 +221,7 @@ func TestSimpleAPIMultipart(t *testing.T) {
 
 	actualContentType = ""
 	postsPut := APIMakePutMultipartBody[PostListResponse](api, "posts")
-	sentValues = map[string][]string{"userId": []string{"0"}, "id": []string{"4"}, "title": []string{"bb"}, "body": []string{""}}
+	sentValues = map[string][]string{"userId": {"0"}, "id": {"4"}, "title": {"bb"}, "body": {""}}
 	apiResponse = postsPut(nil, &MultipartForm{Value: sentValues}, &PostListResponse{}).Eval()
 	assert.Equal(t, nil, apiResponse.Err)
 	_, params, _ = mime.ParseMediaType(actualContentType)
@@ -234,7 +232,7 @@ func TestSimpleAPIMultipart(t *testing.T) {
 
 	actualContentType = ""
 	postsPatch := APIMakePatchMultipartBody[PostListResponse](api, "posts")
-	sentValues = map[string][]string{"userId": []string{"0"}, "id": []string{"3"}, "title": []string{"cc"}, "body": []string{""}}
+	sentValues = map[string][]string{"userId": {"0"}, "id": {"3"}, "title": {"cc"}, "body": {""}}
 	apiResponse = postsPatch(nil, &MultipartForm{Value: sentValues}, &PostListResponse{}).Eval()
 	assert.Equal(t, nil, apiResponse.Err)
 	_, params, _ = mime.ParseMediaType(actualContentType)
