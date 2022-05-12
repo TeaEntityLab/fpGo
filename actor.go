@@ -5,9 +5,7 @@ import (
 	"time"
 )
 
-var (
-	ErrActorAskTimeout = fmt.Errorf("ErrActorAskTimeout")
-)
+var ErrActorAskTimeout = fmt.Errorf("ErrActorAskTimeout")
 
 // ActorHandle A target could send messages
 type ActorHandle interface {
@@ -183,9 +181,9 @@ func (askSelf *AskDef) Reply(response interface{}) {
 var Ask AskDef
 
 func init() {
-	//Ask = *Ask.New(0, nil)
-	//Actor = *Actor.New(func(_ *ActorDef, _ interface{}) {})
-	//Actor.Close()
+	// Ask = *Ask.New(0, nil)
+	// Actor = *Actor.New(func(_ *ActorDef, _ interface{}) {})
+	// Actor.Close()
 	Actor.isClosed = true
 	defaultActor = &Actor
 }

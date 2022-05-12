@@ -65,7 +65,6 @@ func Compose(fnList ...func(...interface{}) []interface{}) func(...interface{}) 
 // Pipe Pipe the functions from left to right
 func Pipe(fnList ...func(...interface{}) []interface{}) func(...interface{}) []interface{} {
 	return func(s ...interface{}) []interface{} {
-
 		lastIndex := len(fnList) - 1
 		f := fnList[lastIndex]
 		nextFnList := fnList[:lastIndex]
@@ -100,7 +99,6 @@ func MapIndexed(fn func(interface{}, int) interface{}, values ...interface{}) []
 
 // Reduce Reduce the values from left to right(func(memo,val), starting value, slice)
 func Reduce(fn ReducerFunctor, memo interface{}, input ...interface{}) interface{} {
-
 	for i := 0; i < len(input); i++ {
 		memo = fn(memo, input[i])
 	}
@@ -110,7 +108,6 @@ func Reduce(fn ReducerFunctor, memo interface{}, input ...interface{}) interface
 
 // ReduceIndexed Reduce the values from left to right(func(memo,val,index), starting value, slice)
 func ReduceIndexed(fn func(interface{}, interface{}, int) interface{}, memo interface{}, input ...interface{}) interface{} {
-
 	for i := 0; i < len(input); i++ {
 		memo = fn(memo, input[i], i)
 	}
@@ -120,9 +117,9 @@ func ReduceIndexed(fn func(interface{}, interface{}, int) interface{}, memo inte
 
 // Filter Filter the values by the given predicate function (predicate func, slice)
 func Filter(fn func(interface{}, int) bool, input ...interface{}) []interface{} {
-	var list = make([]interface{}, len(input))
+	list := make([]interface{}, len(input))
 
-	var newLen = 0
+	newLen := 0
 
 	for i := range input {
 		if fn(input[i], i) {
@@ -145,18 +142,18 @@ func Reject(fn func(interface{}, int) bool, input ...interface{}) []interface{} 
 
 // Concat Concat slices
 func Concat(mine []interface{}, slices ...[]interface{}) []interface{} {
-	var mineLen = len(mine)
-	var totalLen = mineLen
+	mineLen := len(mine)
+	totalLen := mineLen
 
 	for _, slice := range slices {
 		if slice == nil {
 			continue
 		}
 
-		var targetLen = len(slice)
+		targetLen := len(slice)
 		totalLen += targetLen
 	}
-	var newOne = make([]interface{}, totalLen)
+	newOne := make([]interface{}, totalLen)
 
 	for i, item := range mine {
 		newOne[i] = item
@@ -168,8 +165,8 @@ func Concat(mine []interface{}, slices ...[]interface{}) []interface{} {
 			continue
 		}
 
-		var target = slice
-		var targetLen = len(target)
+		target := slice
+		targetLen := len(target)
 		for j, item := range target {
 			newOne[totalIndex+j] = item
 		}
@@ -646,7 +643,7 @@ func PMap(f TransformerFunctor, option *PMapOption, list ...interface{}) []inter
 		return make([]interface{}, 0)
 	}
 
-	var worker = len(list)
+	worker := len(list)
 	if option != nil {
 		if option.FixedPool > 0 && option.FixedPool < worker {
 			worker = option.FixedPool
@@ -942,7 +939,6 @@ func UniqBy(identify TransformerFunctor, list ...interface{}) []interface{} {
 
 // Flatten creates a new slice where one level of nested elements are unnested
 func Flatten(list ...[]interface{}) []interface{} {
-
 	result := make([]interface{}, 0)
 
 	// for _, v := range list {
@@ -952,7 +948,7 @@ func Flatten(list ...[]interface{}) []interface{} {
 	return Concat(result, list...)
 }
 
-// Prepend returns the slice with the additional element added to the beggining
+// Prepend returns the slice with the additional element added to the beginning
 func Prepend(element interface{}, list []interface{}) []interface{} {
 	return append([]interface{}{element}, list...)
 }
@@ -1500,8 +1496,7 @@ type ProductType struct {
 }
 
 // NilTypeDef NilType implemented by Nil determinations
-type NilTypeDef struct {
-}
+type NilTypeDef struct{}
 
 // Matches Check does it match the SumType
 func (typeSelf SumType) Matches(value ...interface{}) bool {

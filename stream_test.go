@@ -17,7 +17,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "1234", tempString)
 	s = s.Map(func(item interface{}, index int) interface{} {
-		var val = Maybe.Just(s.Get(index)).ToMaybe().ToString()
+		val := Maybe.Just(s.Get(index)).ToMaybe().ToString()
 		var result interface{} = "v" + val
 		return result
 	})
@@ -34,7 +34,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "1234", tempString)
 	s = s.Map(func(item interface{}, index int) interface{} {
-		var val = Maybe.Just(s.Get(index)).ToString()
+		val := Maybe.Just(s.Get(index)).ToString()
 		var result interface{} = "v" + val
 		return result
 	})
@@ -51,7 +51,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "1234", tempString)
 	s = s.Map(func(item interface{}, index int) interface{} {
-		var val, _ = Maybe.Just(s.Get(index)).ToInt()
+		val, _ := Maybe.Just(s.Get(index)).ToInt()
 		var result interface{} = val * val
 		return result
 	})
@@ -68,7 +68,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	}
 	assert.Equal(t, "1234", tempString)
 	s = s.Map(func(item interface{}, index int) interface{} {
-		var val, _ = Maybe.Just(s.Get(index)).ToFloat32()
+		val, _ := Maybe.Just(s.Get(index)).ToFloat32()
 		var result interface{} = val * val
 		return result
 	})
@@ -86,7 +86,7 @@ func TestFromArrayMapReduce(t *testing.T) {
 	assert.Equal(t, "1234", tempString)
 
 	s = s.Map(func(item interface{}, index int) interface{} {
-		var val, _ = Maybe.Just(s.Get(index)).ToFloat64()
+		val, _ := Maybe.Just(s.Get(index)).ToFloat64()
 		var result interface{} = val * val
 		return result
 	})
@@ -163,7 +163,7 @@ func TestFilter(t *testing.T) {
 	assert.Equal(t, "1234", tempString)
 
 	s = s.Filter(func(item interface{}, index int) bool {
-		var val, err = Maybe.Just(s.Get(index)).ToInt()
+		val, err := Maybe.Just(s.Get(index)).ToInt()
 
 		return err == nil && val > 1 && val < 4
 	})
@@ -173,7 +173,7 @@ func TestFilter(t *testing.T) {
 	}
 	assert.Equal(t, "23", tempString)
 	s = s.Reject(func(item interface{}, index int) bool {
-		var val, err = Maybe.Just(item).ToInt()
+		val, err := Maybe.Just(item).ToInt()
 
 		return err == nil && val > 2
 	})
@@ -216,8 +216,8 @@ func TestSort(t *testing.T) {
 
 	tempString = ""
 	for _, v := range s.SortByIndex(func(i, j int) bool {
-		var vali, _ = Maybe.Just(s.Get(i)).ToInt()
-		var valj, _ = Maybe.Just(s.Get(j)).ToInt()
+		vali, _ := Maybe.Just(s.Get(i)).ToInt()
+		valj, _ := Maybe.Just(s.Get(j)).ToInt()
 		return vali < valj
 	}).ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
@@ -225,8 +225,8 @@ func TestSort(t *testing.T) {
 	assert.Equal(t, "23411", tempString)
 	tempString = ""
 	for _, v := range s.Sort(func(a, b interface{}) bool {
-		var vali, _ = Maybe.Just(a).ToInt()
-		var valj, _ = Maybe.Just(b).ToInt()
+		vali, _ := Maybe.Just(a).ToInt()
+		valj, _ := Maybe.Just(b).ToInt()
 		return vali < valj
 	}).ToArray() {
 		tempString += Maybe.Just(v).ToMaybe().ToString()
@@ -272,7 +272,6 @@ func TestStreamSetOperation(t *testing.T) {
 		tempString += Maybe.Just(v).ToMaybe().ToString() + "/"
 	}
 	assert.Equal(t, "9/6/", tempString)
-
 }
 
 func TestSetSetOperation(t *testing.T) {

@@ -126,7 +126,7 @@ func (maybeSelf someDef) ToPtr() *interface{} {
 
 // ToMaybe Maybe to Maybe
 func (maybeSelf someDef) ToMaybe() MaybeDef {
-	var ref = maybeSelf.ref
+	ref := maybeSelf.ref
 	switch (ref).(type) {
 	default:
 		return maybeSelf

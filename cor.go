@@ -143,6 +143,7 @@ func (corSelf *CorDef) YieldFrom(target *CorDef, in interface{}) interface{} {
 
 	return result
 }
+
 func (corSelf *CorDef) receive(cor *CorDef, in interface{}) {
 	corSelf.doCloseSafe(func() {
 		if corSelf.opCh != nil {
@@ -179,6 +180,7 @@ func (corSelf *CorDef) IsDone() bool {
 func (corSelf *CorDef) IsStarted() bool {
 	return corSelf.isStarted.Get()
 }
+
 func (corSelf *CorDef) close() {
 	corSelf.isClosed.Set(true)
 
@@ -191,6 +193,7 @@ func (corSelf *CorDef) close() {
 	}
 	corSelf.closedM.Unlock()
 }
+
 func (corSelf *CorDef) doCloseSafe(fn func()) {
 	if corSelf.IsDone() {
 		return

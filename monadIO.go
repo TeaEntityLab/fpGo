@@ -27,12 +27,10 @@ func (monadIOSelf *MonadIODef) New(effect func() interface{}) *MonadIODef {
 
 // FlatMap FlatMap the MonadIO by function
 func (monadIOSelf *MonadIODef) FlatMap(fn func(interface{}) *MonadIODef) *MonadIODef {
-
 	return &MonadIODef{effect: func() interface{} {
 		next := fn(monadIOSelf.doEffect())
 		return next.doEffect()
 	}}
-
 }
 
 // Subscribe Subscribe the MonadIO by Subscription
@@ -53,8 +51,8 @@ func (monadIOSelf *MonadIODef) ObserveOn(h *HandlerDef) *MonadIODef {
 	monadIOSelf.obOn = h
 	return monadIOSelf
 }
-func (monadIOSelf *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, subOn *HandlerDef) *Subscription {
 
+func (monadIOSelf *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, subOn *HandlerDef) *Subscription {
 	if s.OnNext != nil {
 		var result interface{}
 
@@ -79,6 +77,7 @@ func (monadIOSelf *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, su
 
 	return s
 }
+
 func (monadIOSelf *MonadIODef) doEffect() interface{} {
 	return monadIOSelf.effect()
 }

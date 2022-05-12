@@ -90,6 +90,7 @@ func (publisherSelf *PublisherDef) Publish(result interface{}) {
 		}
 	}
 }
+
 func (publisherSelf *PublisherDef) doSubscribeSafe(fn func()) {
 	publisherSelf.subscribeM.Lock()
 	fn()
