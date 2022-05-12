@@ -1360,7 +1360,7 @@ func Flatten[T any](list ...[]T) []T {
 	return Concat(result, list...)
 }
 
-// Prepend returns the slice with the additional element added to the beggining
+// Prepend returns the slice with the additional element added to the beginning
 func Prepend[T any](element T, list []T) []T {
 	return append([]T{element}, list...)
 }

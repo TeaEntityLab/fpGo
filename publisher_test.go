@@ -8,8 +8,8 @@ import (
 
 func TestPublisher(t *testing.T) {
 	var s *Subscription[interface{}]
+	var p2 *PublisherDef[interface{}]
 	p := Publisher.New()
-	p2 := p
 
 	actual := 0
 	expected := 0
