@@ -1,7 +1,7 @@
 # fpGo
 
 [![tag](https://img.shields.io/github/tag/TeaEntityLab/fpGo.svg)](https://github.com/TeaEntityLab/fpGo)
-[![Go Report Card](https://goreportcard.com/badge/github.com/TeaEntityLab/fpGo)](https://goreportcard.com/report/github.com/TeaEntityLab/fpGo)
+[![Go Report Card](https://goreportcard.com/badge/github.com/TeaEntityLab/fpGo/v2)](https://goreportcard.com/report/github.com/TeaEntityLab/fpGo/v2)
 [![codecov](https://codecov.io/gh/TeaEntityLab/fpGo/branch/master/graph/badge.svg)](https://codecov.io/gh/TeaEntityLab/fpGo)
 [![Travis CI Build Status](https://travis-ci.com/TeaEntityLab/fpGo.svg?branch=master)](https://travis-ci.com/TeaEntityLab/fpGo)
 [![GoDoc](https://godoc.org/github.com/TeaEntityLab/fpGo?status.svg)](https://godoc.org/github.com/TeaEntityLab/fpGo)
