@@ -44,9 +44,13 @@ Thus I implemented fpGo. I hope you would like it :)
 
 * Java8Stream-like Collection
 
+* Queue (LinkedListQueue/ChannelQueue/BufferedChannelQueue/ConcurrentQueue)
+
 * PythonicGenerator-like Coroutine(yield/yieldFrom)
 
 * Akka/Erlang-like Actor model(send/receive/spawn/states)
+
+* **network/SimpleHTTP** inspired by [Retrofit](https://github.com/square/retrofit)
 
 # Special thanks
 * fp functions(Dedupe/Difference/Distinct/IsDistinct/DropEq/Drop/DropLast/DropWhile/IsEqual/IsEqualMap/Every/Exists/Intersection/Keys/Values/Max/Min/MinMax/Merge/IsNeg/IsPos/PMap/Range/Reverse/Minus/Some/IsSubset/IsSuperset/Take/TakeLast/Union/IsZero/Zip/GroupBy/UniqBy/Flatten/Prepend/Partition/Tail/Head/SplitEvery)
@@ -141,6 +145,64 @@ for _, v := range s.ToArray() {
   tempString += Maybe.Just(v).ToMaybe().ToString()
 }
 fmt.Println(tempString) // tempString would be "1234"
+```
+
+## Queue(LinkedListQueue/ChannelQueue/BufferedChannelQueue/ConcurrentQueue) (inspired by Collection libs)
+
+### LinkedListQueue(Shift/Unshift/Push/Pop), ConcurrentQueue(inspired by Java)
+
+Example:
+
+```go
+var queue Queue
+var stack Stack
+var err error
+var result interface{}
+
+linkedListQueue := NewLinkedListQueue()
+queue = linkedListQueue
+stack = linkedListQueue
+concurrentQueue := NewConcurrentQueue(queue)
+
+// As a Queue, Put(val) in the TAIL and Take() in the HEAD
+err = queue.Offer(1)
+err = queue.Offer(2)
+err = queue.Offer(3)
+result, err = queue.Poll() // Result should be 1
+result, err = queue.Poll() // Result should be 2
+result, err = queue.Poll() // Result should be 3
+result, err = queue.Poll() // Err: ErrQueueIsEmpty
+
+// As a Stack, Push(val) & Pop() in the TAIL.
+err = stack.Push(1)
+err = stack.Push(2)
+err = stack.Push(3)
+result, err = stack.Pop() // Result should be 3
+result, err = stack.Pop() // Result should be 2
+result, err = stack.Pop() // Result should be 1
+result, err = stack.Pop() // Err: ErrStackIsEmpty
+```
+
+### BufferedChannelQueue(Offer/Take/TakeWithTimeout)
+
+Example:
+
+```go
+var err error
+var result interface{}
+var timeout time.Duration
+
+bufferedChannelQueue := NewBufferedChannelQueue(3, 10000, 100)
+bufferedChannelQueue.SetLoadFromPoolDuration(time.Millisecond / 10)
+bufferedChannelQueue.SetFreeNodeHookPoolIntervalDuration(1 * time.Millisecond)
+
+err = queue.Offer(1)
+err = queue.Offer(2)
+err = queue.Offer(3)
+timeout = 1 * time.Millisecond
+result, err = bufferedChannelQueue.TakeWithTimeout(timeout) // Result should be 1
+result, err = bufferedChannelQueue.TakeWithTimeout(timeout) // Result should be 2
+result, err = bufferedChannelQueue.TakeWithTimeout(timeout) // Result should be 3
 ```
 
 ## Actor (inspired by Akka/Erlang)
