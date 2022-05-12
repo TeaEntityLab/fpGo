@@ -241,11 +241,11 @@ func (listItem *DoublyListItem[T]) AddFirst(input *DoublyListItem[T]) *DoublyLis
 
 // LinkedListQueue LinkedListQueue inspired by Collection utils
 type LinkedListQueue[T any] struct {
-	first *LinkedListItem[T]
-	last  *LinkedListItem[T]
+	first *DoublyListItem[T]
+	last  *DoublyListItem[T]
 	count int
 
-	nodePoolFirst *LinkedListItem[T]
+	nodePoolFirst *DoublyListItem[T]
 	nodeCount     int
 }
 
@@ -277,14 +277,14 @@ func (q *LinkedListQueue[T]) KeepNodePoolCount(n int) {
 	n--
 	last := q.nodePoolFirst
 	if last == nil {
-		last = new(LinkedListItem[T])
+		last = new(DoublyListItem[T])
 		q.nodePoolFirst = last
 	}
 
 	for n > 0 {
 		n--
 		if last.Next == nil {
-			last.Next = new(LinkedListItem[T])
+			last.Next = new(DoublyListItem[T])
 		}
 		last = last.Next
 	}
@@ -298,6 +298,7 @@ func (q *LinkedListQueue[T]) Clear() {
 	node := q.nodePoolFirst
 	for node != nil {
 		node.Val = nil
+		node.Prev = nil
 		node = node.Next
 	}
 
@@ -306,17 +307,17 @@ func (q *LinkedListQueue[T]) Clear() {
 	q.count = 0
 }
 
-// Put Put the T val(no-blocking)
+// Put Put the T val to the last position(no-blocking)
 func (q *LinkedListQueue[T]) Put(val T) error {
 	return q.Offer(val)
 }
 
-// Take Take the T val(no-blocking)
+// Take Take the T val from the first position(no-blocking)
 func (q *LinkedListQueue[T]) Take() (T, error) {
 	return q.Poll()
 }
 
-// Offer Offer the T val(non-blocking)
+// Offer Offer the T val to the last position(non-blocking)
 func (q *LinkedListQueue[T]) Offer(val T) error {
 	// Try get from pool or new one
 	node := q.generateNode()
@@ -329,13 +330,14 @@ func (q *LinkedListQueue[T]) Offer(val T) error {
 	last := q.last
 	if last != nil {
 		last.Next = node
+		node.Prev = last
 	}
 	q.last = node
 
 	return nil
 }
 
-// Poll Poll the T val(non-blocking)
+// Poll Poll the T val from the first position(non-blocking)
 func (q *LinkedListQueue[T]) Poll() (T, error) {
 	return q.Shift()
 }
@@ -362,15 +364,11 @@ func (q *LinkedListQueue[T]) Shift() (T, error) {
 	if q.first == nil {
 		q.last = nil
 	}
-	val := *node.Val
+	val := node.Val
 
-	// Recycle
-	q.nodeCount++
-	node.Val = nil
-	node.Next = q.nodePoolFirst
-	q.nodePoolFirst = node
+	q.recycleNode(node)
 
-	return val, nil
+	return *val, nil
 }
 
 // Unshift Unshift the T val to the first position(non-blocking)
@@ -386,34 +384,61 @@ func (q *LinkedListQueue[T]) Unshift(val T) error {
 	first := q.first
 	q.first = node
 	node.Next = first
+	if first != nil {
+		first.Prev = node
+	}
 
 	return nil
 }
 
-// Pop Pop the data from the first position(non-blocking)
+// Pop Pop the data from the last position(non-blocking)
 func (q *LinkedListQueue[T]) Pop() (T, error) {
-	val, err := q.Take()
-	if err == ErrQueueIsEmpty {
-		return val, ErrStackIsEmpty
+	node := q.last
+	if node == nil {
+		return *new(T), ErrStackIsEmpty
 	}
 
-	return val, err
+	// Remove the last item
+	q.count--
+	q.last = node.Prev
+	if q.last == nil {
+		q.first = nil
+	}
+	val := node.Val
+	q.recycleNode(node)
+
+	return *val, nil
 }
 
-// Push Push the data from the first position(non-blocking)
+// Push Push the data to the last position(non-blocking)
 func (q *LinkedListQueue[T]) Push(val T) error {
-	return q.Unshift(val)
+	// return q.Unshift(val)
+	return q.Offer(val)
 }
 
-func (q *LinkedListQueue[T]) generateNode() *LinkedListItem[T] {
+func (q *LinkedListQueue[T]) generateNode() *DoublyListItem[T] {
 	node := q.nodePoolFirst
 	if node == nil {
-		node = new(LinkedListItem[T])
+		node = new(DoublyListItem[T])
 	} else {
 		q.nodeCount--
 		q.nodePoolFirst = node.Next
 		node.Next = nil
+		node.Prev = nil
 	}
 
 	return node
+}
+
+func (q *LinkedListQueue[T]) recycleNode(node *DoublyListItem[T]) {
+	if node == nil {
+		return
+	}
+
+	// Recycle
+	q.nodeCount++
+	node.Val = nil
+	node.Next = q.nodePoolFirst
+	node.Prev = nil
+	q.nodePoolFirst = node
 }
