@@ -340,12 +340,23 @@ func (q *LinkedListQueue[T]) Poll() (T, error) {
 	return q.Shift()
 }
 
+// Peek Peek the T val from the first position without removing it (non-blocking)
+func (q *LinkedListQueue[T]) Peek() (T, error) {
+	node := q.first
+	if node == nil {
+		return *new(T), ErrQueueIsEmpty
+	}
+	return *node.Val, nil
+}
+
 // Shift Shift the T val from the first position (non-blocking)
 func (q *LinkedListQueue[T]) Shift() (T, error) {
 	node := q.first
 	if node == nil {
 		return *new(T), ErrQueueIsEmpty
 	}
+
+	// Remove the first item
 	q.count--
 	q.first = node.Next
 	if q.first == nil {
@@ -369,6 +380,9 @@ func (q *LinkedListQueue[T]) Unshift(val T) error {
 	node.Val = &val
 
 	q.count++
+	if q.last == nil {
+		q.last = node
+	}
 	first := q.first
 	q.first = node
 	node.Next = first

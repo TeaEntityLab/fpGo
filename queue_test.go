@@ -237,4 +237,22 @@ func TestLinkedListQueue(t *testing.T) {
 	assert.Equal(t, 0, linkedListQueue.Count())
 	assert.Equal(t, 0, linkedListQueue.nodeCount)
 	assert.Nil(t, linkedListQueue.nodePoolFirst)
+
+	go func() {
+		time.Sleep(1 * time.Millisecond)
+
+		for i := 1; i <= 10000; i++ {
+			result, err := concurrentQueue.Take()
+			assert.Equal(t, nil, err)
+			assert.Equal(t, i, result)
+		}
+	}()
+	go func() {
+		for i := 1; i <= 10000; i++ {
+			err := concurrentQueue.Offer(i)
+			assert.Equal(t, nil, err)
+		}
+	}()
+
+	time.Sleep(2 * timeout)
 }
