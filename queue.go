@@ -584,7 +584,16 @@ func (q *BufferedChannelQueue[T]) Put(val T) error {
 	// 	return ErrQueueIsClosed
 	// }
 	//
-	// return q.blockingQueue.Put(val)
+	// q.lock.Lock()
+	// poolCount := q.pool.Count()
+	//
+	// // If appearing nothing in the pool
+	// if poolCount == 0 {
+	// 	defer q.lock.Unlock()
+	// 	// Try channel
+	// 	return q.blockingQueue.Put(val)
+	// }
+	// q.lock.Unlock()
 
 	return q.Offer(val)
 }
@@ -638,23 +647,31 @@ func (q *BufferedChannelQueue[T]) Offer(val T) error {
 		return ErrQueueIsClosed
 	}
 
+	poolCount := q.pool.Count()
+
+	// If appearing nothing in the pool
+	if poolCount == 0 {
+		// Try channel
+		err := q.blockingQueue.Offer(val)
+		if err == nil {
+			// Success
+			return nil
+		} else if err == ErrQueueIsFull {
+			// Do nothing and let pool.Offer(val)
+		} else {
+			// Other
+			return err
+		}
+	}
+
 	// Before +1: >=, After +1: >
-	if q.pool.Count() >= q.bufferSizeMaximum {
+	if poolCount >= q.bufferSizeMaximum {
 		return ErrQueueIsFull
 	}
 
 	q.pool.Offer(val)
 	q.loadWorkerCh.Offer(1)
 	return nil
-
-	// err := q.blockingQueue.Offer(val)
-	// if err == ErrQueueIsFull {
-	// 	q.pool.Offer(val)
-	// 	q.loadWorkerCh.Offer(1)
-	// 	return nil
-	// }
-	//
-	// return err
 }
 
 // Poll Poll the T val(non-blocking)
