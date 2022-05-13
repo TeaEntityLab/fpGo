@@ -1413,5 +1413,5 @@ func (noneSelf noneDef) Kind() reflect.Kind {
 // None None utils instance
 var None = noneDef{someDef[any]{isNil: true, isPresent: false}}
 
-// var noneAsSome = someDef[interface{}](None)
-var noneAsSome = None.someDef
+// // var noneAsSome = someDef[interface{}](None)
+// var noneAsSome = None.someDef
