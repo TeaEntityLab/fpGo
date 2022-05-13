@@ -275,13 +275,10 @@ func TestNewBufferedChannelQueue(t *testing.T) {
 
 	err = queue.Offer(1)
 	assert.Equal(t, nil, err)
-	time.Sleep(1 * timeout)
 	err = queue.Offer(2)
 	assert.Equal(t, nil, err)
-	time.Sleep(1 * timeout)
 	err = queue.Offer(3)
 	assert.Equal(t, nil, err)
-	time.Sleep(1 * timeout)
 	// Channel: only 3 positions & Buffer: 1 position, now `4` is inserted into the buffer(buffer size： 1)
 	err = queue.Offer(4)
 	assert.Equal(t, nil, err)
@@ -319,6 +316,7 @@ func TestNewBufferedChannelQueue(t *testing.T) {
 	go func() {
 		for i := 1; i <= 10000; i++ {
 			// err := bufferedChannelQueue.PutWithTimeout(i, timeout)
+			// err := bufferedChannelQueue.Put(i)
 			err := bufferedChannelQueue.Offer(i)
 			assert.Equal(t, nil, err)
 		}
