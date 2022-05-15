@@ -16,7 +16,7 @@ type ActorHandle interface {
 type ActorDef struct {
 	id       time.Time
 	isClosed bool
-	ch       *chan interface{}
+	ch       chan interface{}
 	effect   func(*ActorDef, interface{})
 
 	context map[string]interface{}
@@ -34,12 +34,11 @@ func (actorSelf *ActorDef) GetDefault() *ActorDef {
 
 // New New Actor instance
 func (actorSelf *ActorDef) New(effect func(*ActorDef, interface{})) *ActorDef {
-	ch := make(chan interface{})
-	return actorSelf.NewByOptions(effect, &ch, map[string]interface{}{})
+	return actorSelf.NewByOptions(effect, make(chan interface{}), map[string]interface{}{})
 }
 
 // NewByOptions New Actor by its options
-func (actorSelf *ActorDef) NewByOptions(effect func(*ActorDef, interface{}), ioCh *chan interface{}, context map[string]interface{}) *ActorDef {
+func (actorSelf *ActorDef) NewByOptions(effect func(*ActorDef, interface{}), ioCh chan interface{}, context map[string]interface{}) *ActorDef {
 	newOne := ActorDef{
 		id:       time.Now(),
 		ch:       ioCh,
@@ -58,7 +57,7 @@ func (actorSelf *ActorDef) Send(message interface{}) {
 		return
 	}
 
-	*(actorSelf.ch) <- message
+	actorSelf.ch <- message
 }
 
 // Spawn Spawn a new Actor with parent(this actor)
@@ -93,7 +92,7 @@ func (actorSelf *ActorDef) GetID() time.Time {
 func (actorSelf *ActorDef) Close() {
 	actorSelf.isClosed = true
 
-	close(*actorSelf.ch)
+	close(actorSelf.ch)
 }
 
 // IsClosed Check is Closed
@@ -102,7 +101,7 @@ func (actorSelf *ActorDef) IsClosed() bool {
 }
 
 func (actorSelf *ActorDef) run() {
-	for message := range *actorSelf.ch {
+	for message := range actorSelf.ch {
 		actorSelf.effect(actorSelf, message)
 	}
 }
@@ -113,7 +112,7 @@ var Actor ActorDef
 // AskDef Ask inspired by Erlang/Akka
 type AskDef struct {
 	id time.Time
-	ch *chan interface{}
+	ch chan interface{}
 
 	Message interface{}
 }
@@ -124,18 +123,17 @@ func (askSelf *AskDef) New(message interface{}) *AskDef {
 }
 
 // NewByOptions New Ask by its options
-func (askSelf *AskDef) NewByOptions(message interface{}, ioCh *chan interface{}) *AskDef {
+func (askSelf *AskDef) NewByOptions(message interface{}, ioCh chan interface{}) *AskDef {
 	return AskNewByOptionsGenerics(message, ioCh)
 }
 
 // AskNewGenerics New Ask instance
 func AskNewGenerics(message interface{}) *AskDef {
-	ch := make(chan interface{})
-	return AskNewByOptionsGenerics(message, &ch)
+	return AskNewByOptionsGenerics(message, make(chan interface{}))
 }
 
 // AskNewByOptionsGenerics New Ask by its options
-func AskNewByOptionsGenerics(message interface{}, ioCh *chan interface{}) *AskDef {
+func AskNewByOptionsGenerics(message interface{}, ioCh chan interface{}) *AskDef {
 	newOne := AskDef{
 		id: time.Now(),
 		ch: ioCh,
@@ -149,14 +147,14 @@ func AskNewByOptionsGenerics(message interface{}, ioCh *chan interface{}) *AskDe
 // AskOnce Sender Ask
 func (askSelf *AskDef) AskOnce(target ActorHandle, timeout *time.Duration) (interface{}, error) {
 	ch := askSelf.AskChannel(target)
-	defer close(*ch)
+	defer close(ch)
 	var result interface{}
 	// var err error
 	if timeout == nil {
-		result = <-*ch
+		result = <-ch
 	} else {
 		select {
-		case result = <-*ch:
+		case result = <-ch:
 		case <-time.After(*timeout):
 			return result, ErrActorAskTimeout
 		}
@@ -166,7 +164,7 @@ func (askSelf *AskDef) AskOnce(target ActorHandle, timeout *time.Duration) (inte
 }
 
 // AskChannel Sender Ask
-func (askSelf *AskDef) AskChannel(target ActorHandle) *chan interface{} {
+func (askSelf *AskDef) AskChannel(target ActorHandle) chan interface{} {
 	target.Send(askSelf)
 
 	return askSelf.ch
@@ -174,7 +172,7 @@ func (askSelf *AskDef) AskChannel(target ActorHandle) *chan interface{} {
 
 // Reply Receiver Reply
 func (askSelf *AskDef) Reply(response interface{}) {
-	*askSelf.ch <- response
+	askSelf.ch <- response
 }
 
 // Ask Ask utils instance

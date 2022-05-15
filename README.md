@@ -323,8 +323,8 @@ actual, _ = Maybe.Just(result).ToInt()
 // Ask channel
 // Result would be 30
 ch := Ask.New(3).AskChannel(actorRoot)
-actual, _ = Maybe.Just(<-*ch).ToInt()
-close(*ch)
+actual, _ = Maybe.Just(<-ch).ToInt()
+close(ch)
 
 // Timeout cases
 // Result would be 0 (zero value, timeout)

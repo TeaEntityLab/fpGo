@@ -124,8 +124,8 @@ func TestActorAsk(t *testing.T) {
 	// Ask channel
 	expectedInt = 30
 	ch := AskNewGenerics(3).AskChannel(actorRoot)
-	actual, _ = Maybe.Just(<-*ch).ToInt()
-	close(*ch)
+	actual, _ = Maybe.Just(<-ch).ToInt()
+	close(ch)
 	assert.Equal(t, expectedInt, actual)
 
 	// Timeout cases

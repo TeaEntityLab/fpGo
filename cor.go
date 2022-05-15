@@ -38,17 +38,20 @@ type CorDef struct {
 	isClosed  AtomBool
 	closedM   sync.Mutex
 
-	opCh     *chan *CorOp
-	resultCh *chan interface{}
+	opCh     chan *CorOp
+	resultCh chan interface{}
 
 	effect func()
 }
 
 // New New a Cor instance
 func (corSelf *CorDef) New(effect func()) *CorDef {
-	opCh := make(chan *CorOp, 5)
-	resultCh := make(chan interface{}, 5)
-	cor := &CorDef{effect: effect, opCh: &opCh, resultCh: &resultCh, isStarted: AtomBool{flag: 0}}
+	cor := &CorDef{
+		effect:    effect,
+		opCh:      make(chan *CorOp, 5),
+		resultCh:  make(chan interface{}, 5),
+		isStarted: AtomBool{flag: 0},
+	}
 	return cor
 }
 
@@ -114,13 +117,13 @@ func (corSelf *CorDef) YieldRef(out interface{}) interface{} {
 	var op *CorOp
 	var more bool
 	// fmt.Println(corSelf, "Wait for", "op")
-	op, more = <-*corSelf.opCh
+	op, more = <-corSelf.opCh
 	// fmt.Println(corSelf, "Wait for", "op", "done")
 
 	if more && op != nil && op.cor != nil {
 		cor := op.cor
 		cor.doCloseSafe(func() {
-			*cor.resultCh <- out
+			cor.resultCh <- out
 		})
 	}
 	result = op.val
@@ -138,7 +141,7 @@ func (corSelf *CorDef) YieldFrom(target *CorDef, in interface{}) interface{} {
 	target.receive(corSelf, in)
 
 	// fmt.Println(corSelf, "Wait for", "result")
-	result, _ = <-*corSelf.resultCh
+	result, _ = <-corSelf.resultCh
 	// fmt.Println(corSelf, "Wait for", "result", "done")
 
 	return result
@@ -148,7 +151,7 @@ func (corSelf *CorDef) receive(cor *CorDef, in interface{}) {
 	corSelf.doCloseSafe(func() {
 		if corSelf.opCh != nil {
 			// fmt.Println(corSelf, "Wait for", "receive", cor, in)
-			*(corSelf.opCh) <- &CorOp{cor: cor, val: in}
+			corSelf.opCh <- &CorOp{cor: cor, val: in}
 			// fmt.Println(corSelf, "Wait for", "receive", "done")
 		}
 	})
@@ -186,10 +189,10 @@ func (corSelf *CorDef) close() {
 
 	corSelf.closedM.Lock()
 	if corSelf.resultCh != nil {
-		close(*corSelf.resultCh)
+		close(corSelf.resultCh)
 	}
 	if corSelf.opCh != nil {
-		close(*corSelf.opCh)
+		close(corSelf.opCh)
 	}
 	corSelf.closedM.Unlock()
 }
