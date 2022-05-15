@@ -44,8 +44,7 @@ func (actorSelf *ActorDef[T]) NewByOptions(effect func(*ActorDef[T], T), ioCh ch
 
 // ActorNewGenerics New Actor instance
 func ActorNewGenerics[T any](effect func(*ActorDef[T], T)) *ActorDef[T] {
-	ch := make(chan T)
-	return ActorNewByOptionsGenerics(effect, ch, map[string]interface{}{})
+	return ActorNewByOptionsGenerics(effect, make(chan T), map[string]interface{}{})
 }
 
 // ActorNewByOptionsGenerics New Actor by its options
@@ -141,8 +140,7 @@ func (askSelf *AskDef[T, R]) NewByOptions(message T, ioCh chan R) *AskDef[T, R] 
 
 // AskNewGenerics New Ask instance
 func AskNewGenerics[T any, R any](message T) *AskDef[T, R] {
-	ch := make(chan R)
-	return AskNewByOptionsGenerics[T, R](message, ch)
+	return AskNewByOptionsGenerics[T, R](message, make(chan R))
 }
 
 // AskNewByOptionsGenerics New Ask by its options

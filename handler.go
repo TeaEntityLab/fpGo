@@ -4,7 +4,7 @@ package fpgo
 type HandlerDef struct {
 	isClosed bool
 
-	ch *chan func()
+	ch chan func()
 }
 
 var defaultHandler *HandlerDef
@@ -16,12 +16,11 @@ func (handlerSelf *HandlerDef) GetDefault() *HandlerDef {
 
 // New New Handler instance
 func (handlerSelf *HandlerDef) New() *HandlerDef {
-	ch := make(chan func())
-	return handlerSelf.NewByCh(&ch)
+	return handlerSelf.NewByCh(make(chan func()))
 }
 
 // NewByCh New Handler by its Channel
-func (handlerSelf *HandlerDef) NewByCh(ioCh *chan func()) *HandlerDef {
+func (handlerSelf *HandlerDef) NewByCh(ioCh chan func()) *HandlerDef {
 	new := HandlerDef{ch: ioCh}
 	go new.run()
 
@@ -34,18 +33,18 @@ func (handlerSelf *HandlerDef) Post(fn func()) {
 		return
 	}
 
-	*(handlerSelf.ch) <- fn
+	handlerSelf.ch <- fn
 }
 
 // Close Close the Handler
 func (handlerSelf *HandlerDef) Close() {
 	handlerSelf.isClosed = true
 
-	close(*handlerSelf.ch)
+	close(handlerSelf.ch)
 }
 
 func (handlerSelf *HandlerDef) run() {
-	for fn := range *handlerSelf.ch {
+	for fn := range handlerSelf.ch {
 		fn()
 	}
 }

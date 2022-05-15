@@ -51,9 +51,12 @@ func (corSelf *CorDef[T]) New(effect func()) *CorDef[interface{}] {
 
 // New New a Cor instance
 func CorNewGenerics[T any](effect func()) *CorDef[T] {
-	opCh := make(chan *CorOp[T], 5)
-	resultCh := make(chan T, 5)
-	cor := &CorDef[T]{effect: effect, opCh: opCh, resultCh: resultCh, isStarted: AtomBool{flag: 0}}
+	cor := &CorDef[T]{
+		effect:    effect,
+		opCh:      make(chan *CorOp[T], 5),
+		resultCh:  make(chan T, 5),
+		isStarted: AtomBool{flag: 0},
+	}
 	return cor
 }
 
