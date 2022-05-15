@@ -16,7 +16,15 @@ Monad, Functional Programming features for Golang
 
 For *Generics* version(*`>=go1.18`*):[generics](https://github.com/TeaEntityLab/fpGo/tree/generics)
 
+```bash
+go get github.com/TeaEntityLab/fpGo/v2
+```
+
 For *NonGenerics* version(*`<=go1.17`*):[non-generics](https://github.com/TeaEntityLab/fpGo/tree/non_generic)
+
+```bash
+go get github.com/TeaEntityLab/fpGo
+```
 
 # Why
 
