@@ -16,7 +16,7 @@ type ActorHandle[T any] interface {
 type ActorDef[T any] struct {
 	id       time.Time
 	isClosed bool
-	ch       *chan T
+	ch       chan T
 	effect   func(*ActorDef[T], T)
 
 	context map[string]interface{}
@@ -38,18 +38,18 @@ func (actorSelf *ActorDef[T]) New(effect func(*ActorDef[T], T)) *ActorDef[T] {
 }
 
 // NewByOptions New Actor by its options
-func (actorSelf *ActorDef[T]) NewByOptions(effect func(*ActorDef[T], T), ioCh *chan T, context map[string]interface{}) *ActorDef[T] {
+func (actorSelf *ActorDef[T]) NewByOptions(effect func(*ActorDef[T], T), ioCh chan T, context map[string]interface{}) *ActorDef[T] {
 	return ActorNewByOptionsGenerics(effect, ioCh, context)
 }
 
 // ActorNewGenerics New Actor instance
 func ActorNewGenerics[T any](effect func(*ActorDef[T], T)) *ActorDef[T] {
 	ch := make(chan T)
-	return ActorNewByOptionsGenerics(effect, &ch, map[string]interface{}{})
+	return ActorNewByOptionsGenerics(effect, ch, map[string]interface{}{})
 }
 
 // ActorNewByOptionsGenerics New Actor by its options
-func ActorNewByOptionsGenerics[T any](effect func(*ActorDef[T], T), ioCh *chan T, context map[string]interface{}) *ActorDef[T] {
+func ActorNewByOptionsGenerics[T any](effect func(*ActorDef[T], T), ioCh chan T, context map[string]interface{}) *ActorDef[T] {
 	newOne := ActorDef[T]{
 		id:       time.Now(),
 		ch:       ioCh,
@@ -69,7 +69,7 @@ func (actorSelf *ActorDef[T]) Send(message T) {
 		return
 	}
 
-	*(actorSelf.ch) <- message
+	actorSelf.ch <- message
 }
 
 // Spawn Spawn a new Actor with parent(this actor)
@@ -104,7 +104,7 @@ func (actorSelf *ActorDef[T]) GetID() time.Time {
 func (actorSelf *ActorDef[T]) Close() {
 	actorSelf.isClosed = true
 
-	close(*actorSelf.ch)
+	close(actorSelf.ch)
 }
 
 // IsClosed Check is Closed
@@ -113,7 +113,7 @@ func (actorSelf *ActorDef[T]) IsClosed() bool {
 }
 
 func (actorSelf *ActorDef[T]) run() {
-	for message := range *actorSelf.ch {
+	for message := range actorSelf.ch {
 		actorSelf.effect(actorSelf, message)
 	}
 }
@@ -124,7 +124,7 @@ var Actor ActorDef[interface{}]
 // AskDef[T, R] Ask inspired by Erlang/Akka
 type AskDef[T any, R any] struct {
 	id time.Time
-	ch *chan R
+	ch chan R
 
 	Message T
 }
@@ -135,18 +135,18 @@ func (askSelf *AskDef[T, R]) New(message T) *AskDef[T, R] {
 }
 
 // NewByOptions New Ask by its options
-func (askSelf *AskDef[T, R]) NewByOptions(message T, ioCh *chan R) *AskDef[T, R] {
+func (askSelf *AskDef[T, R]) NewByOptions(message T, ioCh chan R) *AskDef[T, R] {
 	return AskNewByOptionsGenerics[T, R](message, ioCh)
 }
 
 // AskNewGenerics New Ask instance
 func AskNewGenerics[T any, R any](message T) *AskDef[T, R] {
 	ch := make(chan R)
-	return AskNewByOptionsGenerics[T, R](message, &ch)
+	return AskNewByOptionsGenerics[T, R](message, ch)
 }
 
 // AskNewByOptionsGenerics New Ask by its options
-func AskNewByOptionsGenerics[T any, R any](message T, ioCh *chan R) *AskDef[T, R] {
+func AskNewByOptionsGenerics[T any, R any](message T, ioCh chan R) *AskDef[T, R] {
 	newOne := AskDef[T, R]{
 		id: time.Now(),
 		ch: ioCh,
@@ -160,14 +160,14 @@ func AskNewByOptionsGenerics[T any, R any](message T, ioCh *chan R) *AskDef[T, R
 // AskOnce Sender Ask
 func (askSelf *AskDef[T, R]) AskOnce(target ActorHandle[interface{}], timeout *time.Duration) (R, error) {
 	ch := askSelf.AskChannel(target)
-	defer close(*ch)
+	defer close(ch)
 	var result R
 	// var err error
 	if timeout == nil {
-		result = <-*ch
+		result = <-ch
 	} else {
 		select {
-		case result = <-*ch:
+		case result = <-ch:
 		case <-time.After(*timeout):
 			return result, ErrActorAskTimeout
 		}
@@ -177,7 +177,7 @@ func (askSelf *AskDef[T, R]) AskOnce(target ActorHandle[interface{}], timeout *t
 }
 
 // AskChannel Sender Ask
-func (askSelf *AskDef[T, R]) AskChannel(target ActorHandle[interface{}]) *chan R {
+func (askSelf *AskDef[T, R]) AskChannel(target ActorHandle[interface{}]) chan R {
 	target.Send(askSelf)
 
 	return askSelf.ch
@@ -185,7 +185,7 @@ func (askSelf *AskDef[T, R]) AskChannel(target ActorHandle[interface{}]) *chan R
 
 // Reply Receiver Reply
 func (askSelf *AskDef[T, R]) Reply(response R) {
-	*askSelf.ch <- response
+	askSelf.ch <- response
 }
 
 // Ask Ask utils instance

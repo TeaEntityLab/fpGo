@@ -121,8 +121,8 @@ func TestActorAsk(t *testing.T) {
 	// Ask channel
 	expectedInt = 30
 	ch := AskNewGenerics[interface{}, int](3).AskChannel(actorRoot)
-	actual = <-*ch
-	close(*ch)
+	actual = <-ch
+	close(ch)
 	assert.Equal(t, expectedInt, actual)
 
 	// Timeout cases

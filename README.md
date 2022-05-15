@@ -345,8 +345,8 @@ actual, _ = AskNewGenerics[interface{}, int](2).AskOnce(actorRoot, &timeout)
 // Ask channel
 // Result would be 30
 ch := AskNewGenerics[interface{}, int](3).AskChannel(actorRoot)
-actual = <- *ch
-close(*ch)
+actual = <- ch
+close(ch)
 
 // Timeout cases
 // Result would be 0 (zero value, timeout)
