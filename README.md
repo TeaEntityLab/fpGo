@@ -338,7 +338,7 @@ timeout = 10 * time.Millisecond
 
 // Normal cases
 // Result would be 10
-actual, _ = AskNewGenerics[interface{}, int](1).AskOnce(actorRoot)
+actual = AskNewGenerics[interface{}, int](1).AskOnce(actorRoot)
 // Ask with Timeout
 // Result would be 20
 actual, _ = AskNewGenerics[interface{}, int](2).AskOnceWithTimeout(actorRoot, timeout)

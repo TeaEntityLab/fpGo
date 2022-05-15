@@ -112,7 +112,7 @@ func TestActorAsk(t *testing.T) {
 
 	// Normal cases
 	expectedInt = 10
-	actual, _ = AskNewGenerics[interface{}, int](1).AskOnce(actorRoot)
+	actual = AskNewGenerics[interface{}, int](1).AskOnce(actorRoot)
 	assert.Equal(t, expectedInt, actual)
 	// Ask with Timeout
 	expectedInt = 20
