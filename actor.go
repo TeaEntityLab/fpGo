@@ -145,19 +145,23 @@ func AskNewByOptionsGenerics(message interface{}, ioCh chan interface{}) *AskDef
 }
 
 // AskOnce Sender Ask
-func (askSelf *AskDef) AskOnce(target ActorHandle, timeout *time.Duration) (interface{}, error) {
+func (askSelf *AskDef) AskOnce(target ActorHandle) interface{} {
+	ch := askSelf.AskChannel(target)
+	defer close(ch)
+	// var err error
+
+	return <-ch
+}
+
+// AskOnce Sender Ask with timeout
+func (askSelf *AskDef) AskOnceWithTimeout(target ActorHandle, timeout time.Duration) (interface{}, error) {
 	ch := askSelf.AskChannel(target)
 	defer close(ch)
 	var result interface{}
-	// var err error
-	if timeout == nil {
-		result = <-ch
-	} else {
-		select {
-		case result = <-ch:
-		case <-time.After(*timeout):
-			return result, ErrActorAskTimeout
-		}
+	select {
+	case result = <-ch:
+	case <-time.After(timeout):
+		return result, ErrActorAskTimeout
 	}
 
 	return result, nil

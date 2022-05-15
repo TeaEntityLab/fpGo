@@ -113,12 +113,12 @@ func TestActorAsk(t *testing.T) {
 
 	// Normal cases
 	expectedInt = 10
-	result, _ = Ask.New(1).AskOnce(actorRoot, nil)
+	result = Ask.New(1).AskOnce(actorRoot)
 	actual, _ = Maybe.Just(result).ToInt()
 	assert.Equal(t, expectedInt, actual)
 	// Ask with Timeout
 	expectedInt = 20
-	result, _ = Ask.New(2).AskOnce(actorRoot, &timeout)
+	result, _ = Ask.New(2).AskOnceWithTimeout(actorRoot, timeout)
 	actual, _ = Maybe.Just(result).ToInt()
 	assert.Equal(t, expectedInt, actual)
 	// Ask channel
@@ -130,7 +130,7 @@ func TestActorAsk(t *testing.T) {
 
 	// Timeout cases
 	expectedInt = 0
-	result, err = Ask.New(-1).AskOnce(actorRoot, &timeout)
+	result, err = Ask.New(-1).AskOnceWithTimeout(actorRoot, timeout)
 	actual, _ = Maybe.Just(result).ToInt()
 	assert.Equal(t, expectedInt, actual)
 	assert.Equal(t, ErrActorAskTimeout, err)

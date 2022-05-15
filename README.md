@@ -313,12 +313,12 @@ timeout = 10 * time.Millisecond
 
 // Normal cases
 // Result would be 10
-result, _ = Ask.New(1).AskOnce(actorRoot, nil)
+result = Ask.New(1).AskOnce(actorRoot)
 actual, _ = Maybe.Just(result).ToInt()
 assert.Equal(t, expectedInt, actual)
 // Ask with Timeout
 // Result would be 20
-result, _ = Ask.New(2).AskOnce(actorRoot, &timeout)
+result, _ = Ask.New(2).AskOnceWithTimeout(actorRoot, timeout)
 actual, _ = Maybe.Just(result).ToInt()
 // Ask channel
 // Result would be 30
@@ -328,7 +328,7 @@ close(ch)
 
 // Timeout cases
 // Result would be 0 (zero value, timeout)
-result, err = Ask.New(-1).AskOnce(actorRoot, &timeout)
+result, err = Ask.New(-1).AskOnceWithTimeout(actorRoot, timeout)
 actual, _ = Maybe.Just(result).ToInt()
 ```
 
