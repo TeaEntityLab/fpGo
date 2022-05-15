@@ -38,7 +38,7 @@ var (
 	ErrStackIsFull = errors.New("stack is full")
 )
 
-// ConcurrentQueue
+// ConcurrentQueue & ConcurrentStack
 
 // ConcurrentQueue ConcurrentQueue inspired by Collection utils
 type ConcurrentQueue struct {
@@ -83,6 +83,37 @@ func (q *ConcurrentQueue) Poll() (interface{}, error) {
 	defer q.lock.RUnlock()
 
 	return q.queue.Poll()
+}
+
+// ConcurrentStack
+
+// ConcurrentStack ConcurrentStack inspired by Collection utils
+type ConcurrentStack struct {
+	lock  sync.RWMutex
+	stack Stack
+}
+
+// NewConcurrentStack New ConcurrentStack instance from a Stack
+func NewConcurrentStack(stack Stack) *ConcurrentStack {
+	return &ConcurrentStack{
+		stack: stack,
+	}
+}
+
+// Put Put the val(probably blocking)
+func (q *ConcurrentStack) Push(val interface{}) error {
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	return q.stack.Push(val)
+}
+
+// Take Take the val(probably blocking)
+func (q *ConcurrentStack) Pop() (interface{}, error) {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+
+	return q.stack.Pop()
 }
 
 // ChannelQueue
