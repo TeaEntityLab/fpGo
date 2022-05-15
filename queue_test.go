@@ -263,9 +263,9 @@ func TestNewBufferedChannelQueue(t *testing.T) {
 	var result interface{}
 	var timeout time.Duration
 
-	bufferedChannelQueue := NewBufferedChannelQueue(3, 10000, 100)
-	bufferedChannelQueue.SetLoadFromPoolDuration(time.Millisecond / 10)
-	bufferedChannelQueue.SetFreeNodeHookPoolIntervalDuration(1 * time.Millisecond)
+	bufferedChannelQueue := NewBufferedChannelQueue(3, 10000, 100).
+		SetLoadFromPoolDuration(time.Millisecond / 10).
+		SetFreeNodeHookPoolIntervalDuration(1 * time.Millisecond)
 	queue = bufferedChannelQueue
 
 	// Sync
