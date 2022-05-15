@@ -600,7 +600,12 @@ func (q *BufferedChannelQueue) SetFreeNodeHookPoolIntervalDuration(duration time
 	return q
 }
 
-// Close Close the Handler
+// IsClosed Is the BufferedChannelQueue closed
+func (q *BufferedChannelQueue) IsClosed() bool {
+	return q.isClosed.Get()
+}
+
+// Close Close the BufferedChannelQueue
 func (q *BufferedChannelQueue) Close() {
 	q.lock.Lock()
 	defer q.lock.Unlock()
