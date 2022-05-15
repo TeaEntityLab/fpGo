@@ -225,9 +225,9 @@ var err error
 var result int
 var timeout time.Duration
 
-bufferedChannelQueue := NewBufferedChannelQueue[int](3, 10000, 100)
-bufferedChannelQueue.SetLoadFromPoolDuration(time.Millisecond / 10)
-bufferedChannelQueue.SetFreeNodeHookPoolIntervalDuration(1 * time.Millisecond)
+bufferedChannelQueue := NewBufferedChannelQueue[int](3, 10000, 100).
+  SetLoadFromPoolDuration(time.Millisecond / 10).
+  SetFreeNodeHookPoolIntervalDuration(1 * time.Millisecond)
 
 err = queue.Offer(1)
 err = queue.Offer(2)

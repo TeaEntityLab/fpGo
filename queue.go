@@ -577,23 +577,27 @@ func (q *BufferedChannelQueue[T]) notifyWorkers() {
 }
 
 // SetBufferSizeMaximum Set MaximumBufferSize(maximum number of buffered items outside the ChannelQueue)
-func (q *BufferedChannelQueue[T]) SetBufferSizeMaximum(size int) {
+func (q *BufferedChannelQueue[T]) SetBufferSizeMaximum(size int) *BufferedChannelQueue[T] {
 	q.bufferSizeMaximum = size
+	return q
 }
 
 // SetNodeHookPoolSize Set nodeHookPoolSize(the buffering node hooks ideal size)
-func (q *BufferedChannelQueue[T]) SetNodeHookPoolSize(size int) {
+func (q *BufferedChannelQueue[T]) SetNodeHookPoolSize(size int) *BufferedChannelQueue[T] {
 	q.nodeHookPoolSize = size
+	return q
 }
 
 // SetLoadFromPoolDuration Set loadFromPoolDuration(the interval to take buffered items into the ChannelQueue)
-func (q *BufferedChannelQueue[T]) SetLoadFromPoolDuration(duration time.Duration) {
+func (q *BufferedChannelQueue[T]) SetLoadFromPoolDuration(duration time.Duration) *BufferedChannelQueue[T] {
 	q.loadFromPoolDuration = duration
+	return q
 }
 
 // SetFreeNodeHookPoolIntervalDuration Set freeNodeHookPoolIntervalDuration(the interval to clear buffering node hooks down to nodeHookPoolSize)
-func (q *BufferedChannelQueue[T]) SetFreeNodeHookPoolIntervalDuration(duration time.Duration) {
+func (q *BufferedChannelQueue[T]) SetFreeNodeHookPoolIntervalDuration(duration time.Duration) *BufferedChannelQueue[T] {
 	q.freeNodeHookPoolIntervalDuration = duration
+	return q
 }
 
 // Close Close the Handler
