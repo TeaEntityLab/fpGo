@@ -600,6 +600,26 @@ func (q *BufferedChannelQueue) SetFreeNodeHookPoolIntervalDuration(duration time
 	return q
 }
 
+// GetBufferSizeMaximum Get MaximumBufferSize(maximum number of buffered items outside the ChannelQueue)
+func (q *BufferedChannelQueue) GetBufferSizeMaximum() int {
+	return q.bufferSizeMaximum
+}
+
+// GetNodeHookPoolSize Get nodeHookPoolSize(the buffering node hooks ideal size)
+func (q *BufferedChannelQueue) GetNodeHookPoolSize() int {
+	return q.nodeHookPoolSize
+}
+
+// GetLoadFromPoolDuration Get loadFromPoolDuration(the interval to take buffered items into the ChannelQueue)
+func (q *BufferedChannelQueue) GetLoadFromPoolDuration() time.Duration {
+	return q.loadFromPoolDuration
+}
+
+// GetFreeNodeHookPoolIntervalDuration Get freeNodeHookPoolIntervalDuration(the interval to clear buffering node hooks down to nodeHookPoolSize)
+func (q *BufferedChannelQueue) GetFreeNodeHookPoolIntervalDuration() time.Duration {
+	return q.freeNodeHookPoolIntervalDuration
+}
+
 // IsClosed Is the BufferedChannelQueue closed
 func (q *BufferedChannelQueue) IsClosed() bool {
 	return q.isClosed.Get()
