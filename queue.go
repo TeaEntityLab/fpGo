@@ -154,7 +154,10 @@ func (q ChannelQueue[T]) Take() (T, error) {
 // TakeWithTimeout Take the T val(blocking), with timeout
 func (q ChannelQueue[T]) TakeWithTimeout(timeout time.Duration) (T, error) {
 	select {
-	case val := <-q:
+	case val, ok := <-q:
+		if !ok {
+			return *new(T), ErrQueueIsClosed
+		}
 		return val, nil
 	case <-time.After(timeout):
 		return *new(T), ErrQueueTakeTimeout
