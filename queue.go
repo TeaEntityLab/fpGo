@@ -645,6 +645,8 @@ func (q *BufferedChannelQueue[T]) GetFreeNodeHookPoolIntervalDuration() time.Dur
 
 // GetChannel Get Channel(for Selecting channels usages)
 func (q *BufferedChannelQueue[T]) GetChannel() chan T {
+	q.notifyWorkers()
+
 	return q.blockingQueue
 }
 
