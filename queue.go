@@ -281,13 +281,30 @@ type LinkedListQueue struct {
 	last  *DoublyListItem
 	count int
 
+	nodeGCPool    sync.Pool
 	nodePoolFirst *DoublyListItem
 	nodeCount     int
 }
 
 // NewLinkedListQueue New LinkedListQueue instance
 func NewLinkedListQueue() *LinkedListQueue {
-	return new(LinkedListQueue)
+	newOne := new(LinkedListQueue)
+	newOne.nodeGCPool.New = func() interface{} {
+		return new(DoublyListItem)
+	}
+	return newOne
+}
+
+func (q *LinkedListQueue) putAllIntoPool(first *DoublyListItem) {
+	for first != nil {
+		node := first
+		first = first.Next
+
+		node.Val = nil
+		node.Prev = nil
+		node.Next = nil
+		q.nodeGCPool.Put(node)
+	}
 }
 
 // Count Count Items
@@ -297,6 +314,8 @@ func (q *LinkedListQueue) Count() int {
 
 // ClearNodePool Clear cached LinkedListItem nodes in nodePool
 func (q *LinkedListQueue) ClearNodePool() {
+	q.putAllIntoPool(q.nodePoolFirst)
+
 	q.nodeCount = 0
 	q.nodePoolFirst = nil
 }
@@ -313,17 +332,18 @@ func (q *LinkedListQueue) KeepNodePoolCount(n int) {
 	n--
 	last := q.nodePoolFirst
 	if last == nil {
-		last = new(DoublyListItem)
+		last = q.nodeGCPool.Get().(*DoublyListItem)
 		q.nodePoolFirst = last
 	}
 
 	for n > 0 {
 		n--
 		if last.Next == nil {
-			last.Next = new(DoublyListItem)
+			last.Next = q.nodeGCPool.Get().(*DoublyListItem)
 		}
 		last = last.Next
 	}
+	q.putAllIntoPool(last.Next)
 	last.Next = nil
 }
 
@@ -455,7 +475,7 @@ func (q *LinkedListQueue) Push(val interface{}) error {
 func (q *LinkedListQueue) generateNode() *DoublyListItem {
 	node := q.nodePoolFirst
 	if node == nil {
-		node = new(DoublyListItem)
+		node = q.nodeGCPool.Get().(*DoublyListItem)
 	} else {
 		q.nodeCount--
 		q.nodePoolFirst = node.Next
