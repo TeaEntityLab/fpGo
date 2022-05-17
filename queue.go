@@ -643,8 +643,15 @@ func (q *BufferedChannelQueue) GetFreeNodeHookPoolIntervalDuration() time.Durati
 	return q.freeNodeHookPoolIntervalDuration
 }
 
+// GetChannel Get Channel(for Selecting channels usages)
+func (q *BufferedChannelQueue) GetChannel() chan interface{} {
+	q.notifyWorkers()
+
+	return q.blockingQueue
+}
+
 // Count Count items
-func (q *BufferedChannelQueue[T]) Count() int {
+func (q *BufferedChannelQueue) Count() int {
 	if q.isClosed.Get() {
 		return 0
 	}
