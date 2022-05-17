@@ -643,6 +643,15 @@ func (q *BufferedChannelQueue[T]) GetFreeNodeHookPoolIntervalDuration() time.Dur
 	return q.freeNodeHookPoolIntervalDuration
 }
 
+// Count Count items
+func (q *BufferedChannelQueue[T]) Count() int {
+	if q.isClosed.Get() {
+		return 0
+	}
+
+	return len(q.blockingQueue) + q.pool.Count()
+}
+
 // IsClosed Is the BufferedChannelQueue closed
 func (q *BufferedChannelQueue[T]) IsClosed() bool {
 	return q.isClosed.Get()
