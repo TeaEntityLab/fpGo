@@ -223,7 +223,7 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 	}()
 }
 
-// SetJobQueue Set the JobQueue
+// SetJobQueue Set the JobQueue(WARNING: if the pool has started to use, doing this is not safe)
 func (workerPoolSelf *DefaultWorkerPool) SetJobQueue(jobQueue *fpgo.BufferedChannelQueue[func()]) *DefaultWorkerPool {
 	workerPoolSelf.jobQueue = jobQueue
 	return workerPoolSelf
@@ -235,13 +235,13 @@ func (workerPoolSelf *DefaultWorkerPool) SetIsJobQueueClosedWhenClose(isJobQueue
 	return workerPoolSelf
 }
 
-// SetPanicHandler Set the panicHandler
+// SetPanicHandler Set the panicHandler(handle/log panic inside workers)
 func (workerPoolSelf *DefaultWorkerPool) SetPanicHandler(panicHandler func(interface{})) *DefaultWorkerPool {
 	workerPoolSelf.panicHandler = panicHandler
 	return workerPoolSelf
 }
 
-// SetWorkerBatchSize Set the workerBatchSize
+// SetWorkerBatchSize Set the workerBatchSize(queued jobs number that every worker could have)
 func (workerPoolSelf *DefaultWorkerPool) SetWorkerBatchSize(workerBatchSize int) *DefaultWorkerPool {
 	workerPoolSelf.workerBatchSize = workerBatchSize
 	workerPoolSelf.notifyWorkers()
