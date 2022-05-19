@@ -11,10 +11,8 @@ import (
 )
 
 var (
-	// ErrWorkerPoolIsEmpty WorkerPool Is Empty
-	ErrWorkerPoolIsEmpty = errors.New("workerPool is empty")
-	// ErrWorkerPoolIsFull WorkerPool Is Full
-	ErrWorkerPoolIsFull = errors.New("workerPool is full")
+	// ErrWorkerPoolJobQueueIsFull WorkerPool JobQueue Is Full
+	ErrWorkerPoolJobQueueIsFull = errors.New("workerPool JobQueue is full")
 	// ErrWorkerPoolIsClosed WorkerPool Is Closed
 	ErrWorkerPoolIsClosed = errors.New("workerPool is closed")
 	// ErrWorkerPoolScheduleTimeout WorkerPool Schedule Timeout
@@ -80,6 +78,9 @@ type DefaultWorkerPool struct {
 	spawnWorkerCh fpgo.ChannelQueue[int]
 	lastAliveTime time.Time
 
+	scheduleWaitCh    fpgo.ChannelQueue[int]
+	scheduleWaitCount int
+
 	// Settings
 	DefaultWorkerPoolSettings
 }
@@ -92,7 +93,8 @@ func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()], settings 
 	workerPool := &DefaultWorkerPool{
 		jobQueue: jobQueue,
 
-		spawnWorkerCh: fpgo.NewChannelQueue[int](1),
+		spawnWorkerCh:  fpgo.NewChannelQueue[int](1),
+		scheduleWaitCh: fpgo.NewChannelQueue[int](1),
 
 		// Settings
 		DefaultWorkerPoolSettings: *settings,
@@ -196,6 +198,9 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 	loopLabel:
 		for {
 			workerPoolSelf.lastAliveTime = time.Now()
+			if workerPoolSelf.scheduleWaitCount > 0 {
+				workerPoolSelf.scheduleWaitCh.Offer(1)
+			}
 
 			select {
 			case job := <-workerPoolSelf.jobQueue.GetChannel():
@@ -308,17 +313,49 @@ func (workerPoolSelf *DefaultWorkerPool) Schedule(fn func()) error {
 	}
 	defer workerPoolSelf.spawnWorkerCh.Offer(1)
 
-	return workerPoolSelf.jobQueue.Offer(fn)
+	err := workerPoolSelf.jobQueue.Offer(fn)
+	if err == fpgo.ErrQueueIsFull {
+		return ErrWorkerPoolJobQueueIsFull
+	}
+
+	return err
 }
 
 // ScheduleWithTimeout Schedule the Job with timeout
 func (workerPoolSelf *DefaultWorkerPool) ScheduleWithTimeout(fn func(), timeout time.Duration) error {
-	if workerPoolSelf.IsClosed() {
-		return ErrWorkerPoolIsClosed
+	err := workerPoolSelf.Schedule(fn)
+	if err != ErrWorkerPoolJobQueueIsFull {
+		return err
 	}
-	defer workerPoolSelf.spawnWorkerCh.Offer(1)
 
-	return workerPoolSelf.jobQueue.Offer(fn)
+	deadline := time.Now().Add(timeout)
+	workerPoolSelf.lock.Lock()
+	workerPoolSelf.scheduleWaitCount++
+	workerPoolSelf.lock.Unlock()
+	go func() {
+		workerPoolSelf.lock.Lock()
+		workerPoolSelf.scheduleWaitCount--
+		workerPoolSelf.lock.Unlock()
+	}()
+
+	for {
+		if workerPoolSelf.IsClosed() {
+			return ErrWorkerPoolIsClosed
+		}
+
+		err = workerPoolSelf.Schedule(fn)
+		if err != ErrWorkerPoolJobQueueIsFull {
+			return err
+		}
+
+		select {
+		case <-workerPoolSelf.scheduleWaitCh:
+			continue
+		case <-time.After(deadline.Sub(time.Now())):
+			return ErrWorkerPoolScheduleTimeout
+		}
+	}
+	return err
 }
 
 // Invokable
