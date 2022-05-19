@@ -460,10 +460,10 @@ func (q *LinkedListQueue[T]) Pop() (T, error) {
 	if q.last == nil {
 		q.first = nil
 	}
-	val := node.Val
+	val := *node.Val
 	q.recycleNode(node)
 
-	return *val, nil
+	return val, nil
 }
 
 // Push Push the data to the last position(non-blocking)
