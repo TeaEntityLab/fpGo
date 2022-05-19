@@ -93,3 +93,47 @@ func TestScheduleWithTimeout(t *testing.T) {
 	err = workerPool.ScheduleWithTimeout(func() {}, 10*time.Millisecond)
 	assert.Equal(t, nil, err)
 }
+
+func TestWorkerJamDuration(t *testing.T) {
+	var workerPool WorkerPool
+	var err error
+	defaultWorkerPool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue(3, 10000, 100), nil).
+		SetSpawnWorkerDuration(1 * time.Millisecond / 10).
+		SetWorkerExpiryDuration(5 * time.Millisecond).
+    SetWorkerJamDuration(3 * time.Millisecond).
+		SetWorkerSizeMaximum(10).
+		SetWorkerSizeStandBy(3).
+		SetWorkerBatchSize(0)
+	// defaultWorkerPool.PreAllocWorkerSize(5)
+	workerPool = defaultWorkerPool
+
+	// Test Spawn
+	assert.Equal(t, 0, defaultWorkerPool.workerCount)
+  anyOneDone := false
+	for i := 0; i < 3; i++ {
+		v := i
+		err = workerPool.Schedule(func() {
+			// Nothing to do
+			time.Sleep(10 * time.Millisecond)
+			t.Log(v)
+      anyOneDone = true
+		})
+		assert.NoError(t, err)
+	}
+	time.Sleep(1 * time.Millisecond)
+	// BatchSize: 0, SetWorkerSizeStandBy: 3 -> 3 workers
+	assert.Equal(t, 3, defaultWorkerPool.workerCount)
+	time.Sleep(3 * time.Millisecond)
+  workerPool.Schedule(func(){})
+  workerPool.Schedule(func(){})
+  workerPool.Schedule(func(){})
+  time.Sleep(3 * time.Millisecond)
+  assert.Equal(t, 4, defaultWorkerPool.workerCount)
+  workerPool.Schedule(func(){})
+  workerPool.Schedule(func(){})
+  workerPool.Schedule(func(){})
+  workerPool.Schedule(func(){})
+  assert.Equal(t, false, anyOneDone)
+  time.Sleep(1 * time.Millisecond)
+	assert.Equal(t, 5, defaultWorkerPool.workerCount)
+}
