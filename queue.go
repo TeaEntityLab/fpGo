@@ -420,11 +420,11 @@ func (q *LinkedListQueue) Shift() (interface{}, error) {
 	if q.first == nil {
 		q.last = nil
 	}
-	val := node.Val
+	val := *node.Val
 
 	q.recycleNode(node)
 
-	return *val, nil
+	return val, nil
 }
 
 // Unshift Unshift the val to the first position(non-blocking)
@@ -460,10 +460,10 @@ func (q *LinkedListQueue) Pop() (interface{}, error) {
 	if q.last == nil {
 		q.first = nil
 	}
-	val := node.Val
+	val := *node.Val
 	q.recycleNode(node)
 
-	return *val, nil
+	return val, nil
 }
 
 // Push Push the data to the last position(non-blocking)
