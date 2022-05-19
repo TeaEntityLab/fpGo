@@ -329,14 +329,8 @@ func (workerPoolSelf *DefaultWorkerPool) ScheduleWithTimeout(fn func(), timeout 
 	}
 
 	deadline := time.Now().Add(timeout)
-	workerPoolSelf.lock.Lock()
-	workerPoolSelf.scheduleWaitCount++
-	workerPoolSelf.lock.Unlock()
-	go func() {
-		workerPoolSelf.lock.Lock()
-		workerPoolSelf.scheduleWaitCount--
-		workerPoolSelf.lock.Unlock()
-	}()
+	workerPoolSelf.addScheduleWaitCount(1)
+	go workerPoolSelf.addScheduleWaitCount(-1)
 
 	for {
 		if workerPoolSelf.IsClosed() {
@@ -356,6 +350,12 @@ func (workerPoolSelf *DefaultWorkerPool) ScheduleWithTimeout(fn func(), timeout 
 		}
 	}
 	return err
+}
+
+func (workerPoolSelf *DefaultWorkerPool) addScheduleWaitCount(amount int) {
+	workerPoolSelf.lock.Lock()
+	workerPoolSelf.scheduleWaitCount += amount
+	workerPoolSelf.lock.Unlock()
 }
 
 // Invokable
