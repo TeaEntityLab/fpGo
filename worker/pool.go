@@ -32,33 +32,8 @@ type WorkerPool interface {
 	ScheduleWithTimeout(func(), time.Duration) error
 }
 
-//
-var defaultPanicHandler = func(panic interface{}) {
-	log.Printf("panic from worker: %v\n", panic)
-	buf := make([]byte, 4096)
-	log.Printf("panic from worker: %s\n", string(buf[:runtime.Stack(buf, false)]))
-}
-
-type (
-	workerRecord struct {
-		LastAccessTime time.Time
-		TerminatedCh   fpgo.ChannelQueue[int]
-	}
-)
-
-// DefaultWorkerPool DefaultWorkerPool inspired by Java ExecutorService
-type DefaultWorkerPool struct {
-	isClosed fpgo.AtomBool
-	lock     sync.RWMutex
-
-	jobQueue *fpgo.BufferedChannelQueue[func()]
-
-	workerCount    int
-	spawnWorkerCh  fpgo.ChannelQueue[int]
-	lastAccessTime time.Time
-
-	// Settings
-
+// DefaultWorkerSettings Settings for DefaultWorkerPool
+type DefaultWorkerSettings struct {
 	// JobQueue
 
 	isJobQueueClosedWhenClose bool
@@ -76,21 +51,49 @@ type DefaultWorkerPool struct {
 	panicHandler func(interface{})
 }
 
+var defaultPanicHandler = func(panic interface{}) {
+	log.Printf("panic from worker: %v\n", panic)
+	buf := make([]byte, 4096)
+	log.Printf("panic from worker: %s\n", string(buf[:runtime.Stack(buf, false)]))
+}
+
+var defaultDefaultWorkerSettings = &DefaultWorkerSettings{
+	isJobQueueClosedWhenClose: true,
+	workerBatchSize:           5,
+	workerSizeStandBy:         5,
+	workerSizeMaximum:         1000,
+	spawnWorkerDuration:       100 * time.Millisecond,
+	workerExpiryDuration:      5000 * time.Millisecond,
+	panicHandler:              defaultPanicHandler,
+}
+
+// DefaultWorkerPool DefaultWorkerPool inspired by Java ExecutorService
+type DefaultWorkerPool struct {
+	isClosed fpgo.AtomBool
+	lock     sync.RWMutex
+
+	jobQueue *fpgo.BufferedChannelQueue[func()]
+
+	workerCount    int
+	spawnWorkerCh  fpgo.ChannelQueue[int]
+	lastAccessTime time.Time
+
+	// Settings
+	DefaultWorkerSettings
+}
+
 // NewDefaultWorkerPool New a DefaultWorkerPool
-func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()]) *DefaultWorkerPool {
+func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()], settings *DefaultWorkerSettings) *DefaultWorkerPool {
+	if settings == nil {
+		settings = defaultDefaultWorkerSettings
+	}
 	workerPool := &DefaultWorkerPool{
 		jobQueue: jobQueue,
 
 		spawnWorkerCh: fpgo.NewChannelQueue[int](1),
 
 		// Settings
-		isJobQueueClosedWhenClose: true,
-		workerBatchSize:           5,
-		workerSizeStandBy:         5,
-		workerSizeMaximum:         1000,
-		spawnWorkerDuration:       100 * time.Millisecond,
-		workerExpiryDuration:      5000 * time.Millisecond,
-		panicHandler:              defaultPanicHandler,
+		DefaultWorkerSettings: *settings,
 	}
 	go workerPool.spawnLoop()
 

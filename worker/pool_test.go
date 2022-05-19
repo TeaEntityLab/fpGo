@@ -13,7 +13,7 @@ import (
 func TestWorkerPool(t *testing.T) {
 	var workerPool WorkerPool
 	var err error
-	defaultWorkerPool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](3, 10000, 100)).
+	defaultWorkerPool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](3, 10000, 100), nil).
 		SetSpawnWorkerDuration(1 * time.Millisecond / 10).
 		SetWorkerExpiryDuration(2 * time.Millisecond).
 		SetWorkerSizeMaximum(5).
