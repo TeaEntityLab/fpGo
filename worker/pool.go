@@ -45,6 +45,7 @@ type DefaultWorkerPoolSettings struct {
 	workerSizeMaximum    int
 	spawnWorkerDuration  time.Duration
 	workerExpiryDuration time.Duration
+	workerJamDuration    time.Duration
 
 	// Panic Handler
 
@@ -64,6 +65,7 @@ var defaultDefaultWorkerSettings = &DefaultWorkerPoolSettings{
 	workerSizeMaximum:         1000,
 	spawnWorkerDuration:       100 * time.Millisecond,
 	workerExpiryDuration:      5000 * time.Millisecond,
+	workerJamDuration:         1000 * time.Millisecond,
 	panicHandler:              defaultPanicHandler,
 }
 
@@ -74,9 +76,9 @@ type DefaultWorkerPool struct {
 
 	jobQueue *fpgo.BufferedChannelQueue[func()]
 
-	workerCount    int
-	spawnWorkerCh  fpgo.ChannelQueue[int]
-	lastAccessTime time.Time
+	workerCount   int
+	spawnWorkerCh fpgo.ChannelQueue[int]
+	lastAliveTime time.Time
 
 	// Settings
 	DefaultWorkerPoolSettings
@@ -117,6 +119,11 @@ func (workerPoolSelf *DefaultWorkerPool) trySpawn() {
 	if workerPoolSelf.workerSizeMaximum > 0 &&
 		expectedWorkerCount > workerPoolSelf.workerSizeMaximum {
 		expectedWorkerCount = workerPoolSelf.workerSizeMaximum
+	}
+	// Avoid Jam if (now - lastAliveTime) is over workerJamDuration
+	if time.Now().Sub(workerPoolSelf.lastAliveTime) > workerPoolSelf.workerJamDuration &&
+		workerPoolSelf.workerCount >= expectedWorkerCount {
+		expectedWorkerCount++
 	}
 	workerPoolSelf.lock.RUnlock()
 
@@ -167,7 +174,7 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 		return
 	}
 	// workerID := time.Now()
-	workerPoolSelf.lastAccessTime = time.Now()
+	workerPoolSelf.lastAliveTime = time.Now()
 	workerPoolSelf.workerCount++
 
 	go func() {
@@ -188,7 +195,7 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 		// Do Jobs
 	loopLabel:
 		for {
-			workerPoolSelf.lastAccessTime = time.Now()
+			workerPoolSelf.lastAliveTime = time.Now()
 
 			select {
 			case job := <-workerPoolSelf.jobQueue.GetChannel():
@@ -250,15 +257,22 @@ func (workerPoolSelf *DefaultWorkerPool) SetWorkerSizeMaximum(workerSizeMaximum 
 	return workerPoolSelf
 }
 
-// SetSpawnWorkerDuration Set the spawnWorkerDuration
+// SetSpawnWorkerDuration Set the spawnWorkerDuration(Checking repeating by the interval/duration)
 func (workerPoolSelf *DefaultWorkerPool) SetSpawnWorkerDuration(spawnWorkerDuration time.Duration) *DefaultWorkerPool {
 	workerPoolSelf.spawnWorkerDuration = spawnWorkerDuration
 	return workerPoolSelf
 }
 
-// SetWorkerExpiryDuration Set the workerExpiryDuration
+// SetWorkerExpiryDuration The worker would be dead if the worker is idle without jobs over the duration
 func (workerPoolSelf *DefaultWorkerPool) SetWorkerExpiryDuration(workerExpiryDuration time.Duration) *DefaultWorkerPool {
 	workerPoolSelf.workerExpiryDuration = workerExpiryDuration
+	workerPoolSelf.notifyWorkers()
+	return workerPoolSelf
+}
+
+// SetWorkerJamDuration A new worker would be created if there's no available worker to do jobs over the duration
+func (workerPoolSelf *DefaultWorkerPool) SetWorkerJamDuration(workerJamDuration time.Duration) *DefaultWorkerPool {
+	workerPoolSelf.workerJamDuration = workerJamDuration
 	workerPoolSelf.notifyWorkers()
 	return workerPoolSelf
 }
