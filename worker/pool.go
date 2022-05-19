@@ -32,8 +32,8 @@ type WorkerPool interface {
 	ScheduleWithTimeout(func(), time.Duration) error
 }
 
-// DefaultWorkerSettings Settings for DefaultWorkerPool
-type DefaultWorkerSettings struct {
+// DefaultWorkerPoolSettings Settings for DefaultWorkerPool
+type DefaultWorkerPoolSettings struct {
 	// JobQueue
 
 	isJobQueueClosedWhenClose bool
@@ -57,7 +57,7 @@ var defaultPanicHandler = func(panic interface{}) {
 	log.Printf("panic from worker: %s\n", string(buf[:runtime.Stack(buf, false)]))
 }
 
-var defaultDefaultWorkerSettings = &DefaultWorkerSettings{
+var defaultDefaultWorkerSettings = &DefaultWorkerPoolSettings{
 	isJobQueueClosedWhenClose: true,
 	workerBatchSize:           5,
 	workerSizeStandBy:         5,
@@ -79,11 +79,11 @@ type DefaultWorkerPool struct {
 	lastAccessTime time.Time
 
 	// Settings
-	DefaultWorkerSettings
+	DefaultWorkerPoolSettings
 }
 
 // NewDefaultWorkerPool New a DefaultWorkerPool
-func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()], settings *DefaultWorkerSettings) *DefaultWorkerPool {
+func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()], settings *DefaultWorkerPoolSettings) *DefaultWorkerPool {
 	if settings == nil {
 		settings = defaultDefaultWorkerSettings
 	}
@@ -93,7 +93,7 @@ func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()], settings 
 		spawnWorkerCh: fpgo.NewChannelQueue[int](1),
 
 		// Settings
-		DefaultWorkerSettings: *settings,
+		DefaultWorkerPoolSettings: *settings,
 	}
 	go workerPool.spawnLoop()
 
@@ -259,6 +259,13 @@ func (workerPoolSelf *DefaultWorkerPool) SetSpawnWorkerDuration(spawnWorkerDurat
 // SetWorkerExpiryDuration Set the workerExpiryDuration
 func (workerPoolSelf *DefaultWorkerPool) SetWorkerExpiryDuration(workerExpiryDuration time.Duration) *DefaultWorkerPool {
 	workerPoolSelf.workerExpiryDuration = workerExpiryDuration
+	workerPoolSelf.notifyWorkers()
+	return workerPoolSelf
+}
+
+// SetDefaultWorkerPoolSettings Set the defaultWorkerPoolSettings
+func (workerPoolSelf *DefaultWorkerPool) SetDefaultWorkerPoolSettings(defaultWorkerPoolSettings DefaultWorkerPoolSettings) *DefaultWorkerPool {
+	workerPoolSelf.DefaultWorkerPoolSettings = defaultWorkerPoolSettings
 	workerPoolSelf.notifyWorkers()
 	return workerPoolSelf
 }
