@@ -77,6 +77,7 @@ type DefaultWorkerPool struct {
 	jobQueue *fpgo.BufferedChannelQueue
 
 	workerCount   int
+	workerBusy    int
 	spawnWorkerCh fpgo.ChannelQueue
 	lastAliveTime time.Time
 
@@ -122,6 +123,7 @@ func (workerPoolSelf *DefaultWorkerPool) trySpawn() {
 	}
 	// Avoid Jam if (now - lastAliveTime) is over workerJamDuration
 	if time.Now().Sub(workerPoolSelf.lastAliveTime) > workerPoolSelf.workerJamDuration &&
+		workerPoolSelf.workerBusy >= workerPoolSelf.workerCount &&
 		workerPoolSelf.workerCount >= expectedWorkerCount {
 		expectedWorkerCount = workerPoolSelf.workerCount + 1
 	}
@@ -176,6 +178,7 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 	// workerID := time.Now()
 	workerPoolSelf.lastAliveTime = time.Now()
 	workerPoolSelf.workerCount++
+	isBusy := false
 
 	go func() {
 		// Recover & Recycle
@@ -188,6 +191,9 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 
 			workerPoolSelf.lock.Lock()
 			workerPoolSelf.workerCount--
+			if isBusy {
+				workerPoolSelf.workerBusy --
+			}
 			workerPoolSelf.lock.Unlock()
 		}()
 
@@ -203,7 +209,17 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 			select {
 			case job := <-workerPoolSelf.jobQueue.GetChannel():
 				if job != nil {
+					workerPoolSelf.lock.Lock()
+					isBusy = true
+					workerPoolSelf.workerBusy ++
+					workerPoolSelf.lock.Unlock()
+
 					(job.(func()))()
+
+					workerPoolSelf.lock.Lock()
+					workerPoolSelf.workerBusy --
+					isBusy = false
+					workerPoolSelf.lock.Unlock()
 				}
 			case <-time.After(workerPoolSelf.workerExpiryDuration):
 				workerPoolSelf.lock.RLock()
