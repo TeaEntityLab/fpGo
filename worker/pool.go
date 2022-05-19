@@ -125,7 +125,7 @@ func (workerPoolSelf *DefaultWorkerPool) trySpawn() {
 	// Avoid Jam if (now - lastAliveTime) is over workerJamDuration
 	if time.Now().Sub(workerPoolSelf.lastAliveTime) > workerPoolSelf.workerJamDuration &&
 		workerPoolSelf.workerCount >= expectedWorkerCount {
-		expectedWorkerCount++
+		expectedWorkerCount = workerPoolSelf.workerCount + 1
 	}
 	workerPoolSelf.lock.RUnlock()
 
