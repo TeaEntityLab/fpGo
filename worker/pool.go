@@ -78,8 +78,9 @@ type DefaultWorkerPool struct {
 	spawnWorkerCh fpgo.ChannelQueue[int]
 	lastAliveTime time.Time
 
-	scheduleWaitCh    fpgo.ChannelQueue[int]
-	scheduleWaitCount int
+	scheduleWaitQueue  fpgo.Queue[fpgo.ChannelQueue[int]]
+	scheduleWaitChPool sync.Pool
+	scheduleWaitCount  int
 
 	// Settings
 	DefaultWorkerPoolSettings
@@ -93,11 +94,14 @@ func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()], settings 
 	workerPool := &DefaultWorkerPool{
 		jobQueue: jobQueue,
 
-		spawnWorkerCh:  fpgo.NewChannelQueue[int](1),
-		scheduleWaitCh: fpgo.NewChannelQueue[int](1),
+		spawnWorkerCh:     fpgo.NewChannelQueue[int](1),
+		scheduleWaitQueue: fpgo.NewConcurrentQueue[fpgo.ChannelQueue[int]](fpgo.NewLinkedListQueue[fpgo.ChannelQueue[int]]()),
 
 		// Settings
 		DefaultWorkerPoolSettings: *settings,
+	}
+	workerPool.scheduleWaitChPool.New = func() interface{} {
+		return fpgo.NewChannelQueue[int](1)
 	}
 	go workerPool.spawnLoop()
 
@@ -108,12 +112,12 @@ func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()], settings 
 func (workerPoolSelf *DefaultWorkerPool) trySpawn() {
 	workerPoolSelf.lock.RLock()
 	batchSize := workerPoolSelf.workerBatchSize
-	if batchSize < 1 {
-		batchSize = 1
-	}
-	expectedWorkerCount := workerPoolSelf.jobQueue.Count() / batchSize
-	if workerPoolSelf.jobQueue.Count()%batchSize > 0 {
-		expectedWorkerCount++
+	var expectedWorkerCount int
+	if batchSize > 0 {
+		expectedWorkerCount = workerPoolSelf.jobQueue.Count() / batchSize
+		if workerPoolSelf.jobQueue.Count()%batchSize > 0 {
+			expectedWorkerCount++
+		}
 	}
 	if workerPoolSelf.workerSizeStandBy > expectedWorkerCount {
 		expectedWorkerCount = workerPoolSelf.workerSizeStandBy
@@ -198,8 +202,18 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 	loopLabel:
 		for {
 			workerPoolSelf.lastAliveTime = time.Now()
+			workerPoolSelf.lock.RLock()
 			if workerPoolSelf.scheduleWaitCount > 0 {
-				workerPoolSelf.scheduleWaitCh.Offer(1)
+				ch, _ := workerPoolSelf.scheduleWaitQueue.Poll()
+				if ch != nil {
+					ch.Offer(1)
+					defer workerPoolSelf.scheduleWaitChPool.Put(ch)
+				}
+			}
+			workerPoolSelf.lock.RUnlock()
+
+			if workerPoolSelf.IsClosed() {
+				return
 			}
 
 			select {
@@ -226,6 +240,12 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 // SetJobQueue Set the JobQueue(WARNING: if the pool has started to use, doing this is not safe)
 func (workerPoolSelf *DefaultWorkerPool) SetJobQueue(jobQueue *fpgo.BufferedChannelQueue[func()]) *DefaultWorkerPool {
 	workerPoolSelf.jobQueue = jobQueue
+	return workerPoolSelf
+}
+
+// SetScheduleWaitQueue Set the ScheduleWaitQueue(WARNING: if the pool has started to use, doing this is not safe)
+func (workerPoolSelf *DefaultWorkerPool) SetScheduleWaitQueue(scheduleWaitQueue fpgo.Queue[fpgo.ChannelQueue[int]]) *DefaultWorkerPool {
+	workerPoolSelf.scheduleWaitQueue = scheduleWaitQueue
 	return workerPoolSelf
 }
 
@@ -328,9 +348,20 @@ func (workerPoolSelf *DefaultWorkerPool) ScheduleWithTimeout(fn func(), timeout 
 		return err
 	}
 
+	// if retry < 1 {
+	// 	retry = 1
+	// }
+	// retryInterval := timeout / time.Duration(retry+1)
 	deadline := time.Now().Add(timeout)
 	workerPoolSelf.addScheduleWaitCount(1)
-	go workerPoolSelf.addScheduleWaitCount(-1)
+	defer workerPoolSelf.addScheduleWaitCount(-1)
+
+	scheduleWaitCh := workerPoolSelf.scheduleWaitChPool.Get().(fpgo.ChannelQueue[int])
+	defer workerPoolSelf.scheduleWaitChPool.Put(scheduleWaitCh)
+	err = workerPoolSelf.scheduleWaitQueue.Offer(scheduleWaitCh)
+	if err != nil {
+		return err
+	}
 
 	for {
 		if workerPoolSelf.IsClosed() {
@@ -342,8 +373,15 @@ func (workerPoolSelf *DefaultWorkerPool) ScheduleWithTimeout(fn func(), timeout 
 			return err
 		}
 
+		// fmt.Println(retryInterval)
+		// fmt.Println(deadline.Sub(now))
+		// if time.Now().After(deadline) {
+		// 	return ErrWorkerPoolScheduleTimeout
+		// }
+		// time.Sleep(retryInterval)
+
 		select {
-		case <-workerPoolSelf.scheduleWaitCh:
+		case <-scheduleWaitCh:
 			continue
 		case <-time.After(deadline.Sub(time.Now())):
 			return ErrWorkerPoolScheduleTimeout
