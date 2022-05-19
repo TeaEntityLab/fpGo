@@ -67,8 +67,8 @@ func TestScheduleWithTimeout(t *testing.T) {
 	defaultWorkerPool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](3, 1, 3), nil).
 		SetSpawnWorkerDuration(1 * time.Millisecond / 10).
 		SetWorkerExpiryDuration(2 * time.Millisecond).
-		SetWorkerSizeMaximum(3).
-		SetWorkerSizeStandBy(3).
+		SetWorkerSizeMaximum(0).
+		SetWorkerSizeStandBy(0).
 		SetWorkerBatchSize(0)
 	// defaultWorkerPool.PreAllocWorkerSize(5)
 	workerPool = defaultWorkerPool
@@ -86,10 +86,10 @@ func TestScheduleWithTimeout(t *testing.T) {
 	}
 	err = workerPool.Schedule(func() {})
 	assert.Equal(t, ErrWorkerPoolJobQueueIsFull, err)
-	err = workerPool.ScheduleWithTimeout(func() {}, 1*time.Millisecond)
+	err = workerPool.ScheduleWithTimeout(func() {}, 1*time.Millisecond/2)
 	assert.Equal(t, ErrWorkerPoolScheduleTimeout, err)
 
-	// defaultWorkerPool.SetWorkerSizeMaximum(3)
+	defaultWorkerPool.SetWorkerSizeMaximum(3)
 	err = workerPool.ScheduleWithTimeout(func() {}, 10*time.Millisecond)
 	assert.Equal(t, nil, err)
 }

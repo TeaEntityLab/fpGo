@@ -39,11 +39,12 @@ type DefaultWorkerPoolSettings struct {
 
 	// Worker
 
-	workerSizeStandBy    int
-	workerSizeMaximum    int
-	spawnWorkerDuration  time.Duration
-	workerExpiryDuration time.Duration
-	workerJamDuration    time.Duration
+	workerSizeStandBy     int
+	workerSizeMaximum     int
+	spawnWorkerDuration   time.Duration
+	workerExpiryDuration  time.Duration
+	workerJamDuration     time.Duration
+	scheduleRetryInterval time.Duration
 
 	// Panic Handler
 
@@ -64,6 +65,7 @@ var defaultDefaultWorkerSettings = &DefaultWorkerPoolSettings{
 	spawnWorkerDuration:       100 * time.Millisecond,
 	workerExpiryDuration:      5000 * time.Millisecond,
 	workerJamDuration:         1000 * time.Millisecond,
+	scheduleRetryInterval:     50 * time.Millisecond,
 	panicHandler:              defaultPanicHandler,
 }
 
@@ -78,9 +80,9 @@ type DefaultWorkerPool struct {
 	spawnWorkerCh fpgo.ChannelQueue[int]
 	lastAliveTime time.Time
 
-	scheduleWaitQueue  fpgo.Queue[fpgo.ChannelQueue[int]]
-	scheduleWaitChPool sync.Pool
-	scheduleWaitCount  int
+	// scheduleWaitQueue  fpgo.Queue[fpgo.ChannelQueue[int]]
+	// scheduleWaitChPool sync.Pool
+	// scheduleWaitCount int
 
 	// Settings
 	DefaultWorkerPoolSettings
@@ -94,15 +96,15 @@ func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()], settings 
 	workerPool := &DefaultWorkerPool{
 		jobQueue: jobQueue,
 
-		spawnWorkerCh:     fpgo.NewChannelQueue[int](1),
-		scheduleWaitQueue: fpgo.NewConcurrentQueue[fpgo.ChannelQueue[int]](fpgo.NewLinkedListQueue[fpgo.ChannelQueue[int]]()),
+		spawnWorkerCh: fpgo.NewChannelQueue[int](1),
+		// scheduleWaitQueue: fpgo.NewConcurrentQueue[fpgo.ChannelQueue[int]](fpgo.NewLinkedListQueue[fpgo.ChannelQueue[int]]()),
 
 		// Settings
 		DefaultWorkerPoolSettings: *settings,
 	}
-	workerPool.scheduleWaitChPool.New = func() interface{} {
-		return fpgo.NewChannelQueue[int](1)
-	}
+	// workerPool.scheduleWaitChPool.New = func() interface{} {
+	// 	return fpgo.NewChannelQueue[int](1)
+	// }
 	go workerPool.spawnLoop()
 
 	return workerPool
@@ -202,15 +204,15 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 	loopLabel:
 		for {
 			workerPoolSelf.lastAliveTime = time.Now()
-			workerPoolSelf.lock.RLock()
-			if workerPoolSelf.scheduleWaitCount > 0 {
-				ch, _ := workerPoolSelf.scheduleWaitQueue.Poll()
-				if ch != nil {
-					ch.Offer(1)
-					defer workerPoolSelf.scheduleWaitChPool.Put(ch)
-				}
-			}
-			workerPoolSelf.lock.RUnlock()
+			// workerPoolSelf.lock.RLock()
+			// if workerPoolSelf.scheduleWaitCount > 0 {
+			// 	ch, _ := workerPoolSelf.scheduleWaitQueue.Poll()
+			// 	if ch != nil {
+			// 		ch.Offer(1)
+			// 		defer workerPoolSelf.scheduleWaitChPool.Put(ch)
+			// 	}
+			// }
+			// workerPoolSelf.lock.RUnlock()
 
 			if workerPoolSelf.IsClosed() {
 				return
@@ -243,11 +245,11 @@ func (workerPoolSelf *DefaultWorkerPool) SetJobQueue(jobQueue *fpgo.BufferedChan
 	return workerPoolSelf
 }
 
-// SetScheduleWaitQueue Set the ScheduleWaitQueue(WARNING: if the pool has started to use, doing this is not safe)
-func (workerPoolSelf *DefaultWorkerPool) SetScheduleWaitQueue(scheduleWaitQueue fpgo.Queue[fpgo.ChannelQueue[int]]) *DefaultWorkerPool {
-	workerPoolSelf.scheduleWaitQueue = scheduleWaitQueue
-	return workerPoolSelf
-}
+// // SetScheduleWaitQueue Set the ScheduleWaitQueue(WARNING: if the pool has started to use, doing this is not safe)
+// func (workerPoolSelf *DefaultWorkerPool) SetScheduleWaitQueue(scheduleWaitQueue fpgo.Queue[fpgo.ChannelQueue[int]]) *DefaultWorkerPool {
+// 	workerPoolSelf.scheduleWaitQueue = scheduleWaitQueue
+// 	return workerPoolSelf
+// }
 
 // SetIsJobQueueClosedWhenClose Set is the JobQueue closed when the WorkerPool.Close()
 func (workerPoolSelf *DefaultWorkerPool) SetIsJobQueueClosedWhenClose(isJobQueueClosedWhenClose bool) *DefaultWorkerPool {
@@ -302,6 +304,13 @@ func (workerPoolSelf *DefaultWorkerPool) SetWorkerJamDuration(workerJamDuration 
 	return workerPoolSelf
 }
 
+// SetScheduleRetryInterval Retry interval for ScheduleWithTimeout
+func (workerPoolSelf *DefaultWorkerPool) SetScheduleRetryInterval(scheduleRetryInterval time.Duration) *DefaultWorkerPool {
+	workerPoolSelf.scheduleRetryInterval = scheduleRetryInterval
+	workerPoolSelf.notifyWorkers()
+	return workerPoolSelf
+}
+
 // SetDefaultWorkerPoolSettings Set the defaultWorkerPoolSettings
 func (workerPoolSelf *DefaultWorkerPool) SetDefaultWorkerPoolSettings(defaultWorkerPoolSettings DefaultWorkerPoolSettings) *DefaultWorkerPool {
 	workerPoolSelf.DefaultWorkerPoolSettings = defaultWorkerPoolSettings
@@ -352,16 +361,21 @@ func (workerPoolSelf *DefaultWorkerPool) ScheduleWithTimeout(fn func(), timeout 
 	// 	retry = 1
 	// }
 	// retryInterval := timeout / time.Duration(retry+1)
-	deadline := time.Now().Add(timeout)
-	workerPoolSelf.addScheduleWaitCount(1)
-	defer workerPoolSelf.addScheduleWaitCount(-1)
-
-	scheduleWaitCh := workerPoolSelf.scheduleWaitChPool.Get().(fpgo.ChannelQueue[int])
-	defer workerPoolSelf.scheduleWaitChPool.Put(scheduleWaitCh)
-	err = workerPoolSelf.scheduleWaitQueue.Offer(scheduleWaitCh)
-	if err != nil {
-		return err
+	retryInterval := workerPoolSelf.scheduleRetryInterval
+	if retryInterval > timeout/3 {
+		// retryInterval = timeout * 95 / 100 / 3
+		retryInterval = timeout/3
 	}
+	deadline := time.Now().Add(timeout)
+	// workerPoolSelf.addScheduleWaitCount(1)
+	// defer workerPoolSelf.addScheduleWaitCount(-1)
+
+	// scheduleWaitCh := workerPoolSelf.scheduleWaitChPool.Get().(fpgo.ChannelQueue[int])
+	// defer workerPoolSelf.scheduleWaitChPool.Put(scheduleWaitCh)
+	// err = workerPoolSelf.scheduleWaitQueue.Offer(scheduleWaitCh)
+	// if err != nil {
+	// 	return err
+	// }
 
 	for {
 		if workerPoolSelf.IsClosed() {
@@ -375,26 +389,26 @@ func (workerPoolSelf *DefaultWorkerPool) ScheduleWithTimeout(fn func(), timeout 
 
 		// fmt.Println(retryInterval)
 		// fmt.Println(deadline.Sub(now))
-		// if time.Now().After(deadline) {
-		// 	return ErrWorkerPoolScheduleTimeout
-		// }
-		// time.Sleep(retryInterval)
-
-		select {
-		case <-scheduleWaitCh:
-			continue
-		case <-time.After(deadline.Sub(time.Now())):
+		if time.Now().After(deadline) {
 			return ErrWorkerPoolScheduleTimeout
 		}
+		time.Sleep(retryInterval)
+
+		// select {
+		// case <-scheduleWaitCh:
+		// 	continue
+		// case <-time.After(deadline.Sub(time.Now())):
+		// 	return ErrWorkerPoolScheduleTimeout
+		// }
 	}
 	return err
 }
 
-func (workerPoolSelf *DefaultWorkerPool) addScheduleWaitCount(amount int) {
-	workerPoolSelf.lock.Lock()
-	workerPoolSelf.scheduleWaitCount += amount
-	workerPoolSelf.lock.Unlock()
-}
+// func (workerPoolSelf *DefaultWorkerPool) addScheduleWaitCount(amount int) {
+// 	workerPoolSelf.lock.Lock()
+// 	workerPoolSelf.scheduleWaitCount += amount
+// 	workerPoolSelf.lock.Unlock()
+// }
 
 // Invokable
 
