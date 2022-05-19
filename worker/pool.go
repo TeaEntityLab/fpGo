@@ -53,9 +53,9 @@ type DefaultWorkerPool struct {
 
 	jobQueue *fpgo.BufferedChannelQueue[func()]
 
-	workerCount       int
-	spawnWorkerCh     fpgo.ChannelQueue[int]
-	lastAccessTime    time.Time
+	workerCount    int
+	spawnWorkerCh  fpgo.ChannelQueue[int]
+	lastAccessTime time.Time
 
 	// Settings
 
@@ -119,7 +119,7 @@ func (workerPoolSelf *DefaultWorkerPool) trySpawn() {
 
 	if workerPoolSelf.workerCount < expectedWorkerCount {
 		for i := workerPoolSelf.workerCount; i < expectedWorkerCount; i++ {
-			workerPoolSelf.generateWorker()
+			workerPoolSelf.generateWorkerWithMaximum(expectedWorkerCount)
 		}
 	}
 }
@@ -127,7 +127,7 @@ func (workerPoolSelf *DefaultWorkerPool) trySpawn() {
 // PreAllocWorkerSize PreAllocate Workers
 func (workerPoolSelf *DefaultWorkerPool) PreAllocWorkerSize(preAllocWorkerSize int) {
 	for i := workerPoolSelf.workerCount; i < preAllocWorkerSize; i++ {
-		workerPoolSelf.generateWorker()
+		workerPoolSelf.generateWorkerWithMaximum(preAllocWorkerSize)
 	}
 }
 
@@ -155,13 +155,17 @@ func (workerPoolSelf *DefaultWorkerPool) notifyWorkers() {
 	}
 }
 
-func (workerPoolSelf *DefaultWorkerPool) generateWorker() {
+func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) {
 	// Initial
-	workerID := time.Now()
-	workerPoolSelf.lastAccessTime = workerID
 	workerPoolSelf.lock.Lock()
+	defer workerPoolSelf.lock.Unlock()
+	if workerPoolSelf.workerCount >= maximum ||
+		workerPoolSelf.workerCount >= workerPoolSelf.workerSizeMaximum {
+		return
+	}
+	// workerID := time.Now()
+	workerPoolSelf.lastAccessTime = time.Now()
 	workerPoolSelf.workerCount++
-	workerPoolSelf.lock.Unlock()
 
 	go func() {
 		// Recover & Recycle
