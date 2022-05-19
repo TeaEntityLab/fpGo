@@ -15,7 +15,6 @@ func TestWorkerPool(t *testing.T) {
 	var err error
 	defaultWorkerPool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](3, 10000, 100)).
 		SetSpawnWorkerDuration(1 * time.Millisecond / 10).
-		SetFreeWorkerDuration(1 * time.Millisecond / 10).
 		SetWorkerExpiryDuration(2 * time.Millisecond).
 		SetWorkerSizeMaximum(5).
 		SetWorkerSizeStandBy(1).

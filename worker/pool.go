@@ -2,7 +2,6 @@ package worker
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"runtime"
 	"sync"
@@ -55,10 +54,8 @@ type DefaultWorkerPool struct {
 	jobQueue *fpgo.BufferedChannelQueue[func()]
 
 	workerCount       int
-	workerRecordMap   map[time.Time]*workerRecord
-	workerRecordPool  sync.Pool
 	spawnWorkerCh     fpgo.ChannelQueue[int]
-	scaleDownWorkerCh fpgo.ChannelQueue[int]
+	lastAccessTime    time.Time
 
 	// Settings
 
@@ -72,7 +69,6 @@ type DefaultWorkerPool struct {
 	workerSizeStandBy    int
 	workerSizeMaximum    int
 	spawnWorkerDuration  time.Duration
-	freeWorkerDuration   time.Duration
 	workerExpiryDuration time.Duration
 
 	// Panic Handler
@@ -85,8 +81,7 @@ func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()]) *DefaultW
 	workerPool := &DefaultWorkerPool{
 		jobQueue: jobQueue,
 
-		workerRecordMap: make(map[time.Time]*workerRecord, cap(jobQueue.GetChannel())),
-		spawnWorkerCh:   fpgo.NewChannelQueue[int](1),
+		spawnWorkerCh: fpgo.NewChannelQueue[int](1),
 
 		// Settings
 		isJobQueueClosedWhenClose: true,
@@ -94,17 +89,10 @@ func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()]) *DefaultW
 		workerSizeStandBy:         5,
 		workerSizeMaximum:         1000,
 		spawnWorkerDuration:       100 * time.Millisecond,
-		freeWorkerDuration:        1000 * time.Millisecond,
 		workerExpiryDuration:      5000 * time.Millisecond,
 		panicHandler:              defaultPanicHandler,
 	}
-	workerPool.workerRecordPool.New = func() interface{} {
-		return &workerRecord{
-			TerminatedCh: fpgo.NewChannelQueue[int](1),
-		}
-	}
 	go workerPool.spawnLoop()
-	go workerPool.scaleDownLoop()
 
 	return workerPool
 }
@@ -127,11 +115,10 @@ func (workerPoolSelf *DefaultWorkerPool) trySpawn() {
 		expectedWorkerCount > workerPoolSelf.workerSizeMaximum {
 		expectedWorkerCount = workerPoolSelf.workerSizeMaximum
 	}
-	workerCount := workerPoolSelf.workerCount
 	workerPoolSelf.lock.RUnlock()
 
-	if workerCount < expectedWorkerCount {
-		for i := workerCount; i < expectedWorkerCount; i++ {
+	if workerPoolSelf.workerCount < expectedWorkerCount {
+		for i := workerPoolSelf.workerCount; i < expectedWorkerCount; i++ {
 			workerPoolSelf.generateWorker()
 		}
 	}
@@ -162,50 +149,17 @@ func (workerPoolSelf *DefaultWorkerPool) spawnLoop() {
 	}
 }
 
-func (workerPoolSelf *DefaultWorkerPool) scaleDownLoop() {
-	defer func() {
-		if panic := recover(); panic != nil {
-			defaultPanicHandler(panic)
-		}
-	}()
-
-	for range workerPoolSelf.scaleDownWorkerCh {
-		if workerPoolSelf.IsClosed() {
-			break
-		}
-
-		time.Sleep(workerPoolSelf.freeWorkerDuration)
-
-		workerPoolSelf.lock.RLock()
-		fmt.Println("check")
-		for _, workerRecord := range workerPoolSelf.workerRecordMap {
-			fmt.Println("loop")
-			if time.Now().Sub(workerRecord.LastAccessTime) > workerPoolSelf.workerExpiryDuration {
-				fmt.Println("1")
-				workerRecord.TerminatedCh.Offer(1)
-				fmt.Println("1 done")
-			}
-		}
-		workerPoolSelf.lock.RUnlock()
-	}
-}
-
 func (workerPoolSelf *DefaultWorkerPool) notifyWorkers() {
 	if workerPoolSelf.workerCount < workerPoolSelf.workerSizeStandBy || workerPoolSelf.jobQueue.Count() > 0 {
 		workerPoolSelf.spawnWorkerCh.Offer(1)
-	}
-	if workerPoolSelf.workerCount > workerPoolSelf.workerSizeStandBy {
-		workerPoolSelf.scaleDownWorkerCh.Offer(1)
 	}
 }
 
 func (workerPoolSelf *DefaultWorkerPool) generateWorker() {
 	// Initial
 	workerID := time.Now()
-	myRecord := workerPoolSelf.workerRecordPool.Get().(*workerRecord)
-	myRecord.LastAccessTime = workerID
+	workerPoolSelf.lastAccessTime = workerID
 	workerPoolSelf.lock.Lock()
-	workerPoolSelf.workerRecordMap[workerID] = myRecord
 	workerPoolSelf.workerCount++
 	workerPoolSelf.lock.Unlock()
 
@@ -219,25 +173,15 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorker() {
 			}
 
 			workerPoolSelf.lock.Lock()
-			workerPoolSelf.workerRecordMap[workerID] = nil
 			workerPoolSelf.workerCount--
-			delete(workerPoolSelf.workerRecordMap, workerID)
-			// close(myRecord.TerminatedCh)
-			for len(myRecord.TerminatedCh) > 0 {
-				// Clear
-				if _, err := myRecord.TerminatedCh.Poll(); err != nil {
-					break
-				}
-			}
 			workerPoolSelf.lock.Unlock()
-			workerPoolSelf.workerRecordPool.Put(myRecord)
 			// fmt.Println("Terminated")
 		}()
 
 		// Do Jobs
 	loopLabel:
 		for {
-			myRecord.LastAccessTime = time.Now()
+			workerPoolSelf.lastAccessTime = time.Now()
 
 			select {
 			case job := <-workerPoolSelf.jobQueue.GetChannel():
@@ -246,8 +190,6 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorker() {
 					job()
 					// fmt.Println("DoJob")
 				}
-			case <-myRecord.TerminatedCh:
-				break loopLabel
 			case <-time.After(workerPoolSelf.workerExpiryDuration):
 				workerPoolSelf.lock.RLock()
 				workerCount := workerPoolSelf.workerCount
@@ -304,12 +246,6 @@ func (workerPoolSelf *DefaultWorkerPool) SetWorkerSizeMaximum(workerSizeMaximum 
 // SetSpawnWorkerDuration Set the spawnWorkerDuration
 func (workerPoolSelf *DefaultWorkerPool) SetSpawnWorkerDuration(spawnWorkerDuration time.Duration) *DefaultWorkerPool {
 	workerPoolSelf.spawnWorkerDuration = spawnWorkerDuration
-	return workerPoolSelf
-}
-
-// SetFreeWorkerDuration Set the freeWorkerDuration
-func (workerPoolSelf *DefaultWorkerPool) SetFreeWorkerDuration(freeWorkerDuration time.Duration) *DefaultWorkerPool {
-	workerPoolSelf.freeWorkerDuration = freeWorkerDuration
 	return workerPoolSelf
 }
 
