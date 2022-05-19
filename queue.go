@@ -420,11 +420,11 @@ func (q *LinkedListQueue[T]) Shift() (T, error) {
 	if q.first == nil {
 		q.last = nil
 	}
-	val := node.Val
+	val := *node.Val
 
 	q.recycleNode(node)
 
-	return *val, nil
+	return val, nil
 }
 
 // Unshift Unshift the T val to the first position(non-blocking)
