@@ -100,7 +100,7 @@ func TestWorkerJamDuration(t *testing.T) {
 	defaultWorkerPool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue(3, 10000, 100), nil).
 		SetSpawnWorkerDuration(1 * time.Millisecond / 10).
 		SetWorkerExpiryDuration(5 * time.Millisecond).
-    SetWorkerJamDuration(3 * time.Millisecond).
+		SetWorkerJamDuration(3 * time.Millisecond).
 		SetWorkerSizeMaximum(10).
 		SetWorkerSizeStandBy(3).
 		SetWorkerBatchSize(0)
@@ -109,14 +109,14 @@ func TestWorkerJamDuration(t *testing.T) {
 
 	// Test Spawn
 	assert.Equal(t, 0, defaultWorkerPool.workerCount)
-  anyOneDone := false
+	anyOneDone := false
 	for i := 0; i < 3; i++ {
 		v := i
 		err = workerPool.Schedule(func() {
 			// Nothing to do
 			time.Sleep(20 * time.Millisecond)
 			t.Log(v)
-      anyOneDone = true
+			anyOneDone = true
 		})
 		assert.NoError(t, err)
 	}
@@ -127,20 +127,20 @@ func TestWorkerJamDuration(t *testing.T) {
 	// Though there're blocking jobs, but no newest job goes into the queue
 	assert.Equal(t, 3, defaultWorkerPool.workerCount)
 	// There're new jobs going to the queue, and all goroutines are busy
-  workerPool.Schedule(func(){})
-  workerPool.Schedule(func(){})
-  workerPool.Schedule(func(){})
-  time.Sleep(3 * time.Millisecond)
+	workerPool.Schedule(func() {})
+	workerPool.Schedule(func() {})
+	workerPool.Schedule(func() {})
+	time.Sleep(3 * time.Millisecond)
 	// A new expected goroutine is generated
-  assert.Equal(t, 4, defaultWorkerPool.workerCount)
-	workerPool.Schedule(func(){})
-  workerPool.Schedule(func(){})
-  workerPool.Schedule(func(){})
+	assert.Equal(t, 4, defaultWorkerPool.workerCount)
+	workerPool.Schedule(func() {})
+	workerPool.Schedule(func() {})
+	workerPool.Schedule(func() {})
 	time.Sleep(3 * time.Millisecond)
 	// Only non blocking jobs, thus keep the same amount
 	assert.Equal(t, 4, defaultWorkerPool.workerCount)
 	// There's a blocking jobs going to the queue
-	workerPool.Schedule(func(){
+	workerPool.Schedule(func() {
 		time.Sleep(20 * time.Millisecond)
 		t.Log(3)
 		anyOneDone = true
@@ -149,12 +149,12 @@ func TestWorkerJamDuration(t *testing.T) {
 	// Though there're blocking jobs, but no newest job goes into the queue
 	assert.Equal(t, 4, defaultWorkerPool.workerCount)
 	// There're new jobs going to the queue, and all goroutines are busy
-  workerPool.Schedule(func(){})
-  workerPool.Schedule(func(){})
-  workerPool.Schedule(func(){})
-  workerPool.Schedule(func(){})
-  assert.Equal(t, false, anyOneDone)
-  time.Sleep(1 * time.Millisecond)
+	workerPool.Schedule(func() {})
+	workerPool.Schedule(func() {})
+	workerPool.Schedule(func() {})
+	workerPool.Schedule(func() {})
+	assert.Equal(t, false, anyOneDone)
+	time.Sleep(1 * time.Millisecond)
 	// A new expected goroutine is generated
 	assert.Equal(t, 5, defaultWorkerPool.workerCount)
 }
