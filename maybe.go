@@ -12,7 +12,8 @@ var (
 	// ErrConversionUnsupported Conversion Unsupported
 	ErrConversionUnsupported = errors.New("unsupported")
 	// ErrConversionNil Conversion Nil
-	ErrConversionNil          = errors.New("<nil>")
+	ErrConversionNil = errors.New("<nil>")
+	// ErrConversionNil Conversion Size Overflow
 	ErrConversionSizeOverflow = errors.New("size overflow")
 )
 
@@ -262,31 +263,31 @@ func (maybeSelf someDef) ToInt() (int, error) {
 		return 0, err
 	case uint:
 		val, err := maybeSelf.ToUint()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt32 {
+			return int(val), err
 		}
-		return int(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint16:
 		val, err := maybeSelf.ToUint16()
 		return int(val), err
 	case uint32:
 		val, err := maybeSelf.ToUint32()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt32 {
+			return int(val), err
 		}
-		return int(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt32 {
+			return int(val), err
 		}
-		return int(val), err
+		return 0, ErrConversionSizeOverflow
 	case uintptr:
 		val, err := maybeSelf.ToUintptr()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt32 {
+			return int(val), err
 		}
-		return int(val), err
+		return 0, ErrConversionSizeOverflow
 	case byte:
 		val, err := maybeSelf.ToByte()
 		return int(val), err
@@ -300,28 +301,28 @@ func (maybeSelf someDef) ToInt() (int, error) {
 		return int(val), err
 	case int32:
 		val, err := maybeSelf.ToInt32()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt32 && val <= math.MaxInt32 {
+			return int(val), err
 		}
-		return int(val), err
+		return 0, ErrConversionSizeOverflow
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt32 && val <= math.MaxInt32 {
+			return int(val), err
 		}
-		return int(val), err
+		return 0, ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt32 && val <= math.MaxInt32 {
+			return int(math.Round(float64(val))), err
 		}
-		return int(math.Round(float64(val))), err
+		return 0, ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt32 && val <= math.MaxInt32 {
+			return int(math.Round(val)), err
 		}
-		return int(math.Round(val)), err
+		return 0, ErrConversionSizeOverflow
 	}
 }
 
@@ -342,75 +343,75 @@ func (maybeSelf someDef) ToInt8() (int8, error) {
 		return int8(0), err
 	case uint:
 		val, err := maybeSelf.ToUint()
-		if val > math.MaxInt8 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt8 {
+			return int8(val), err
 		}
-		return int8(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint16:
 		val, err := maybeSelf.ToUint16()
-		if val > math.MaxInt8 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt8 {
+			return int8(val), err
 		}
-		return int8(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint32:
 		val, err := maybeSelf.ToUint32()
-		if val > math.MaxInt8 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt8 {
+			return int8(val), err
 		}
-		return int8(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		if val > math.MaxInt8 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt8 {
+			return int8(val), err
 		}
-		return int8(val), err
+		return 0, ErrConversionSizeOverflow
 	case uintptr:
 		val, err := maybeSelf.ToUintptr()
-		if val > math.MaxInt8 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt8 {
+			return int8(val), err
 		}
-		return int8(val), err
+		return 0, ErrConversionSizeOverflow
 	case byte:
 		val, err := maybeSelf.ToByte()
 		return int8(val), err
 	case int:
 		val, err := maybeSelf.ToInt()
-		if val > math.MaxInt8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt8 && val <= math.MaxInt8 {
+			return int8(val), err
 		}
-		return int8(val), err
+		return 0, ErrConversionSizeOverflow
 	case int8:
 		return (ref).(int8), nil
 	case int16:
 		val, err := maybeSelf.ToInt16()
-		if val > math.MaxInt8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt8 && val <= math.MaxInt8 {
+			return int8(val), err
 		}
-		return int8(val), err
+		return 0, ErrConversionSizeOverflow
 	case int32:
 		val, err := maybeSelf.ToInt32()
-		if val > math.MaxInt8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt8 && val <= math.MaxInt8 {
+			return int8(val), err
 		}
-		return int8(val), err
+		return 0, ErrConversionSizeOverflow
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		if val > math.MaxInt8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt8 && val <= math.MaxInt8 {
+			return int8(val), err
 		}
-		return int8(val), err
+		return 0, ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		if val > math.MaxInt8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt8 && val <= math.MaxInt8 {
+			return int8(math.Round(float64(val))), err
 		}
-		return int8(math.Round(float64(val))), err
+		return 0, ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		if val > math.MaxInt8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt8 && val <= math.MaxInt8 {
+			return int8(math.Round(val)), err
 		}
-		return int8(math.Round(val)), err
+		return 0, ErrConversionSizeOverflow
 	}
 }
 
@@ -431,43 +432,43 @@ func (maybeSelf someDef) ToInt16() (int16, error) {
 		return int16(0), err
 	case uint:
 		val, err := maybeSelf.ToUint()
-		if val > math.MaxInt16 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt16 {
+			return int16(val), err
 		}
-		return int16(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint16:
 		val, err := maybeSelf.ToUint16()
-		if val > math.MaxInt16 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt16 {
+			return int16(val), err
 		}
-		return int16(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint32:
 		val, err := maybeSelf.ToUint32()
-		if val > math.MaxInt16 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt16 {
+			return int16(val), err
 		}
-		return int16(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		if val > math.MaxInt16 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt16 {
+			return int16(val), err
 		}
-		return int16(val), err
+		return 0, ErrConversionSizeOverflow
 	case uintptr:
 		val, err := maybeSelf.ToUintptr()
-		if val > math.MaxInt16 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt16 {
+			return int16(val), err
 		}
-		return int16(val), err
+		return 0, ErrConversionSizeOverflow
 	case byte:
 		val, err := maybeSelf.ToByte()
 		return int16(val), err
 	case int:
 		val, err := maybeSelf.ToInt()
-		if val > math.MaxInt16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt16 && val <= math.MaxInt16 {
+			return int16(val), err
 		}
-		return int16(val), err
+		return 0, ErrConversionSizeOverflow
 	case int8:
 		val, err := maybeSelf.ToInt8()
 		return int16(val), err
@@ -475,28 +476,28 @@ func (maybeSelf someDef) ToInt16() (int16, error) {
 		return (ref).(int16), nil
 	case int32:
 		val, err := maybeSelf.ToInt32()
-		if val > math.MaxInt16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt16 && val <= math.MaxInt16 {
+			return int16(val), err
 		}
-		return int16(val), err
+		return 0, ErrConversionSizeOverflow
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		if val > math.MaxInt16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt16 && val <= math.MaxInt16 {
+			return int16(val), err
 		}
-		return int16(val), err
+		return 0, ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		if val > math.MaxInt16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt16 && val <= math.MaxInt16 {
+			return int16(math.Round(float64(val))), err
 		}
-		return int16(math.Round(float64(val))), err
+		return 0, ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		if val > math.MaxInt16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt16 && val <= math.MaxInt16 {
+			return int16(math.Round(val)), err
 		}
-		return int16(math.Round(val)), err
+		return 0, ErrConversionSizeOverflow
 	}
 }
 
@@ -517,40 +518,40 @@ func (maybeSelf someDef) ToInt32() (int32, error) {
 		return int32(0), err
 	case uint:
 		val, err := maybeSelf.ToUint()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt32 {
+			return int32(val), err
 		}
-		return int32(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint16:
 		val, err := maybeSelf.ToUint16()
 		return int32(val), err
 	case uint32:
 		val, err := maybeSelf.ToUint32()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt32 {
+			return int32(val), err
 		}
-		return int32(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt32 {
+			return int32(val), err
 		}
-		return int32(val), err
+		return 0, ErrConversionSizeOverflow
 	case uintptr:
 		val, err := maybeSelf.ToUintptr()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt32 {
+			return int32(val), err
 		}
-		return int32(val), err
+		return 0, ErrConversionSizeOverflow
 	case byte:
 		val, err := maybeSelf.ToByte()
 		return int32(val), err
 	case int:
 		val, err := maybeSelf.ToInt()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt32 && val <= math.MaxInt32 {
+			return int32(val), err
 		}
-		return int32(val), err
+		return 0, ErrConversionSizeOverflow
 	case int8:
 		val, err := maybeSelf.ToInt8()
 		return int32(val), err
@@ -561,16 +562,16 @@ func (maybeSelf someDef) ToInt32() (int32, error) {
 		return (ref).(int32), nil
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt32 && val <= math.MaxInt32 {
+			return int32(val), err
 		}
-		return int32(val), err
+		return 0, ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		if val > math.MaxInt32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt32 && val <= math.MaxInt32 {
+			return int32(math.Round(float64(val))), err
 		}
-		return int32(math.Round(float64(val))), err
+		return 0, ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
 		return int32(math.Round(val)), err
@@ -593,10 +594,10 @@ func (maybeSelf someDef) ToInt64() (int64, error) {
 		return int64(0), err
 	case uint:
 		val, err := maybeSelf.ToUint()
-		if val > math.MaxInt64 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt64 {
+			return int64(val), err
 		}
-		return int64(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint16:
 		val, err := maybeSelf.ToUint16()
 		return int64(val), err
@@ -605,16 +606,16 @@ func (maybeSelf someDef) ToInt64() (int64, error) {
 		return int64(val), err
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		if val > math.MaxInt64 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt64 {
+			return int64(val), err
 		}
-		return int64(val), err
+		return 0, ErrConversionSizeOverflow
 	case uintptr:
 		val, err := maybeSelf.ToUintptr()
-		if val > math.MaxInt64 {
-			return 0, ErrConversionSizeOverflow
+		if val <= math.MaxInt64 {
+			return int64(val), err
 		}
-		return int64(val), err
+		return 0, ErrConversionSizeOverflow
 	case byte:
 		val, err := maybeSelf.ToByte()
 		return int64(val), err
@@ -634,16 +635,16 @@ func (maybeSelf someDef) ToInt64() (int64, error) {
 		return (ref).(int64), nil
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		if val > math.MaxInt64 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt64 && val <= math.MaxInt64 {
+			return int64(math.Round(float64(val))), err
 		}
-		return int64(math.Round(float64(val))), err
+		return 0, ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		if val > math.MaxInt64 {
-			return 0, ErrConversionSizeOverflow
+		if val >= math.MinInt64 && val <= math.MaxInt64 {
+			return int64(math.Round(val)), err
 		}
-		return int64(math.Round(val)), err
+		return 0, ErrConversionSizeOverflow
 	}
 }
 
@@ -664,75 +665,75 @@ func (maybeSelf someDef) ToByte() (byte, error) {
 		return uint8(0), err
 	case uint:
 		val, err := maybeSelf.ToUint()
-		if val > math.MaxUint8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint8 {
+			return uint8(val), err
 		}
-		return uint8(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint16:
 		val, err := maybeSelf.ToUint16()
-		if val > math.MaxUint8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint8 {
+			return uint8(val), err
 		}
-		return uint8(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint32:
 		val, err := maybeSelf.ToUint32()
-		if val > math.MaxUint8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint8 {
+			return uint8(val), err
 		}
-		return uint8(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		if val > math.MaxUint8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint8 {
+			return uint8(val), err
 		}
-		return uint8(val), err
+		return 0, ErrConversionSizeOverflow
 	case uintptr:
 		val, err := maybeSelf.ToUintptr()
-		if val > math.MaxUint8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint8 {
+			return uint8(val), err
 		}
-		return uint8(val), err
+		return 0, ErrConversionSizeOverflow
 	case byte:
 		return ref.(byte), nil
 	case int:
 		val, err := maybeSelf.ToInt()
-		if val > math.MaxUint8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint8 {
+			return uint8(val), err
 		}
-		return uint8(val), err
+		return 0, ErrConversionSizeOverflow
 	case int8:
 		val, err := maybeSelf.ToInt8()
 		return uint8(val), err
 	case int16:
 		val, err := maybeSelf.ToInt16()
-		if val > math.MaxUint8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint8 {
+			return uint8(val), err
 		}
-		return uint8(val), err
+		return 0, ErrConversionSizeOverflow
 	case int32:
 		val, err := maybeSelf.ToInt32()
-		if val > math.MaxUint8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint8 {
+			return uint8(val), err
 		}
-		return uint8(val), err
+		return 0, ErrConversionSizeOverflow
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		if val > math.MaxUint8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint8 {
+			return uint8(val), err
 		}
-		return uint8(val), err
+		return 0, ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		if val > math.MaxUint8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint8 {
+			return uint8(math.Round(float64(val))), err
 		}
-		return uint8(math.Round(float64(val))), err
+		return 0, ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		if val > math.MaxUint8 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint8 {
+			return uint8(math.Round(val)), err
 		}
-		return uint8(math.Round(val)), err
+		return 0, ErrConversionSizeOverflow
 	}
 }
 
@@ -758,22 +759,22 @@ func (maybeSelf someDef) ToUint() (uint, error) {
 		return uint(val), err
 	case uint32:
 		val, err := maybeSelf.ToUint32()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint(val), err
 		}
-		return uint(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint(val), err
 		}
-		return uint(val), err
+		return 0, ErrConversionSizeOverflow
 	case uintptr:
 		val, err := maybeSelf.ToUintptr()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint(val), err
 		}
-		return uint(val), err
+		return 0, ErrConversionSizeOverflow
 	case byte:
 		val, err := maybeSelf.ToByte()
 		return uint(val), err
@@ -791,22 +792,22 @@ func (maybeSelf someDef) ToUint() (uint, error) {
 		return uint(val), err
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint(val), err
 		}
-		return uint(val), err
+		return 0, ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint(math.Round(float64(val))), err
 		}
-		return uint(math.Round(float64(val))), err
+		return 0, ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint(math.Round(val)), err
 		}
-		return uint(math.Round(val)), err
+		return 0, ErrConversionSizeOverflow
 	}
 }
 
@@ -832,39 +833,39 @@ func (maybeSelf someDef) ToUint16() (uint16, error) {
 		return uint16(0), err
 	case uint:
 		val, err := maybeSelf.ToUint()
-		if val > math.MaxUint16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint16 {
+			return uint16(val), err
 		}
-		return uint16(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint16:
 		return (ref).(uint16), nil
 	case uint32:
 		val, err := maybeSelf.ToUint32()
-		if val > math.MaxUint16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint16 {
+			return uint16(val), err
 		}
-		return uint16(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		if val > math.MaxUint16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint16 {
+			return uint16(val), err
 		}
-		return uint16(val), err
+		return 0, ErrConversionSizeOverflow
 	case uintptr:
 		val, err := maybeSelf.ToUintptr()
-		if val > math.MaxUint16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint16 {
+			return uint16(val), err
 		}
-		return uint16(val), err
+		return 0, ErrConversionSizeOverflow
 	case byte:
 		val, err := maybeSelf.ToByte()
 		return uint16(val), err
 	case int:
 		val, err := maybeSelf.ToInt()
-		if val > math.MaxUint16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint16 {
+			return uint16(val), err
 		}
-		return uint16(val), err
+		return 0, ErrConversionSizeOverflow
 	case int8:
 		val, err := maybeSelf.ToInt8()
 		return uint16(val), err
@@ -873,28 +874,28 @@ func (maybeSelf someDef) ToUint16() (uint16, error) {
 		return uint16(val), err
 	case int32:
 		val, err := maybeSelf.ToInt32()
-		if val > math.MaxUint16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint16 {
+			return uint16(val), err
 		}
-		return uint16(val), err
+		return 0, ErrConversionSizeOverflow
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		if val > math.MaxUint16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint16 {
+			return uint16(val), err
 		}
-		return uint16(val), err
+		return 0, ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		if val > math.MaxUint16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint16 {
+			return uint16(math.Round(float64(val))), err
 		}
-		return uint16(math.Round(float64(val))), err
+		return 0, ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		if val > math.MaxUint16 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint16 {
+			return uint16(math.Round(val)), err
 		}
-		return uint16(math.Round(val)), err
+		return 0, ErrConversionSizeOverflow
 	}
 }
 
@@ -915,10 +916,10 @@ func (maybeSelf someDef) ToUint32() (uint32, error) {
 		return uint32(0), err
 	case uint:
 		val, err := maybeSelf.ToUint()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint32(val), err
 		}
-		return uint32(val), err
+		return 0, ErrConversionSizeOverflow
 	case uint16:
 		val, err := maybeSelf.ToUint16()
 		return uint32(val), err
@@ -926,25 +927,25 @@ func (maybeSelf someDef) ToUint32() (uint32, error) {
 		return ref.(uint32), nil
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint32(val), err
 		}
-		return uint32(val), err
+		return 0, ErrConversionSizeOverflow
 	case uintptr:
 		val, err := maybeSelf.ToUintptr()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint32(val), err
 		}
-		return uint32(val), err
+		return 0, ErrConversionSizeOverflow
 	case byte:
 		val, err := maybeSelf.ToByte()
 		return uint32(val), err
 	case int:
 		val, err := maybeSelf.ToInt()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint32(val), err
 		}
-		return uint32(val), err
+		return 0, ErrConversionSizeOverflow
 	case int8:
 		val, err := maybeSelf.ToInt8()
 		return uint32(val), err
@@ -956,16 +957,16 @@ func (maybeSelf someDef) ToUint32() (uint32, error) {
 		return uint32(val), err
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint32(val), err
 		}
-		return uint32(val), err
+		return 0, ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		if val > math.MaxUint32 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint32(math.Round(float64(val))), err
 		}
-		return uint32(math.Round(float64(val))), err
+		return 0, ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
 		return uint32(math.Round(val)), err
@@ -1000,10 +1001,10 @@ func (maybeSelf someDef) ToUint64() (uint64, error) {
 		return ref.(uint64), nil
 	case uintptr:
 		val, err := maybeSelf.ToUintptr()
-		if val > math.MaxUint64 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint64 {
+			return uint64(val), err
 		}
-		return uint64(val), err
+		return 0, ErrConversionSizeOverflow
 	case byte:
 		val, err := maybeSelf.ToByte()
 		return uint64(val), err
@@ -1024,28 +1025,33 @@ func (maybeSelf someDef) ToUint64() (uint64, error) {
 		return uint64(val), err
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		if val > math.MaxUint64 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint64 {
+			return uint64(math.Round(float64(val))), err
 		}
-		return uint64(math.Round(float64(val))), err
+		return 0, ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		if val > math.MaxUint64 {
-			return 0, ErrConversionSizeOverflow
+		if val >= 0 && val <= math.MaxUint64 {
+			return uint64(math.Round(val)), err
 		}
-		return uint64(math.Round(val)), err
+		return 0, ErrConversionSizeOverflow
 	}
 }
 
 // ToUintptr Maybe to Uintptr
 func (maybeSelf someDef) ToUintptr() (uintptr, error) {
 	ref := maybeSelf.ref
+	// Uintptr size might differ between different CPUs
+	maxUintptr := uint64(^uintptr(0))
 	switch (ref).(type) {
 	default:
 		return uintptr(0), ErrConversionUnsupported
 	case string:
 		parseInt, err := strconv.ParseInt((ref).(string), 10, 64)
-		return uintptr(parseInt), err
+		if uint64(parseInt) <= maxUintptr {
+			return uintptr(parseInt), err
+		}
+		return uintptr(0), ErrConversionSizeOverflow
 	case bool:
 		val, err := maybeSelf.ToBool()
 		if val {
@@ -1063,7 +1069,10 @@ func (maybeSelf someDef) ToUintptr() (uintptr, error) {
 		return uintptr(val), err
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		return uintptr(val), err
+		if val <= maxUintptr {
+			return uintptr(val), err
+		}
+		return uintptr(0), ErrConversionSizeOverflow
 	case uintptr:
 		return ref.(uintptr), nil
 	case byte:
@@ -1083,7 +1092,10 @@ func (maybeSelf someDef) ToUintptr() (uintptr, error) {
 		return uintptr(val), err
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		return uintptr(val), err
+		if uint64(val) <= maxUintptr {
+			return uintptr(val), err
+		}
+		return uintptr(0), ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
 		return uintptr(math.Round(float64(val))), err
@@ -1172,7 +1184,15 @@ func (maybeSelf someDef) IsPresent() bool {
 // IsNil Check is it nil
 func (maybeSelf someDef) IsNil() bool {
 	return maybeSelf.isNil
+
 	// return IsNil(maybeSelf.ref)
+	//
+	// val := reflect.ValueOf(maybeSelf.ref)
+	//
+	// if maybeSelf.Kind() == reflect.Ptr {
+	// 	return val.IsNil()
+	// }
+	// return !val.IsValid()
 }
 
 // IsValid Check is its reflect.ValueOf(ref) valid
@@ -1215,7 +1235,9 @@ var Maybe someDef
 // None
 
 // noneDef None inspired by Rx/Optional/Guava/Haskell
-type noneDef struct{ someDef }
+type noneDef struct {
+	someDef
+}
 
 // Or Check the value wrapped by Maybe, if it's nil then return a given fallback value
 func (noneSelf noneDef) Or(or interface{}) interface{} {
@@ -1295,7 +1317,7 @@ func (noneSelf noneDef) IsNil() bool {
 	return true
 }
 
-// IsPtr Check is it a Ptr
+// IsPtr Check is it Ptr
 func (noneSelf noneDef) IsPtr() bool {
 	return false
 }
