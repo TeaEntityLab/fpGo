@@ -1121,7 +1121,7 @@ func (maybeSelf someDef[T]) ToUintptr() (uintptr, error) {
 		return uintptr(0), ErrConversionUnsupported
 	case string:
 		parseInt, err := strconv.ParseInt((ref).(string), 10, 64)
-		if uint64(parseInt) < maxUintptr {
+		if uint64(parseInt) <= maxUintptr {
 			return uintptr(parseInt), err
 		}
 		return uintptr(0), ErrConversionSizeOverflow
@@ -1142,7 +1142,7 @@ func (maybeSelf someDef[T]) ToUintptr() (uintptr, error) {
 		return uintptr(val), err
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		if val < maxUintptr {
+		if val <= maxUintptr {
 			return uintptr(val), err
 		}
 		return uintptr(0), ErrConversionSizeOverflow
@@ -1165,7 +1165,7 @@ func (maybeSelf someDef[T]) ToUintptr() (uintptr, error) {
 		return uintptr(val), err
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		if uint64(val) < maxUintptr {
+		if uint64(val) <= maxUintptr {
 			return uintptr(val), err
 		}
 		return uintptr(0), ErrConversionSizeOverflow
