@@ -192,7 +192,7 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 			workerPoolSelf.lock.Lock()
 			workerPoolSelf.workerCount--
 			if isBusy {
-				workerPoolSelf.workerBusy --
+				workerPoolSelf.workerBusy--
 			}
 			workerPoolSelf.lock.Unlock()
 		}()
@@ -211,13 +211,13 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 				if job != nil {
 					workerPoolSelf.lock.Lock()
 					isBusy = true
-					workerPoolSelf.workerBusy ++
+					workerPoolSelf.workerBusy++
 					workerPoolSelf.lock.Unlock()
 
 					job()
 
 					workerPoolSelf.lock.Lock()
-					workerPoolSelf.workerBusy --
+					workerPoolSelf.workerBusy--
 					isBusy = false
 					workerPoolSelf.lock.Unlock()
 				}
