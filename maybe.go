@@ -1112,6 +1112,8 @@ func (maybeSelf someDef[T]) ToUintptr() (uintptr, error) {
 	if maybeSelf.IsNil() {
 		return 0, ErrConversionNil
 	}
+	// Uintptr size might differ between different CPUs
+	maxUintptr := uint64(^uintptr(0))
 
 	var ref interface{} = maybeSelf.ref
 	switch (ref).(type) {
@@ -1119,7 +1121,10 @@ func (maybeSelf someDef[T]) ToUintptr() (uintptr, error) {
 		return uintptr(0), ErrConversionUnsupported
 	case string:
 		parseInt, err := strconv.ParseInt((ref).(string), 10, 64)
-		return uintptr(parseInt), err
+		if uint64(parseInt) < maxUintptr {
+			return uintptr(parseInt), err
+		}
+		return uintptr(0), ErrConversionSizeOverflow
 	case bool:
 		val, err := maybeSelf.ToBool()
 		if val {
@@ -1137,7 +1142,10 @@ func (maybeSelf someDef[T]) ToUintptr() (uintptr, error) {
 		return uintptr(val), err
 	case uint64:
 		val, err := maybeSelf.ToUint64()
-		return uintptr(val), err
+		if val < maxUintptr {
+			return uintptr(val), err
+		}
+		return uintptr(0), ErrConversionSizeOverflow
 	case uintptr:
 		return ref.(uintptr), nil
 	case byte:
@@ -1157,7 +1165,10 @@ func (maybeSelf someDef[T]) ToUintptr() (uintptr, error) {
 		return uintptr(val), err
 	case int64:
 		val, err := maybeSelf.ToInt64()
-		return uintptr(val), err
+		if uint64(val) < maxUintptr {
+			return uintptr(val), err
+		}
+		return uintptr(0), ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
 		return uintptr(math.Round(float64(val))), err
