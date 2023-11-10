@@ -410,7 +410,10 @@ func (maybeSelf someDef[T]) ToInt8() (int8, error) {
 		return 0, ErrConversionSizeOverflow
 	case byte:
 		val, err := maybeSelf.ToByte()
-		return int8(val), err
+		if val <= math.MaxInt8 {
+			return int8(val), err
+		}
+		return 0, ErrConversionSizeOverflow
 	case int:
 		val, err := maybeSelf.ToInt()
 		if val >= math.MinInt8 && val <= math.MaxInt8 {
