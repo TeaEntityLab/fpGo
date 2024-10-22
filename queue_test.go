@@ -301,10 +301,51 @@ func TestNewBufferedChannelQueue(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	// Async
+	asyncTaskDone := make(chan bool)
+
+	bufferedChannelQueue.SetBufferSizeMaximum(6)
+	timeout = 2 * time.Millisecond
+	go func() {
+		time.Sleep(timeout)
+		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 1, result)
+		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 2, result)
+		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 3, result)
+		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 4, result)
+		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 5, result)
+		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
+		assert.Equal(t, nil, err)
+		assert.Equal(t, 6, result)
+		asyncTaskDone <- true
+	}()
+	go func() {
+		err = bufferedChannelQueue.Put(1)
+		assert.Equal(t, nil, err)
+		err = bufferedChannelQueue.Put(2)
+		assert.Equal(t, nil, err)
+		err = bufferedChannelQueue.Put(3)
+		assert.Equal(t, nil, err)
+		err = bufferedChannelQueue.Put(4)
+		assert.Equal(t, nil, err)
+		err = bufferedChannelQueue.Put(5)
+		assert.Equal(t, nil, err)
+		err = bufferedChannelQueue.Put(6)
+		assert.Equal(t, nil, err)
+	}()
+
+	<-asyncTaskDone
 
 	bufferedChannelQueue.SetBufferSizeMaximum(10000)
-	timeout = 1 * time.Millisecond
-	asyncTaskDone := make(chan bool)
+	timeout = 10 * time.Millisecond
 	go func() {
 		for i := 1; i <= 10000; i++ {
 			result, err := bufferedChannelQueue.TakeWithTimeout(timeout)
@@ -331,6 +372,6 @@ func TestNewBufferedChannelQueue(t *testing.T) {
 
 	time.Sleep(1 * timeout)
 
-	assert.GreaterOrEqual(t, 100, bufferedChannelQueue.pool.nodeCount)
+	assert.GreaterOrEqual(t, bufferedChannelQueue.pool.nodeCount, 100)
 	close(asyncTaskDone)
 }
