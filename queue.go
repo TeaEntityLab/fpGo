@@ -347,7 +347,7 @@ func (q *LinkedListQueue[T]) KeepNodePoolCount(n int) {
 	last.Next = nil
 }
 
-// CLear Clear all data
+// Clear Clear all data
 func (q *LinkedListQueue[T]) Clear() {
 	q.nodePoolFirst = q.first
 	q.nodeCount = q.count
@@ -694,17 +694,35 @@ func (q *BufferedChannelQueue[T]) Put(val T) error {
 	return q.Offer(val)
 }
 
-// // PutWithTimeout Put the T val(blocking), with timeout
-// func (q BufferedChannelQueue[T]) PutWithTimeout(val T, timeout time.Duration) error {
-// //  	q.lock.Lock()
-// //  	defer q.lock.Unlock()
-//
-// 	if q.isClosed.Get() {
-// 		return ErrQueueIsClosed
-// 	}
-//
-// 	return q.blockingQueue.PutWithTimeout(val, timeout)
-// }
+// PutWithTimeout Put the T val(blocking), with timeout
+func (q *BufferedChannelQueue[T]) PutWithTimeout(val T, timeout time.Duration) error {
+	//  	q.lock.Lock()
+	//  	defer q.lock.Unlock()
+
+	if q.isClosed.Get() {
+		return ErrQueueIsClosed
+	}
+
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		//fmt.Println("iteration")
+		q.loadWorkerCh.Offer(1)
+
+		err := q.Offer(val)
+		if err == nil {
+			return nil
+		}
+		if errors.Is(err, ErrQueueIsFull) {
+			return err
+		}
+		q.loadWorkerCh.Offer(1)
+		time.Sleep(q.loadFromPoolDuration)
+	}
+
+	//return q.blockingQueue.PutWithTimeout(val, timeout)
+
+	return ErrQueuePutTimeout
+}
 
 // Take Take the T val(blocking)
 func (q *BufferedChannelQueue[T]) Take() (T, error) {
