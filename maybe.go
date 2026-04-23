@@ -31,8 +31,17 @@ type MaybeDef[T any] interface {
 	ToFloat64() (float64, error)
 	ToFloat32() (float32, error)
 	ToInt() (int, error)
+	ToInt8() (int8, error)
+	ToInt16() (int16, error)
 	ToInt32() (int32, error)
 	ToInt64() (int64, error)
+	ToUint() (uint, error)
+	ToUint8() (uint8, error)
+	ToUint16() (uint16, error)
+	ToUint32() (uint32, error)
+	ToUint64() (uint64, error)
+	ToUintptr() (uintptr, error)
+	ToByte() (byte, error)
 	ToBool() (bool, error)
 	Let(fn func())
 	Unwrap() T
@@ -1384,6 +1393,51 @@ func (noneSelf noneDef) ToInt64() (int64, error) {
 // ToBool Maybe to Bool
 func (noneSelf noneDef) ToBool() (bool, error) {
 	return bool(false), ErrConversionNil
+}
+
+// ToInt8 Maybe to Int8
+func (noneSelf noneDef) ToInt8() (int8, error) {
+	return int8(0), ErrConversionNil
+}
+
+// ToInt16 Maybe to Int16
+func (noneSelf noneDef) ToInt16() (int16, error) {
+	return int16(0), ErrConversionNil
+}
+
+// ToUint Maybe to Uint
+func (noneSelf noneDef) ToUint() (uint, error) {
+	return uint(0), ErrConversionNil
+}
+
+// ToUint8 Maybe to Uint8
+func (noneSelf noneDef) ToUint8() (uint8, error) {
+	return uint8(0), ErrConversionNil
+}
+
+// ToUint16 Maybe to Uint16
+func (noneSelf noneDef) ToUint16() (uint16, error) {
+	return uint16(0), ErrConversionNil
+}
+
+// ToUint32 Maybe to Uint32
+func (noneSelf noneDef) ToUint32() (uint32, error) {
+	return uint32(0), ErrConversionNil
+}
+
+// ToUint64 Maybe to Uint64
+func (noneSelf noneDef) ToUint64() (uint64, error) {
+	return uint64(0), ErrConversionNil
+}
+
+// ToUintptr Maybe to Uintptr
+func (noneSelf noneDef) ToUintptr() (uintptr, error) {
+	return uintptr(0), ErrConversionNil
+}
+
+// ToByte Maybe to Byte
+func (noneSelf noneDef) ToByte() (byte, error) {
+	return byte(0), ErrConversionNil
 }
 
 // Let If the wrapped value is not nil, then do the given function

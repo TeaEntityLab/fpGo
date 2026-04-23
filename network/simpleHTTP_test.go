@@ -241,3 +241,90 @@ func TestSimpleAPIMultipart(t *testing.T) {
 	assert.Equal(t, sentValues, actualForm.Value)
 	assert.Equal(t, 0, len(actualForm.File["file"]))
 }
+
+func TestSimpleHTTPInterceptor(t *testing.T) {
+	client := NewSimpleHTTP()
+
+	interceptor := Interceptor(func(request *http.Request) error {
+		request.Header.Set("X-Custom-Header", "test")
+		return nil
+	})
+
+	client.AddInterceptor(&interceptor)
+	assert.Equal(t, 1, len(client.interceptors))
+
+	client.RemoveInterceptor(&interceptor)
+	assert.Equal(t, 0, len(client.interceptors))
+
+	client.AddInterceptor(&interceptor)
+	client.ClearInterceptor()
+	assert.Equal(t, 0, len(client.interceptors))
+}
+
+func TestNewSimpleHTTPWithClient(t *testing.T) {
+	httpClient := &http.Client{}
+	client := NewSimpleHTTPWithClientAndInterceptors(httpClient)
+	assert.NotNil(t, client)
+	assert.Equal(t, httpClient, client.client)
+}
+
+func TestSimpleHTTPClearInterceptor(t *testing.T) {
+	client := NewSimpleHTTP()
+
+	interceptor := Interceptor(func(request *http.Request) error {
+		return nil
+	})
+
+	client.AddInterceptor(&interceptor)
+	client.ClearInterceptor()
+	assert.Equal(t, 0, len(client.interceptors))
+}
+
+func TestSimpleHTTPClientGetterSetter(t *testing.T) {
+	client := NewSimpleHTTP()
+
+	httpClient := client.GetHTTPClient()
+	assert.NotNil(t, httpClient)
+
+	newClient := &http.Client{
+		Timeout: 5 * 1000000000,
+	}
+	client.SetHTTPClient(newClient)
+	assert.Equal(t, newClient, client.GetHTTPClient())
+}
+
+func TestNewSimpleAPIWithSimpleHTTP(t *testing.T) {
+	httpClient := &http.Client{}
+	simpleHTTP := NewSimpleHTTPWithClientAndInterceptors(httpClient)
+
+	api := NewSimpleAPIWithSimpleHTTP("http://example.com", simpleHTTP)
+	assert.NotNil(t, api)
+	assert.Equal(t, simpleHTTP, api.GetSimpleHTTP())
+}
+
+func TestJSONBodySerializer(t *testing.T) {
+	body := map[string]string{"key": "value"}
+	reader, err := JSONBodySerializer(body)
+	assert.Nil(t, err)
+	assert.NotNil(t, reader)
+}
+
+func TestJSONBodyDeserializer(t *testing.T) {
+	body := []byte(`{"key": "value"}`)
+	var target map[string]string
+	result, err := JSONBodyDeserializer(body, &target)
+	assert.Nil(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestGeneralMultipartSerializer(t *testing.T) {
+	form := &MultipartForm{
+		Value: map[string][]string{
+			"key": {"value"},
+		},
+	}
+	reader, contentType, err := GeneralMultipartSerializer(form)
+	assert.Nil(t, err)
+	assert.NotNil(t, reader)
+	assert.NotEmpty(t, contentType)
+}

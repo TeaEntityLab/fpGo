@@ -403,3 +403,306 @@ func streamIntTransformerForInterface(s interface{}) interface{} {
 	}
 	return result + "end"
 }
+
+func TestStreamForInterfaceFrom(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	assert.Equal(t, 3, s.Len())
+}
+
+func TestStreamForInterfaceFromArray(t *testing.T) {
+	s := StreamForInterface.FromArray([]interface{}{1, 2})
+	assert.Equal(t, 2, s.Len())
+}
+
+func TestStreamSetForInterfaceFromMap(t *testing.T) {
+	m := map[interface{}]*StreamForInterfaceDef{
+		1: StreamForInterface.FromArrayInt([]int{1, 2}),
+		2: StreamForInterface.FromArrayInt([]int{3, 4}),
+	}
+	s := StreamSetForInterfaceFromMap(m)
+	assert.Equal(t, 2, s.Size())
+}
+
+func TestStreamForInterface_Contains(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	assert.True(t, s.Contains(2))
+	assert.False(t, s.Contains(5))
+}
+
+func TestStreamForInterface_IsSubset(t *testing.T) {
+	s1 := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	s2 := StreamForInterface.FromArrayInt([]int{1, 2, 3, 4, 5})
+	assert.True(t, s1.IsSubset(s2))
+	assert.False(t, s2.IsSubset(s1))
+}
+
+func TestStreamForInterface_IsSuperset(t *testing.T) {
+	s1 := StreamForInterface.FromArrayInt([]int{1, 2, 3, 4, 5})
+	s2 := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	assert.True(t, s1.IsSuperset(s2))
+	assert.False(t, s2.IsSuperset(s1))
+}
+
+func TestStreamForInterface_Clone(t *testing.T) {
+	s1 := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	s2 := s1.Clone()
+	assert.Equal(t, s1.ToArray(), s2.ToArray())
+	assert.Equal(t, 3, s2.Len())
+}
+
+func TestStreamForInterface_Intersection(t *testing.T) {
+	s1 := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	s2 := StreamForInterface.FromArrayInt([]int{2, 3, 4})
+	result := s1.Intersection(s2)
+	assert.Equal(t, 2, result.Len())
+}
+
+func TestStreamForInterface_Minus(t *testing.T) {
+	s1 := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	s2 := StreamForInterface.FromArrayInt([]int{2})
+	result := s1.Minus(s2)
+	assert.Equal(t, 2, result.Len())
+}
+
+func TestStreamForInterface_RemoveItem(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	result := s.RemoveItem(2)
+	assert.Equal(t, 2, result.Len())
+}
+
+func TestStreamForInterface_Append(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2})
+	result := s.Append(3, 4)
+	assert.Equal(t, 4, result.Len())
+}
+
+func TestStreamForInterface_Remove(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	result := s.Remove(1)
+	assert.Equal(t, 2, result.Len())
+}
+
+func TestStreamForInterface_Len(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	assert.Equal(t, 3, s.Len())
+}
+
+func TestStreamForInterface_Concat(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2})
+	result := s.Concat([]interface{}{3, 4})
+	assert.Equal(t, 4, result.Len())
+}
+
+func TestStreamForInterface_Extend(t *testing.T) {
+	s1 := StreamForInterface.FromArrayInt([]int{1, 2})
+	s2 := StreamForInterface.FromArrayInt([]int{3, 4})
+	result := s1.Extend(s2)
+	assert.Equal(t, 4, result.Len())
+}
+
+func TestStreamForInterface_Reverse(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	result := s.Reverse()
+	arr := result.ToArray()
+	assert.Equal(t, 3, arr[0].(int))
+	assert.Equal(t, 1, arr[2].(int))
+}
+
+func TestStreamForInterface_Sort(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{3, 1, 2})
+	result := s.Sort(func(a, b interface{}) bool {
+		return a.(int) < b.(int)
+	})
+	arr := result.ToArray()
+	assert.Equal(t, 1, arr[0].(int))
+	assert.Equal(t, 3, arr[2].(int))
+}
+
+func TestStreamForInterface_Get(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	assert.Equal(t, 2, s.Get(1))
+}
+
+func TestSetForInterfaceFrom(t *testing.T) {
+	s := SetForInterfaceFrom(1, 2, 3)
+	assert.Equal(t, 3, s.Size())
+}
+
+func TestSetForInterfaceFromArray(t *testing.T) {
+	s := SetForInterfaceFromArray([]interface{}{1, 2, 3})
+	assert.Equal(t, 3, s.Size())
+}
+
+func TestSetForInterfaceFromMap(t *testing.T) {
+	m := map[interface{}]interface{}{1: "a", 2: "b"}
+	s := SetForInterfaceFromMap(m)
+	assert.Equal(t, 2, s.Size())
+}
+
+func TestSetForInterfaceDef_ContainsKey(t *testing.T) {
+	s := SetForInterfaceFrom(1, 2, 3)
+	assert.True(t, s.ContainsKey(2))
+	assert.False(t, s.ContainsKey(5))
+}
+
+func TestSetForInterfaceDef_ContainsValue(t *testing.T) {
+	s := SetForInterfaceFrom(1, 2, 3)
+	(*s)[10] = "value"
+	assert.True(t, s.ContainsValue("value"))
+	assert.False(t, s.ContainsValue("nonexistent"))
+}
+
+func TestSetForInterfaceDef_IsSubsetByKey(t *testing.T) {
+	s1 := SetForInterfaceFrom(1, 2)
+	s2 := SetForInterfaceFrom(1, 2, 3, 4)
+	assert.True(t, s1.IsSubsetByKey(s2))
+	assert.False(t, s2.IsSubsetByKey(s1))
+}
+
+func TestSetForInterfaceDef_IsSupersetByKey(t *testing.T) {
+	s1 := SetForInterfaceFrom(1, 2, 3, 4)
+	s2 := SetForInterfaceFrom(1, 2)
+	assert.True(t, s1.IsSupersetByKey(s2))
+	assert.False(t, s2.IsSupersetByKey(s1))
+}
+
+func TestSetForInterfaceDef_Add(t *testing.T) {
+	s := SetForInterfaceFrom(1, 2)
+	result := s.Add(3, 4)
+	assert.Equal(t, 4, result.Size())
+}
+
+func TestSetForInterfaceDef_RemoveKeys(t *testing.T) {
+	s := SetForInterfaceFrom(1, 2, 3)
+	result := s.RemoveKeys(2)
+	assert.Equal(t, 2, result.Size())
+}
+
+func TestStreamSetForInterface_Clone(t *testing.T) {
+	s := StreamSetForInterfaceFromArray([]interface{}{1, 2})
+	cloned := s.Clone()
+	assert.Equal(t, s.Size(), cloned.Size())
+}
+
+func TestStreamSetForInterface_Union(t *testing.T) {
+	s1 := StreamSetForInterfaceFromArray([]interface{}{1, 2})
+	s2 := StreamSetForInterfaceFromArray([]interface{}{3, 4})
+	result := s1.Union(s2)
+	assert.Equal(t, 4, result.Size())
+}
+
+func TestStreamSetForInterface_Intersection(t *testing.T) {
+	s1 := StreamSetForInterfaceFromArray([]interface{}{1, 2, 3})
+	s2 := StreamSetForInterfaceFromArray([]interface{}{2, 3, 4})
+	result := s1.Intersection(s2)
+	assert.Equal(t, 2, result.Size())
+}
+
+func TestStreamSetForInterface_Minus(t *testing.T) {
+	s1 := StreamSetForInterfaceFromArray([]interface{}{1, 2, 3})
+	s2 := StreamSetForInterfaceFromArray([]interface{}{2})
+	result := s1.Minus(s2)
+	assert.Equal(t, 2, result.Size())
+}
+
+func TestStreamSetForInterface_MinusStreams(t *testing.T) {
+	m1 := map[interface{}]*StreamForInterfaceDef{
+		1: StreamForInterface.FromArrayInt([]int{1, 2}),
+		2: StreamForInterface.FromArrayInt([]int{3, 4}),
+	}
+	m2 := map[interface{}]*StreamForInterfaceDef{
+		1: StreamForInterface.FromArrayInt([]int{1}),
+	}
+	s1 := StreamSetForInterfaceFromMap(m1)
+	s2 := StreamSetForInterfaceFromMap(m2)
+	result := s1.MinusStreams(s2)
+	assert.Equal(t, 2, result.Size())
+}
+
+func TestStreamSetForInterface_IsSubsetByKey(t *testing.T) {
+	s1 := StreamSetForInterfaceFromArray([]interface{}{1, 2})
+	s2 := StreamSetForInterfaceFromArray([]interface{}{1, 2, 3})
+	assert.True(t, s1.IsSubsetByKey(s2))
+}
+
+func TestStreamSetForInterface_IsSupersetByKey(t *testing.T) {
+	s1 := StreamSetForInterfaceFromArray([]interface{}{1, 2, 3})
+	s2 := StreamSetForInterfaceFromArray([]interface{}{1, 2})
+	assert.True(t, s1.IsSupersetByKey(s2))
+}
+
+// Tests for streamForInterface.go nil/empty input coverage
+
+func TestStreamForInterfaceIsSubsetWithNilInput(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	assert.False(t, s.IsSubset(nil))
+}
+
+func TestStreamForInterfaceIsSubsetWithEmptyInput(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	empty := StreamForInterface.FromArrayInt([]int{})
+	assert.False(t, s.IsSubset(empty))
+}
+
+func TestStreamForInterfaceIsSupersetWithNilInput(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	assert.True(t, s.IsSuperset(nil))
+}
+
+func TestStreamForInterfaceIsSupersetWithEmptyInput(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	empty := StreamForInterface.FromArrayInt([]int{})
+	assert.True(t, s.IsSuperset(empty))
+}
+
+func TestStreamForInterfaceIntersectionWithNilInput(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	result := s.Intersection(nil)
+	assert.Equal(t, []interface{}{}, result.ToArray())
+}
+
+func TestStreamForInterfaceIntersectionWithEmptyInput(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	empty := StreamForInterface.FromArrayInt([]int{})
+	result := s.Intersection(empty)
+	assert.Equal(t, []interface{}{}, result.ToArray())
+}
+
+func TestStreamForInterfaceMinusWithNilInput(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	result := s.Minus(nil)
+	assert.Equal(t, []interface{}{1, 2, 3}, result.ToArray())
+}
+
+func TestStreamForInterfaceMinusWithEmptyInput(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
+	empty := StreamForInterface.FromArrayInt([]int{})
+	result := s.Minus(empty)
+	assert.Equal(t, []interface{}{1, 2, 3}, result.ToArray())
+}
+
+func TestSetForInterfaceIntersectionWithNilInput(t *testing.T) {
+	s := SetForInterfaceFromArray([]interface{}{1, 2, 3})
+	result := s.Intersection(nil)
+	assert.Equal(t, 0, result.Size())
+}
+
+func TestSetForInterfaceIntersectionWithEmptyInput(t *testing.T) {
+	s := SetForInterfaceFromArray([]interface{}{1, 2, 3})
+	empty := SetForInterfaceFromArray([]interface{}{})
+	result := s.Intersection(empty)
+	assert.Equal(t, 0, result.Size())
+}
+
+func TestSetForInterfaceMinusWithNilInput(t *testing.T) {
+	s := SetForInterfaceFromArray([]interface{}{1, 2, 3})
+	result := s.Minus(nil)
+	assert.Equal(t, 3, result.Size())
+}
+
+func TestSetForInterfaceMinusWithEmptyInput(t *testing.T) {
+	s := SetForInterfaceFromArray([]interface{}{1, 2, 3})
+	empty := SetForInterfaceFromArray([]interface{}{})
+	result := s.Minus(empty)
+	assert.Equal(t, 3, result.Size())
+}

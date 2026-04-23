@@ -43,6 +43,11 @@ func (handlerSelf *HandlerDef) Close() {
 	close(handlerSelf.ch)
 }
 
+// IsClosed Check if handler is closed
+func (handlerSelf *HandlerDef) IsClosed() bool {
+	return handlerSelf.isClosed
+}
+
 func (handlerSelf *HandlerDef) run() {
 	for fn := range handlerSelf.ch {
 		fn()

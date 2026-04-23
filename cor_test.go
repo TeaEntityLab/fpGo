@@ -122,3 +122,47 @@ func TestCorDoNotation(t *testing.T) {
 
 	assert.Equal(t, expectedInt, (actual))
 }
+
+func TestCorNewGenerics(t *testing.T) {
+	cor := CorNewGenerics[interface{}](func() {})
+	assert.NotNil(t, cor)
+	assert.Equal(t, false, cor.IsStarted())
+	assert.Equal(t, false, cor.IsDone())
+}
+
+func TestCorIsDone(t *testing.T) {
+	cor := CorNewGenerics[interface{}](func() {})
+	assert.Equal(t, false, cor.IsDone())
+}
+
+func TestCorIsStarted(t *testing.T) {
+	cor := CorNewGenerics[interface{}](func() {})
+	assert.Equal(t, false, cor.IsStarted())
+
+	cor.Start()
+	assert.Equal(t, true, cor.IsStarted())
+}
+
+func TestCorClose(t *testing.T) {
+	cor := CorNewGenerics[interface{}](func() {})
+	assert.Equal(t, false, cor.IsDone())
+	cor.Start()
+	assert.Equal(t, true, cor.IsStarted())
+}
+
+func TestAtomBool(t *testing.T) {
+	atom := AtomBool{flag: 0}
+	assert.False(t, atom.Get())
+
+	atom.Set(true)
+	assert.True(t, atom.Get())
+
+	atom.Set(false)
+	assert.False(t, atom.Get())
+}
+
+func TestCorDef_New(t *testing.T) {
+	var c *CorDef[interface{}]
+	c = new(CorDef[interface{}]).New(func() {})
+	assert.NotNil(t, c)
+}

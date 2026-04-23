@@ -158,3 +158,56 @@ func TestWorkerJamDuration(t *testing.T) {
 	// A new expected goroutine is generated
 	assert.Equal(t, 5, defaultWorkerPool.workerCount)
 }
+
+func TestWorkerPoolIsClosed(t *testing.T) {
+	pool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](3, 10, 5), nil)
+	assert.Equal(t, false, pool.IsClosed())
+
+	pool.Close()
+	assert.Equal(t, true, pool.IsClosed())
+}
+
+func TestNewDefaultWorkerPool(t *testing.T) {
+	pool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](3, 10, 5), nil)
+	assert.NotNil(t, pool)
+
+	pool.Close()
+}
+
+func TestDefaultWorkerPoolSettings(t *testing.T) {
+	pool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](3, 10, 5), nil)
+	assert.NotNil(t, pool)
+
+	pool.SetDefaultWorkerPoolSettings(DefaultWorkerPoolSettings{
+		workerSizeMaximum: 20,
+	})
+	pool.SetIsJobQueueClosedWhenClose(false)
+	pool.SetWorkerSizeMaximum(15)
+	pool.SetWorkerSizeStandBy(3)
+	pool.SetWorkerBatchSize(5)
+	pool.SetWorkerExpiryDuration(10 * time.Second)
+	pool.SetWorkerJamDuration(20 * time.Second)
+	pool.SetSpawnWorkerDuration(200 * time.Millisecond)
+	pool.SetScheduleRetryInterval(100 * time.Millisecond)
+	pool.SetPanicHandler(func(interface{}) {})
+
+	pool.Close()
+}
+
+func TestDefaultInvokable(t *testing.T) {
+	pool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](3, 10, 5), nil)
+
+	invokable := NewDefaultInvokable(pool, func(val int) {})
+	assert.NotNil(t, invokable)
+
+	invokable.Invoke(42)
+
+	var timeoutErr error
+	timeoutErr = invokable.InvokeWithTimeout(42, 10*time.Millisecond)
+	assert.Nil(t, timeoutErr)
+
+	invokable.SetWorkerPool(pool)
+	assert.NotNil(t, invokable.workerPool)
+
+	pool.Close()
+}

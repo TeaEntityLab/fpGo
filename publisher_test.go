@@ -65,3 +65,55 @@ func TestPublisher(t *testing.T) {
 	p.Publish((1))
 	assert.Equal(t, expected, actual)
 }
+
+func TestPublisherSubscribeOn(t *testing.T) {
+	p := Publisher.New()
+
+	var called bool
+	s := p.Subscribe(Subscription[interface{}]{
+		OnNext: func(in interface{}) {
+			called = true
+		},
+	})
+
+	p.Publish(1)
+	assert.Equal(t, true, called)
+
+	p.Unsubscribe(s)
+}
+
+func TestPublisherUnsubscribeRecursive(t *testing.T) {
+	p := Publisher.New()
+
+	s1 := p.Subscribe(Subscription[interface{}]{
+		OnNext: func(in interface{}) {},
+	})
+	s2 := p.Subscribe(Subscription[interface{}]{
+		OnNext: func(in interface{}) {},
+	})
+
+	p.Unsubscribe(s1)
+	p.Publish(1)
+
+	p.Unsubscribe(s2)
+	p.Publish(1)
+}
+
+func TestPublisherNew(t *testing.T) {
+	p := Publisher.New()
+	assert.NotNil(t, p)
+}
+
+func TestPublisherNewGenerics(t *testing.T) {
+	p := PublisherNewGenerics[int]()
+	assert.NotNil(t, p)
+}
+
+func TestPublisherSubscribeOnHandler(t *testing.T) {
+	p := Publisher.New()
+	h := new(HandlerDef).New()
+	defer h.Close()
+
+	p2 := p.SubscribeOn(h)
+	assert.NotNil(t, p2)
+}

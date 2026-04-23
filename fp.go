@@ -1,6 +1,7 @@
 package fpgo
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -306,8 +307,9 @@ func Difference[T comparable](arrList ...[]T) []T {
 // Distinct removes duplicates.
 //
 // Example
-// 	list := []int{8, 2, 8, 0, 2, 0}
-// 	Distinct(list...) // returns [8, 2, 0]
+//
+//	list := []int{8, 2, 8, 0, 2, 0}
+//	Distinct(list...) // returns [8, 2, 0]
 func Distinct[T comparable](list ...T) []T {
 	// Keep order
 	resultIndex := 0
@@ -334,8 +336,9 @@ func Distinct[T comparable](list ...T) []T {
 // DistinctForInterface removes duplicates.
 //
 // Example
-// 	list := []interface{}{8, 2, 8, 0, 2, 0}
-// 	DistinctForInterface(list...) // returns [8, 2, 0]
+//
+//	list := []interface{}{8, 2, 8, 0, 2, 0}
+//	DistinctForInterface(list...) // returns [8, 2, 0]
 func DistinctForInterface(list ...interface{}) []interface{} {
 	// Keep order
 	resultIndex := 0
@@ -384,7 +387,8 @@ func IsDistinct[T comparable](list ...T) bool {
 // DropEq returns a new list after dropping the given item
 //
 // Example:
-// 	DropEq(1, 1, 2, 3, 1) // returns [2, 3]
+//
+//	DropEq(1, 1, 2, 3, 1) // returns [2, 3]
 func DropEq[T comparable](num T, list ...T) []T {
 	var newList []T
 	for _, v := range list {
@@ -424,14 +428,16 @@ func DropLast[T any](count int, list ...T) []T {
 // DropWhile drops the items from the list as long as condition satisfies.
 //
 // Takes two inputs
-//	1. Function: takes one input and returns boolean
-//	2. list
+//  1. Function: takes one input and returns boolean
+//  2. list
 //
 // Returns:
-// 	New List.
-//  Empty list if either one of arguments or both of them are nil
+//
+//		New List.
+//	 Empty list if either one of arguments or both of them are nil
 //
 // Example: Drops even number. Returns the remaining items once odd number is found in the list.
+//
 //	DropWhile(isEven, 4, 2, 3, 4, 5) // Returns [3, 4, 5]
 //
 //	func isEven(num int) bool {
@@ -513,6 +519,7 @@ func IsEqualMap[T comparable, R comparable](map1, map2 map[T]R) bool {
 // Every returns true if supplied function returns logical true for every item in the list
 //
 // Example:
+//
 //	Every(even, 8, 2, 10, 4) // Returns true
 //
 //	func isEven(num int) bool {
@@ -536,6 +543,7 @@ func Every[T any](f Predicate[T], list ...T) bool {
 // Exists checks if given item exists in the list
 //
 // Example:
+//
 //	Exists(8, 8, 2, 10, 4) // Returns true
 //	Exists(8) // Returns false
 func Exists[T comparable](input T, list ...T) bool {
@@ -550,6 +558,7 @@ func Exists[T comparable](input T, list ...T) bool {
 // ExistsForInterface checks if given item exists in the list
 //
 // Example:
+//
 //	ExistsForInterface(8, 8, 2, 10, 4) // Returns true
 //	ExistsForInterface(8) // Returns false
 func ExistsForInterface(input interface{}, list ...interface{}) bool {
@@ -955,8 +964,9 @@ func IsPos[T Numeric](v T) bool {
 }
 
 // PMap applies the function(1st argument) on each item in the list and returns a new list.
-//  Order of new list is guaranteed. This feature can be disabled by passing: PMapOption{RandomOrder: true} to gain performance
-//  Run in parallel. no_of_goroutines = no_of_items_in_list or 3rd argument can be passed to fix the number of goroutines.
+//
+//	Order of new list is guaranteed. This feature can be disabled by passing: PMapOption{RandomOrder: true} to gain performance
+//	Run in parallel. no_of_goroutines = no_of_items_in_list or 3rd argument can be passed to fix the number of goroutines.
 //
 // Takes 3 inputs. 3rd argument is option
 //  1. Function - takes 1 input
@@ -1031,7 +1041,16 @@ func pMapPreserveOrder[T any, R any](f TransformerFunctor[T, R], list []T, worke
 }
 
 func pMapNoOrder[T any, R any](f TransformerFunctor[T, R], list []T, worker int) []R {
-	chJobs := make(chan T, len(list))
+	listLen := len(list)
+	if listLen == 0 {
+		return make([]R, 0)
+	}
+
+	if worker > listLen || worker <= 0 {
+		worker = listLen
+	}
+
+	chJobs := make(chan T, listLen)
 	go func() {
 		for _, v := range list {
 			chJobs <- v
@@ -1039,34 +1058,28 @@ func pMapNoOrder[T any, R any](f TransformerFunctor[T, R], list []T, worker int)
 		close(chJobs)
 	}()
 
-	chResult := make(chan R, worker/3)
+	chResult := make(chan R, listLen)
 
 	var wg sync.WaitGroup
-
 	for i := 0; i < worker; i++ {
 		wg.Add(1)
-
-		go func(chResult chan R, chJobs chan T) {
+		go func() {
 			defer wg.Done()
-
 			for v := range chJobs {
 				chResult <- f(v)
 			}
-		}(chResult, chJobs)
+		}()
 	}
 
-	// This will wait for the workers to complete their job and then close the channel
+	// Close chResult when all workers are done
 	go func() {
 		wg.Wait()
 		close(chResult)
 	}()
 
-	newList := make([]R, len(list))
-	i := 0
-
+	newList := make([]R, 0, listLen)
 	for v := range chResult {
-		newList[i] = v
-		i++
+		newList = append(newList, v)
 	}
 
 	return newList
@@ -1075,15 +1088,17 @@ func pMapNoOrder[T any, R any](f TransformerFunctor[T, R], list []T, worker int)
 // Range returns a list of range between lower and upper value
 //
 // Takes 3 inputs
-//	1. lower limit
-//	2. Upper limit
-//	3. Hops (optional)
+//  1. lower limit
+//  2. Upper limit
+//  3. Hops (optional)
 //
 // Returns
+//
 //	List of range between lower and upper value
 //	Empty list if 3rd argument is either 0 or negative number
 //
 // Example:
+//
 //	Range(-2, 2) // Returns: [-2, -1, 0, 1]
 //	Range(0, 2) // Returns: [0, 1]
 //	Range(3, 7, 2) // Returns: [3, 5]
@@ -1119,14 +1134,16 @@ func Reverse[T any](list ...T) []T {
 // Some finds item in the list based on supplied function.
 //
 // Takes 2 input:
-//	1. Function
-//	2. List
+//  1. Function
+//  2. List
 //
 // Returns:
+//
 //	bool.
 //	True if condition satisfies, else false
 //
 // Example:
+//
 //	Some(isEven, 8, 2, 10, 4) // Returns true
 //	Some(isEven, 1, 3, 5, 7) // Returns false
 //	Some(nil) // Returns false
@@ -1301,26 +1318,28 @@ func IsZero[T Numeric](v T) bool {
 
 // Zip takes two inputs: first list of type: []T, second list of type: []T.
 // Then it merges two list and returns a new map of type: map[T]R
-func Zip[T comparable, R any](list1 []T, list2 []R) map[T]R {
+var ErrZipEmptyList = errors.New("zip: both slices must be non-empty")
+var ErrZipLengthMismatch = errors.New("zip: slices must have equal length")
+
+func Zip[T comparable, R any](list1 []T, list2 []R) (map[T]R, error) {
 	newMap := make(map[T]R)
 
 	len1 := len(list1)
 	len2 := len(list2)
 
 	if len1 == 0 || len2 == 0 {
-		return newMap
+		return nil, ErrZipEmptyList
 	}
 
-	minLen := len1
-	if len2 < minLen {
-		minLen = len2
+	if len1 != len2 {
+		return nil, ErrZipLengthMismatch
 	}
 
-	for i := 0; i < minLen; i++ {
+	for i := 0; i < len1; i++ {
 		newMap[list1[i]] = list2[i]
 	}
 
-	return newMap
+	return newMap, nil
 }
 
 // GroupBy creates a map where the key is a group identifier and the value is a slice with the elements that have the same identifer

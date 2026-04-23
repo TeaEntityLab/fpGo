@@ -131,3 +131,188 @@ func TestActorAsk(t *testing.T) {
 	assert.Equal(t, expectedInt, actual)
 	assert.Equal(t, ErrActorAskTimeout, err)
 }
+
+func TestActorAskOnceWithTimeoutLong(t *testing.T) {
+	actorRoot := Actor.New(func(self *ActorDef[interface{}], input interface{}) {
+		switch val := input.(type) {
+		case *AskDef[interface{}, int]:
+			intVal, _ := Maybe.Just(val.Message).ToInt()
+			val.Reply(intVal * 10)
+		}
+	})
+
+	timeout := 10 * time.Second
+	actual, err := AskNewGenerics[interface{}, int](5).AskOnceWithTimeout(actorRoot, timeout)
+	assert.Equal(t, 50, actual)
+	assert.Nil(t, err)
+}
+
+func TestActorChildParent(t *testing.T) {
+	actorRoot := Actor.New(func(self *ActorDef[interface{}], input interface{}) {
+		switch input.(type) {
+		case string:
+			if input == "ping" {
+				self.Send("pong")
+			}
+		}
+	})
+
+	child := actorRoot.Spawn(func(self *ActorDef[interface{}], input interface{}) {
+	})
+
+	parent := child.GetParent()
+	assert.Equal(t, actorRoot, parent)
+
+	childID := child.GetID()
+	foundChild := actorRoot.GetChild(childID)
+	assert.Equal(t, child, foundChild)
+
+	assert.Equal(t, false, actorRoot.IsClosed())
+	actorRoot.Close()
+	assert.Equal(t, true, actorRoot.IsClosed())
+}
+
+func TestActorSendAfterClose(t *testing.T) {
+	actor := Actor.New(func(self *ActorDef[interface{}], input interface{}) {
+	})
+
+	assert.Equal(t, false, actor.IsClosed())
+	actor.Close()
+	assert.Equal(t, true, actor.IsClosed())
+
+	actor.Send("test")
+}
+
+func TestActorGetDefault(t *testing.T) {
+	defaultActor := Actor.GetDefault()
+	assert.NotNil(t, defaultActor)
+}
+
+func TestActorNewByOptions(t *testing.T) {
+	ch := make(chan interface{})
+	ctx := map[string]interface{}{"key": "value"}
+	actor := Actor.NewByOptions(func(self *ActorDef[interface{}], input interface{}) {}, ch, ctx)
+	assert.NotNil(t, actor)
+}
+
+func TestActorSpawn(t *testing.T) {
+	actorRoot := Actor.New(func(self *ActorDef[interface{}], input interface{}) {})
+
+	child := actorRoot.Spawn(func(self *ActorDef[interface{}], input interface{}) {})
+	assert.NotNil(t, child)
+	assert.Equal(t, actorRoot, child.GetParent())
+
+	child.Close()
+	actorRoot.Close()
+}
+
+// TestActorSpawnAfterClose tests spawning a child after the parent actor is closed
+// This covers actor.go line 77-79
+func TestActorSpawnAfterClose(t *testing.T) {
+	actorRoot := Actor.New(func(self *ActorDef[interface{}], input interface{}) {})
+
+	// Close the actor first
+	actorRoot.Close()
+
+	// Spawn should still work but child won't have parent reference
+	child := actorRoot.Spawn(func(self *ActorDef[interface{}], input interface{}) {})
+	assert.NotNil(t, child)
+
+	// Parent should be nil since actor is closed
+	assert.Nil(t, child.GetParent())
+}
+
+func TestAskDef(t *testing.T) {
+	ask := Ask.New(42)
+	assert.Equal(t, 42, ask.Message)
+
+	ask2 := AskNewGenerics[int, string](100)
+	assert.Equal(t, 100, ask2.Message)
+
+	ch := make(chan string)
+	ask3 := AskNewByOptionsGenerics(200, ch)
+	assert.Equal(t, 200, ask3.Message)
+}
+
+func TestAskDef_Reply(t *testing.T) {
+	ch := make(chan int)
+	ask := AskNewByOptionsGenerics(42, ch)
+	go func() {
+		ask.Reply(100)
+	}()
+	result := <-ch
+	assert.Equal(t, 100, result)
+}
+
+func TestActorGetID(t *testing.T) {
+	actor := Actor.New(func(self *ActorDef[interface{}], input interface{}) {})
+	id := actor.GetID()
+	assert.NotNil(t, id)
+}
+
+func TestActorDef_New(t *testing.T) {
+	var a *ActorDef[string]
+	a = new(ActorDef[string]).New(func(self *ActorDef[string], input string) {})
+	assert.NotNil(t, a)
+}
+
+func TestActorGenerics(t *testing.T) {
+	actor := ActorNewGenerics(func(self *ActorDef[int], input int) {})
+	assert.NotNil(t, actor)
+
+	ch := make(chan int)
+	ctx := map[string]interface{}{"key": "value"}
+	actor2 := ActorNewByOptionsGenerics(func(self *ActorDef[int], input int) {}, ch, ctx)
+	assert.NotNil(t, actor2)
+
+	actor.Close()
+	actor2.Close()
+}
+
+func TestActorGetParent(t *testing.T) {
+	parent := Actor.New(func(self *ActorDef[interface{}], input interface{}) {})
+	child := parent.Spawn(func(self *ActorDef[interface{}], input interface{}) {})
+
+	assert.NotNil(t, child.GetParent())
+	assert.Equal(t, parent.GetID(), child.GetParent().GetID())
+
+	parent.Close()
+}
+
+func TestActorGetChild(t *testing.T) {
+	parent := Actor.New(func(self *ActorDef[interface{}], input interface{}) {})
+	child := parent.Spawn(func(self *ActorDef[interface{}], input interface{}) {})
+
+	childID := child.GetID()
+	foundChild := parent.GetChild(childID)
+	assert.NotNil(t, foundChild)
+	assert.Equal(t, childID, foundChild.GetID())
+
+	parent.Close()
+}
+
+func TestActorGetChildNotFound(t *testing.T) {
+	parent := Actor.New(func(self *ActorDef[interface{}], input interface{}) {})
+
+	notFoundChild := parent.GetChild(time.Now().Add(-1 * time.Hour))
+	assert.Nil(t, notFoundChild)
+
+	parent.Close()
+}
+
+func TestActorIsClosed(t *testing.T) {
+	actor := Actor.New(func(self *ActorDef[interface{}], input interface{}) {})
+
+	assert.False(t, actor.IsClosed())
+
+	actor.Close()
+
+	assert.True(t, actor.IsClosed())
+}
+
+func TestAskNewByOptions(t *testing.T) {
+	ch := make(chan int, 1)
+	ask := new(AskDef[interface{}, int]).NewByOptions(42, ch)
+	assert.NotNil(t, ask)
+	assert.Equal(t, 42, ask.Message)
+}
