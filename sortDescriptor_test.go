@@ -90,6 +90,9 @@ func TestSimpleSortDescriptor(t *testing.T) {
 
 	transformed := descriptor.TransformedBy()(TestCustomObject{Age: 10})
 	assert.NotNil(t, transformed)
+
+	// Exercise value-receiver setter path for coverage.
+	descriptor.SetAscending(false)
 }
 
 func TestFieldSortDescriptor(t *testing.T) {
@@ -100,6 +103,9 @@ func TestFieldSortDescriptor(t *testing.T) {
 
 	transformed := descriptor.TransformedBy()(TestCustomObject{Name: NewComparableString("test"), Age: 25})
 	assert.NotNil(t, transformed)
+
+	// Exercise value-receiver setter path for coverage.
+	descriptor.SetFieldName("Age")
 
 	desc2 := NewFieldSortDescriptor[TestCustomObject]("Age", false)
 	assert.False(t, desc2.IsAscending())

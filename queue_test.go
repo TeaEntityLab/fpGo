@@ -938,3 +938,31 @@ func TestChannelQueueTakeWithTimeoutAfterClose(t *testing.T) {
 	assert.Equal(t, ErrQueueIsClosed, err)
 	assert.Equal(t, 0, val)
 }
+
+func TestBufferedChannelQueueClosedBranches(t *testing.T) {
+	queue := NewBufferedChannelQueue[int](1, 1, 1)
+	queue.Close()
+
+	assert.Equal(t, 0, queue.Count())
+
+	err := queue.PutWithTimeout(1, 5*time.Millisecond)
+	assert.Equal(t, ErrQueueIsClosed, err)
+
+	val, pollErr := queue.Poll()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrQueueIsClosed, pollErr)
+}
+
+func TestBufferedChannelQueueSettersAndGetters(t *testing.T) {
+	queue := NewBufferedChannelQueue[int](3, 10, 5)
+	queue.
+		SetBufferSizeMaximum(7).
+		SetNodeHookPoolSize(4).
+		SetLoadFromPoolDuration(2 * time.Millisecond).
+		SetFreeNodeHookPoolIntervalDuration(3 * time.Millisecond)
+
+	assert.Equal(t, 7, queue.GetBufferSizeMaximum())
+	assert.Equal(t, 4, queue.GetNodeHookPoolSize())
+	assert.Equal(t, 2*time.Millisecond, queue.GetLoadFromPoolDuration())
+	assert.Equal(t, 3*time.Millisecond, queue.GetFreeNodeHookPoolIntervalDuration())
+}

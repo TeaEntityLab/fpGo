@@ -706,3 +706,38 @@ func TestSetForInterfaceMinusWithEmptyInput(t *testing.T) {
 	result := s.Minus(empty)
 	assert.Equal(t, 3, result.Size())
 }
+
+func TestSetForInterface_HelperBranches(t *testing.T) {
+	s := SetForInterfaceFrom(1, 2)
+	s.Set(1, "a")
+	s.Set(2, "b")
+
+	mappedKey := s.MapKey(func(input interface{}) interface{} { return input.(int) + 10 })
+	assert.True(t, mappedKey.ContainsKey(11))
+	assert.Equal(t, "a", mappedKey.Get(11))
+
+	mappedValue := s.MapValue(func(input interface{}) interface{} { return input.(string) + "!" })
+	assert.Equal(t, "a!", mappedValue.Get(1))
+	assert.Equal(t, "b!", mappedValue.Get(2))
+
+	removed := s.RemoveValues("b")
+	assert.True(t, removed.ContainsKey(1))
+	assert.False(t, removed.ContainsKey(2))
+
+	unchanged := s.RemoveValues()
+	assert.True(t, unchanged.ContainsKey(1))
+	assert.True(t, unchanged.ContainsKey(2))
+	assert.Equal(t, "a", s.Get(1))
+}
+
+func TestStreamSetForInterface_AliasConstructors(t *testing.T) {
+	s1 := StreamSetFromInterface(1, 2)
+	assert.Equal(t, 2, s1.Size())
+	assert.True(t, s1.ContainsKey(1))
+	assert.True(t, s1.ContainsKey(2))
+
+	s2 := StreamSetFromArrayInterface([]interface{}{"x", "y"})
+	assert.Equal(t, 2, s2.Size())
+	assert.True(t, s2.ContainsKey("x"))
+	assert.True(t, s2.ContainsKey("y"))
+}

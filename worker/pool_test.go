@@ -181,6 +181,7 @@ func TestDefaultWorkerPoolSettings(t *testing.T) {
 	pool.SetDefaultWorkerPoolSettings(DefaultWorkerPoolSettings{
 		workerSizeMaximum: 20,
 	})
+	pool.SetJobQueue(fpgo.NewBufferedChannelQueue[func()](3, 10, 5))
 	pool.SetIsJobQueueClosedWhenClose(false)
 	pool.SetWorkerSizeMaximum(15)
 	pool.SetWorkerSizeStandBy(3)
@@ -197,17 +198,27 @@ func TestDefaultWorkerPoolSettings(t *testing.T) {
 func TestDefaultInvokable(t *testing.T) {
 	pool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](3, 10, 5), nil)
 
-	invokable := NewDefaultInvokable(pool, func(val int) {})
+	done := make(chan int, 1)
+	invokable := NewDefaultInvokable(pool, func(val int) {
+		done <- val
+	})
 	assert.NotNil(t, invokable)
 
 	invokable.Invoke(42)
+	assert.Equal(t, 42, <-done)
 
 	var timeoutErr error
 	timeoutErr = invokable.InvokeWithTimeout(42, 10*time.Millisecond)
 	assert.Nil(t, timeoutErr)
+	assert.Equal(t, 42, <-done)
 
 	invokable.SetWorkerPool(pool)
 	assert.NotNil(t, invokable.workerPool)
+	invokable.SetCallee(func(val int) {
+		done <- val + 1
+	})
+	invokable.Invoke(1)
+	assert.Equal(t, 2, <-done)
 
 	pool.Close()
 }

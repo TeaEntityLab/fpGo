@@ -727,3 +727,22 @@ func TestStreamMinusWithEmptyInput(t *testing.T) {
 	result := s.Minus(empty)
 	assert.Equal(t, []int{1, 2, 3}, result.ToArray())
 }
+
+func TestMapSetDefBranchCoverage(t *testing.T) {
+	s := SetFrom[int, bool](1, 2)
+
+	added := s.Add(3).(*MapSetDef[int, bool])
+	assert.True(t, added.ContainsKey(3))
+	same := s.Add().(*MapSetDef[int, bool])
+	assert.True(t, same.ContainsKey(1))
+
+	unionNil := s.Union(nil).(*MapSetDef[int, bool])
+	assert.Equal(t, s.Size(), unionNil.Size())
+	unionEmpty := s.Union(SetFromArray[int, bool]([]int{})).(*MapSetDef[int, bool])
+	assert.Equal(t, s.Size(), unionEmpty.Size())
+
+	interNil := s.Intersection(nil).(*MapSetDef[int, bool])
+	assert.Equal(t, 0, interNil.Size())
+	interEmpty := s.Intersection(SetFromArray[int, bool]([]int{})).(*MapSetDef[int, bool])
+	assert.Equal(t, 0, interEmpty.Size())
+}

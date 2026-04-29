@@ -2,6 +2,9 @@ package network
 
 import (
 	"bytes"
+	"context"
+	"errors"
+	"io"
 	"io/ioutil"
 	"mime"
 	"mime/multipart"
@@ -9,10 +12,19 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
+
+type errReadCloser struct{}
+
+func (e errReadCloser) Read(p []byte) (n int, err error) {
+	return 0, errors.New("read failed")
+}
+func (e errReadCloser) Close() error { return nil }
 
 type Post struct {
 	UserID int    `json:"userId"`
@@ -327,4 +339,82 @@ func TestGeneralMultipartSerializer(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, reader)
 	assert.NotEmpty(t, contentType)
+}
+
+func TestGetContextTimeoutBranches(t *testing.T) {
+	client := NewSimpleHTTP()
+	client.TimeoutMillisecond = 1
+	ctx, cancel := client.GetContextTimeout()
+	defer cancel()
+	deadline, ok := ctx.Deadline()
+	assert.True(t, ok)
+	assert.True(t, time.Until(deadline) <= 5*time.Millisecond)
+
+	client.TimeoutMillisecond = 0
+	ctx2, cancel2 := client.GetContextTimeout()
+	defer cancel2()
+	_, ok2 := ctx2.Deadline()
+	assert.True(t, ok2)
+}
+
+func TestDoNewRequestInvalidURL(t *testing.T) {
+	client := NewSimpleHTTP()
+	resp := client.DoNewRequest(context.Background(), nil, http.MethodGet, "://bad-url")
+	assert.Error(t, resp.Err)
+	assert.Nil(t, resp.Response)
+}
+
+func TestDoNewRequestWithBodyOptionsEmptyContentType(t *testing.T) {
+	var gotContentType string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotContentType = r.Header.Get("Content-Type")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	client := NewSimpleHTTP()
+	resp := client.DoNewRequestWithBodyOptions(context.Background(), nil, http.MethodPost, srv.URL, strings.NewReader("{}"), "")
+	assert.NoError(t, resp.Err)
+	assert.Equal(t, "", gotContentType)
+}
+
+func TestRecursiveVisitInterceptorError(t *testing.T) {
+	client := NewSimpleHTTP()
+	expected := errors.New("stop chain")
+	badInterceptor := Interceptor(func(request *http.Request) error {
+		return expected
+	})
+	client.AddInterceptor(&badInterceptor)
+
+	req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+	_, err := client.RoundTrip(req)
+	assert.ErrorIs(t, err, expected)
+}
+
+func TestDecodeResponseBodyErrorBranchesAndReplacePathParams(t *testing.T) {
+	api := NewSimpleAPI("http://example.com")
+
+	readErrResp := &APIResponse[PostListResponse]{
+		ResponseWithError: ResponseWithError{
+			Response: &http.Response{Body: errReadCloser{}},
+		},
+	}
+	decodeResponseBody(api, readErrResp, &PostListResponse{})
+	assert.Error(t, readErrResp.Err)
+
+	expected := errors.New("deserialize failed")
+	api.ResponseDeserializer = func(body []byte, target interface{}) (interface{}, error) {
+		return target, expected
+	}
+	resp := &APIResponse[PostListResponse]{
+		ResponseWithError: ResponseWithError{
+			Response: &http.Response{Body: io.NopCloser(strings.NewReader(`{}`))},
+		},
+	}
+	out := decodeResponseBody(api, resp, &PostListResponse{})
+	assert.ErrorIs(t, out.Err, expected)
+	assert.NotNil(t, out.TargetObject)
+
+	finalURL := api.replacePathParams("posts/{id}", PathParam{"id": 7})
+	assert.Equal(t, "http://example.com/posts/7", finalURL)
 }
