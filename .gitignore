@@ -1,6 +1,9 @@
 # IDEA
 .idea
 
+# OMX
+.omx
+
 # Binaries for programs and plugins
 *.exe
 *.exe~

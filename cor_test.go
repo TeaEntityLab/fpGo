@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -165,4 +166,92 @@ func TestCorDef_New(t *testing.T) {
 	var c *CorDef[interface{}]
 	c = new(CorDef[interface{}]).New(func() {})
 	assert.NotNil(t, c)
+}
+
+func TestCorStartWithValAlreadyStarted(t *testing.T) {
+	c := CorNewGenerics[interface{}](func() {})
+	c.Start()
+	time.Sleep(10 * time.Millisecond)
+	assert.NotPanics(t, func() {
+		c.StartWithVal(1)
+	})
+	assert.True(t, c.IsStarted())
+}
+
+func TestCorStartAlreadyStarted(t *testing.T) {
+	c := CorNewGenerics[interface{}](func() {})
+	c.Start()
+	assert.NotPanics(t, func() {
+		c.Start()
+	})
+	assert.True(t, c.IsStarted())
+}
+
+func TestCorYieldRefOnDone(t *testing.T) {
+	c := CorNewGenerics[interface{}](func() {})
+	c.Start()
+	time.Sleep(10 * time.Millisecond)
+	result := c.YieldRef(nil)
+	assert.Equal(t, nil, result)
+}
+
+func TestCorYieldFromOnDone(t *testing.T) {
+	c := CorNewGenerics[interface{}](func() {})
+	c.Start()
+	time.Sleep(10 * time.Millisecond)
+	result := c.YieldFrom(nil, nil)
+	assert.Equal(t, nil, result)
+}
+
+func TestCorStartWithValDoubleCall(t *testing.T) {
+	var c *CorDef[interface{}]
+	c = Cor.New(func() {
+		self := c
+		self.YieldRef(nil)
+	})
+	assert.NotPanics(t, func() {
+		c.StartWithVal(1)
+	})
+	assert.NotPanics(t, func() {
+		c.StartWithVal(2)
+	})
+	assert.True(t, c.IsStarted())
+}
+
+func TestCorDoCloseSafeOnDone(t *testing.T) {
+	c := CorNewGenerics[interface{}](func() {})
+	c.Start()
+	time.Sleep(10 * time.Millisecond)
+	assert.True(t, c.IsDone())
+
+	var parent *CorDef[interface{}]
+	parent = CorNewGenerics[interface{}](func() {
+		self := parent
+		self.YieldFrom(c, nil)
+	})
+	parent.Start()
+	time.Sleep(20 * time.Millisecond)
+}
+
+func TestCorReceiveOnDone(t *testing.T) {
+	c := CorNewGenerics[interface{}](func() {})
+	c.Start()
+	time.Sleep(10 * time.Millisecond)
+	assert.True(t, c.IsDone())
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		var child *CorDef[interface{}]
+		child = CorNewGenerics[interface{}](func() {
+			self := child
+			self.YieldFrom(c, nil)
+		})
+		child.Start()
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(50 * time.Millisecond):
+	}
 }

@@ -1,6 +1,7 @@
 package fpgo
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -1819,4 +1820,161 @@ func TestMergeFirstValidSecondNil(t *testing.T) {
 	var m2 map[string]int
 	result := Merge(m1, m2)
 	assert.Equal(t, map[string]int{"a": 1}, result)
+}
+
+func TestPMapNilFunction(t *testing.T) {
+	var nilFn func(int) int
+	result := PMap(nilFn, nil, 1, 2, 3)
+	assert.Equal(t, []int{}, result)
+}
+
+func TestSomeNilFunction(t *testing.T) {
+	var nilFn func(int) bool
+	result := Some(nilFn, 1, 2, 3)
+	assert.Equal(t, false, result)
+}
+
+func TestTrampolineError(t *testing.T) {
+	result, err := Trampoline(func(input ...int) ([]int, bool, error) {
+		return nil, false, errors.New("test error")
+	}, 1)
+	assert.Nil(t, result)
+	assert.EqualError(t, err, "test error")
+}
+
+func TestDifferenceFirstElementDupes(t *testing.T) {
+	result := Difference([]int{1, 1, 2, 3}, []int{4, 5})
+	assert.Equal(t, []int{1, 2, 3}, result)
+}
+
+func TestDifferenceAllMatch(t *testing.T) {
+	result := Difference([]int{1, 2}, []int{1, 2})
+	assert.Nil(t, result)
+}
+
+func TestMakeNumericReturnForVariadicParamReturnBool1False(t *testing.T) {
+	fn := func(v ...int) bool {
+		return false
+	}
+	result := MakeNumericReturnForVariadicParamReturnBool1[int, int](fn)(1, 2, 3)
+	assert.Equal(t, []int{0}, result)
+}
+
+func TestMakeNumericReturnForSliceParamReturnBool1False(t *testing.T) {
+	fn := func(v []int) bool {
+		return false
+	}
+	result := MakeNumericReturnForSliceParamReturnBool1[int, int](fn)(1, 2, 3)
+	assert.Equal(t, []int{0}, result)
+}
+
+func TestIsSubsetMapByKeyForInterfaceBothNil(t *testing.T) {
+	result := IsSubsetMapByKeyForInterface[string](nil, nil)
+	assert.Equal(t, false, result)
+}
+
+func TestIsSubsetMapByKeyForInterfaceFirstEmpty(t *testing.T) {
+	result := IsSubsetMapByKeyForInterface[string](map[interface{}]string{}, map[interface{}]string{1: "a"})
+	assert.Equal(t, false, result)
+}
+
+func TestIsSubsetMapByKeyForInterfaceSecondEmpty(t *testing.T) {
+	result := IsSubsetMapByKeyForInterface[string](map[interface{}]string{1: "a"}, map[interface{}]string{})
+	assert.Equal(t, false, result)
+}
+
+func TestPMapWithNilOption(t *testing.T) {
+	result := PMap(func(a int) int { return a + 1 }, nil, 1, 2)
+	assert.Equal(t, []int{2, 3}, result)
+}
+
+func TestMatchForWithPanic(t *testing.T) {
+	pm := DefPattern()
+	assert.Panics(t, func() {
+		pm.MatchFor(42)
+	})
+}
+
+func TestDropWhileNilFunc(t *testing.T) {
+	result := DropWhile[int](nil, 1, 2, 3)
+	assert.Equal(t, []int{}, result)
+}
+
+func TestKindPatternMatchesNil(t *testing.T) {
+	pattern := InCaseOfKind(reflect.Int, func(x interface{}) interface{} { return x })
+	result := pattern.Matches(nil)
+	assert.False(t, result)
+}
+
+func TestRegexPatternMatchesNonString(t *testing.T) {
+	pattern := InCaseOfRegex(".*", func(x interface{}) interface{} { return x })
+
+	result := pattern.Matches(42)
+	assert.False(t, result)
+
+	result = pattern.Matches(nil)
+	assert.False(t, result)
+}
+
+func TestRegexPatternMatchesInvalidRegex(t *testing.T) {
+	pattern := InCaseOfRegex("[invalid", func(x interface{}) interface{} { return x })
+	result := pattern.Matches("test")
+	assert.False(t, result)
+}
+
+func TestMatchForWithCompTypePtr(t *testing.T) {
+	compType := DefProduct(reflect.Int, reflect.String)
+	data := NewCompData(compType, 1, "hello")
+	patterns := []Pattern{
+		InCaseOfSumType(compType, func(x interface{}) interface{} { return "matched" }),
+	}
+	result := DefPattern(patterns...).MatchFor(data)
+	assert.Equal(t, "matched", result)
+}
+
+func TestMatchForWithNilPtrInput(t *testing.T) {
+	var nilPtr *int = nil
+	patterns := []Pattern{
+		InCaseOfKind(reflect.Ptr, func(x interface{}) interface{} { return "ptr" }),
+		Otherwise(func(x interface{}) interface{} { return "other" }),
+	}
+	result := DefPattern(patterns...).MatchFor(nilPtr)
+	assert.Equal(t, "other", result)
+}
+
+func TestPMapNoOrderEmptyList(t *testing.T) {
+	result := PMap(func(a int) int { return a + 1 }, &PMapOption{RandomOrder: true})
+	assert.Equal(t, []int{}, result)
+}
+
+func TestPMapNoOrderWithEmptyListFixedPool(t *testing.T) {
+	result := PMap(func(a int) int { return a + 1 }, &PMapOption{FixedPool: 2, RandomOrder: true})
+	assert.Equal(t, []int{}, result)
+}
+
+func TestDifferenceMultipleArrays(t *testing.T) {
+	result := Difference([]int{1, 2, 3}, []int{4, 5}, []int{6, 7})
+	assert.Equal(t, []int{1, 2, 3}, result)
+}
+
+func TestDifferenceNoArgs(t *testing.T) {
+	result := Difference[int]()
+	assert.Equal(t, []int{}, result)
+}
+
+func TestPMapNoOrderWorkerGtListLen(t *testing.T) {
+	result := PMap(func(a int) int { return a + 1 }, &PMapOption{FixedPool: 100, RandomOrder: true}, 1, 2, 3)
+	sorted := SortOrderedAscending(result...)
+	assert.Equal(t, []int{2, 3, 4}, sorted)
+}
+
+func TestPMapNoOrderEmptyListRandomOrder(t *testing.T) {
+	result := PMap(func(a int) int { return a + 1 }, &PMapOption{RandomOrder: true})
+	assert.Len(t, result, 0)
+}
+
+func TestPMapNoOrderCalledDirectly(t *testing.T) {
+	result := pMapNoOrder(func(a int) int { return a + 1 }, []int{1, 2, 3}, 10)
+	sorted := SortOrderedAscending(result...)
+	assert.Equal(t, []int{2, 3, 4}, sorted)
 }

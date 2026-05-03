@@ -4,6 +4,7 @@ import (
 	"errors"
 	"math"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -2892,6 +2893,923 @@ func TestSomeDefToInt64WithUintOverflow(t *testing.T) {
 	if math.MaxUint > math.MaxInt64 {
 		m := JustGenerics(uint(math.MaxUint))
 		_, err := m.ToInt64()
+		assert.Equal(t, ErrConversionSizeOverflow, err)
+	}
+}
+
+func TestSomeDefToBoolWithFloat32(t *testing.T) {
+	m := JustGenerics(float32(1.5))
+	val, err := m.ToBool()
+	assert.True(t, val)
+	assert.Nil(t, err)
+}
+
+func TestSomeDefToBoolWithFloat64(t *testing.T) {
+	m := JustGenerics(float64(0))
+	val, err := m.ToBool()
+	assert.False(t, val)
+	assert.Nil(t, err)
+}
+
+func TestSomeDefToBoolWithInt16(t *testing.T) {
+	m := JustGenerics(int16(0))
+	val, err := m.ToBool()
+	assert.False(t, val)
+	assert.Nil(t, err)
+}
+
+func TestSomeDefToBoolWithInt8(t *testing.T) {
+	m := JustGenerics(int8(1))
+	val, err := m.ToBool()
+	assert.True(t, val)
+	assert.Nil(t, err)
+}
+
+func TestSomeDefToBoolWithInt32(t *testing.T) {
+	m := JustGenerics(int32(0))
+	val, err := m.ToBool()
+	assert.False(t, val)
+	assert.Nil(t, err)
+}
+
+func TestSomeDefToBoolWithInt64(t *testing.T) {
+	m := JustGenerics(int64(1))
+	val, err := m.ToBool()
+	assert.True(t, val)
+	assert.Nil(t, err)
+}
+
+func TestSomeDefToBoolWithUint16(t *testing.T) {
+	m := JustGenerics(uint16(0))
+	val, err := m.ToBool()
+	assert.False(t, val)
+	assert.Nil(t, err)
+}
+
+func TestSomeDefToBoolWithUint32(t *testing.T) {
+	m := JustGenerics(uint32(1))
+	val, err := m.ToBool()
+	assert.True(t, val)
+	assert.Nil(t, err)
+}
+
+func TestSomeDefToBoolWithUint64(t *testing.T) {
+	m := JustGenerics(uint64(0))
+	val, err := m.ToBool()
+	assert.False(t, val)
+	assert.Nil(t, err)
+}
+
+func TestSomeDefToBoolWithUintptr(t *testing.T) {
+	m := JustGenerics(uintptr(1))
+	val, err := m.ToBool()
+	assert.True(t, val)
+	assert.Nil(t, err)
+}
+
+func TestNoneDefLet(t *testing.T) {
+	None.Let(func() { t.Error("should not call") })
+}
+
+func TestNoneDefCloneTo(t *testing.T) {
+	result := None.CloneTo(nil)
+	assert.True(t, result.IsNil())
+}
+
+func TestSomeDefUnwrapInterfaceNonNil(t *testing.T) {
+	m := JustGenerics(42)
+	val := m.UnwrapInterface()
+	assert.Equal(t, 42, val)
+}
+
+func TestSomeDefUnwrapInterfaceNilPtr(t *testing.T) {
+	var p *int
+	m := JustGenerics(p)
+	val := m.UnwrapInterface()
+	assert.Nil(t, val)
+}
+
+func TestSomeDefToPtrWithInt8(t *testing.T) {
+	var v int8 = 42
+	m := JustGenerics(v)
+	ptr := m.ToPtr()
+	assert.NotNil(t, ptr)
+	assert.Equal(t, int8(42), *ptr)
+}
+
+func TestSomeDefToPtrWithString(t *testing.T) {
+	m := JustGenerics("hello")
+	ptr := m.ToPtr()
+	assert.NotNil(t, ptr)
+	assert.Equal(t, "hello", *ptr)
+}
+
+func TestSomeDefToStringWithComplex(t *testing.T) {
+	type testStruct struct{ X int }
+	m := JustGenerics(testStruct{42})
+	assert.Equal(t, "{42}", m.ToString())
+}
+
+// ====== Targeted coverage: ToInt32 branches ======
+
+func TestToInt32WithUint16(t *testing.T) {
+	m := JustGenerics(uint16(42))
+	val, err := m.ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(42), val)
+}
+
+func TestToInt32WithUint(t *testing.T) {
+	m := JustGenerics(uint(42))
+	val, err := m.ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(42), val)
+}
+
+func TestToInt32WithByte(t *testing.T) {
+	m := JustGenerics(byte(200))
+	val, err := m.ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(200), val)
+}
+
+func TestToInt32WithInt(t *testing.T) {
+	m := JustGenerics(42)
+	val, err := m.ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(42), val)
+}
+
+func TestToInt32WithInt8(t *testing.T) {
+	m := JustGenerics(int8(42))
+	val, err := m.ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(42), val)
+}
+
+func TestToInt32WithInt16(t *testing.T) {
+	m := JustGenerics(int16(42))
+	val, err := m.ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(42), val)
+}
+
+func TestToInt32WithInt64(t *testing.T) {
+	m := JustGenerics(int64(42))
+	val, err := m.ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(42), val)
+}
+
+func TestToInt32WithFloat32(t *testing.T) {
+	m := JustGenerics(float32(42.5))
+	val, err := m.ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(43), val)
+}
+
+// ====== Targeted coverage: ToInt64 branches ======
+
+func TestToInt64WithUint16(t *testing.T) {
+	m := JustGenerics(uint16(42))
+	val, err := m.ToInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(42), val)
+}
+
+func TestToInt64WithUint32(t *testing.T) {
+	m := JustGenerics(uint32(42))
+	val, err := m.ToInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(42), val)
+}
+
+func TestToInt64WithUintOverflow(t *testing.T) {
+	if math.MaxUint > math.MaxInt64 {
+		m := JustGenerics(uint(math.MaxUint))
+		_, err := m.ToInt64()
+		assert.Equal(t, ErrConversionSizeOverflow, err)
+	}
+}
+
+// ====== Targeted coverage: ToInt branches ======
+
+func TestToIntWithUint16(t *testing.T) {
+	m := JustGenerics(uint16(42))
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 42, val)
+}
+
+func TestToIntWithInt8(t *testing.T) {
+	m := JustGenerics(int8(42))
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 42, val)
+}
+
+func TestToIntWithString(t *testing.T) {
+	m := JustGenerics("123")
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 123, val)
+}
+
+func TestToIntWithBoolTrue(t *testing.T) {
+	m := JustGenerics(true)
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 1, val)
+}
+
+func TestToIntWithBoolFalse(t *testing.T) {
+	m := JustGenerics(false)
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 0, val)
+}
+
+func TestToIntWithByte(t *testing.T) {
+	m := JustGenerics(byte(42))
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 42, val)
+}
+
+func TestToIntWithInt32Overflow(t *testing.T) {
+	// int32 always fits in int on all Go platforms, so this should succeed
+	m := JustGenerics(int32(math.MinInt32))
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, int(math.MinInt32), val)
+}
+
+func TestToIntWithFloat32(t *testing.T) {
+	m := JustGenerics(float32(42.5))
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 43, val)
+}
+
+// ====== Targeted coverage: ToByte branches ======
+
+func TestToByteWithUint32Negative(t *testing.T) {
+	m := JustGenerics(int32(-1))
+	_, err := m.ToByte()
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted coverage: ToUint branches ======
+
+func TestToUintWithUint32(t *testing.T) {
+	m := JustGenerics(uint32(42))
+	val, err := m.ToUint()
+	assert.NoError(t, err)
+	assert.Equal(t, uint(42), val)
+}
+
+func TestToUintWithUint16(t *testing.T) {
+	m := JustGenerics(uint16(42))
+	val, err := m.ToUint()
+	assert.NoError(t, err)
+	assert.Equal(t, uint(42), val)
+}
+
+func TestToUintWithByte(t *testing.T) {
+	m := JustGenerics(byte(42))
+	val, err := m.ToUint()
+	assert.NoError(t, err)
+	assert.Equal(t, uint(42), val)
+}
+
+func TestToUintWithBoolTrue(t *testing.T) {
+	m := JustGenerics(true)
+	val, err := m.ToUint()
+	assert.NoError(t, err)
+	assert.Equal(t, uint(1), val)
+}
+
+// ====== Targeted coverage: ToUint16 branches ======
+
+func TestToUint16WithInt8(t *testing.T) {
+	m := JustGenerics(int8(42))
+	val, err := m.ToUint16()
+	assert.NoError(t, err)
+	assert.Equal(t, uint16(42), val)
+}
+
+func TestToUint16WithByte(t *testing.T) {
+	m := JustGenerics(byte(200))
+	val, err := m.ToUint16()
+	assert.NoError(t, err)
+	assert.Equal(t, uint16(200), val)
+}
+
+func TestToUint16WithInt32(t *testing.T) {
+	m := JustGenerics(int32(42))
+	val, err := m.ToUint16()
+	assert.NoError(t, err)
+	assert.Equal(t, uint16(42), val)
+}
+
+// ====== Targeted coverage: ToUint32 branches ======
+
+func TestToUint32WithInt8(t *testing.T) {
+	m := JustGenerics(int8(42))
+	val, err := m.ToUint32()
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(42), val)
+}
+
+// ====== Targeted coverage: ToUint64 branches ======
+
+func TestToUint64WithUint32(t *testing.T) {
+	m := JustGenerics(uint32(42))
+	val, err := m.ToUint64()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(42), val)
+}
+
+// ====== Targeted coverage: ToUintptr branches ======
+
+func TestToUintptrWithUint32(t *testing.T) {
+	m := JustGenerics(uint32(42))
+	val, err := m.ToUintptr()
+	assert.NoError(t, err)
+	assert.Equal(t, uintptr(42), val)
+}
+
+// ====== Targeted coverage: ToBool branches ======
+
+func TestToBoolWithInt(t *testing.T) {
+	m := JustGenerics(0)
+	val, err := m.ToBool()
+	assert.NoError(t, err)
+	assert.False(t, val)
+}
+
+func TestToBoolWithUint(t *testing.T) {
+	m := JustGenerics(uint(1))
+	val, err := m.ToBool()
+	assert.NoError(t, err)
+	assert.True(t, val)
+}
+
+func TestToBoolWithStringFalse(t *testing.T) {
+	m := JustGenerics("false")
+	val, err := m.ToBool()
+	assert.NoError(t, err)
+	assert.False(t, val)
+}
+
+// ====== Targeted coverage: ToPtr branches ======
+
+func TestSomeDefToPtrWithPtrInside(t *testing.T) {
+	var val int = 42
+	m := JustGenerics(&val)
+	ptr := m.ToPtr()
+	assert.NotNil(t, ptr)
+	assert.Equal(t, 42, **ptr)
+}
+
+// ====== Targeted coverage: ToInt64 branch expansion ======
+
+func TestToInt64WithString(t *testing.T) {
+	m := JustGenerics("999")
+	val, err := m.ToInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(999), val)
+}
+
+func TestToInt64WithByte(t *testing.T) {
+	m := JustGenerics(byte(42))
+	val, err := m.ToInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(42), val)
+}
+
+func TestToInt64WithInt8(t *testing.T) {
+	m := JustGenerics(int8(42))
+	val, err := m.ToInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(42), val)
+}
+
+func TestToInt64WithInt16(t *testing.T) {
+	m := JustGenerics(int16(42))
+	val, err := m.ToInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(42), val)
+}
+
+func TestToInt64WithInt32(t *testing.T) {
+	m := JustGenerics(int32(42))
+	val, err := m.ToInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(42), val)
+}
+
+func TestToInt64WithBoolFalse(t *testing.T) {
+	m := JustGenerics(false)
+	val, err := m.ToInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), val)
+}
+
+func TestToInt64WithFloat32Success(t *testing.T) {
+	m := JustGenerics(float32(42.5))
+	val, err := m.ToInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(43), val)
+}
+
+func TestToInt64WithFloat64Success(t *testing.T) {
+	m := JustGenerics(float64(42.5))
+	val, err := m.ToInt64()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(43), val)
+}
+
+// ====== Targeted coverage: ToInt32 branch expansion ======
+
+func TestToInt32WithString(t *testing.T) {
+	m := JustGenerics("42")
+	val, err := m.ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(42), val)
+}
+
+func TestToInt32WithBoolFalse(t *testing.T) {
+	m := JustGenerics(false)
+	val, err := m.ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(0), val)
+}
+
+// ====== Targeted coverage: ToInt8 branch expansion ======
+
+func TestToInt8WithUint16(t *testing.T) {
+	m := JustGenerics(uint16(42))
+	val, err := m.ToInt8()
+	assert.NoError(t, err)
+	assert.Equal(t, int8(42), val)
+}
+
+func TestToInt8WithUint32(t *testing.T) {
+	m := JustGenerics(uint32(42))
+	val, err := m.ToInt8()
+	assert.NoError(t, err)
+	assert.Equal(t, int8(42), val)
+}
+
+func TestToInt8WithInt32Success(t *testing.T) {
+	m := JustGenerics(int32(42))
+	val, err := m.ToInt8()
+	assert.NoError(t, err)
+	assert.Equal(t, int8(42), val)
+}
+
+func TestToInt8WithFloat64(t *testing.T) {
+	m := JustGenerics(float64(42.5))
+	val, err := m.ToInt8()
+	assert.NoError(t, err)
+	assert.Equal(t, int8(43), val)
+}
+
+func TestToInt8WithByteOverflow(t *testing.T) {
+	m := JustGenerics(byte(200))
+	_, err := m.ToInt8()
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted coverage: ToInt branch expansion ======
+
+func TestToIntWithUint32(t *testing.T) {
+	m := JustGenerics(uint32(42))
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 42, val)
+}
+
+func TestToIntWithUintptr(t *testing.T) {
+	m := JustGenerics(uintptr(42))
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 42, val)
+}
+
+func TestToIntWithInt16(t *testing.T) {
+	m := JustGenerics(int16(42))
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 42, val)
+}
+
+func TestToIntWithInt32(t *testing.T) {
+	m := JustGenerics(int32(42))
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 42, val)
+}
+
+func TestToIntWithStringValue(t *testing.T) {
+	m := JustGenerics("42")
+	val, err := m.ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 42, val)
+}
+
+// ====== Targeted coverage: ToPtr IsPtr=true + case T branches ======
+
+func TestSomeDefToPtrWithInterfaceT(t *testing.T) {
+	var val int = 42
+	m := JustGenerics[interface{}](&val)
+	ptr := m.ToPtr()
+	assert.NotNil(t, ptr)
+	assert.Equal(t, 42, (*ptr).(int))
+}
+
+func TestSomeDefToPtrWithStarInterfaceT(t *testing.T) {
+	var val int = 42
+	var interfaceVal interface{} = val
+	ptrToInterface := &interfaceVal
+	m := JustGenerics[interface{}](&ptrToInterface)
+	ptr := m.ToPtr()
+	assert.NotNil(t, ptr)
+	assert.Equal(t, 42, (*ptr).(int))
+}
+
+// ====== Targeted overflow branches for ToInt ======
+
+func TestToIntWithUintOverflow(t *testing.T) {
+	val, err := JustGenerics(uint(math.MaxInt32 + 1)).ToInt()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToIntWithUint32Overflow(t *testing.T) {
+	val, err := JustGenerics(uint32(math.MaxInt32 + 1)).ToInt()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToIntWithFloat32Overflow(t *testing.T) {
+	val, err := JustGenerics(float32(math.MaxInt32 * 2)).ToInt()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToIntWithFloat64Overflow(t *testing.T) {
+	val, err := JustGenerics(float64(math.MaxInt32 * 2)).ToInt()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted overflow branches for ToInt8 ======
+
+func TestToInt8WithFloat32Overflow(t *testing.T) {
+	val, err := JustGenerics(float32(200)).ToInt8()
+	assert.Equal(t, int8(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToInt8WithInt16Overflow(t *testing.T) {
+	val, err := JustGenerics(int16(200)).ToInt8()
+	assert.Equal(t, int8(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted branches for ToInt64 ======
+
+func TestToInt64WithFloat64Overflow(t *testing.T) {
+	// float64(math.MaxUint64) = 2^64 which exceeds math.MaxInt64 (2^63-1), triggering overflow.
+	// Using math.MaxUint64 because float64(math.MaxInt64) rounds to the same float64 as
+	// float64(math.MaxInt64) in the comparison (both become 2^63), so it would NOT overflow.
+	val, err := JustGenerics(float64(math.MaxUint64)).ToInt64()
+	assert.Equal(t, int64(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToInt64WithUintSuccess(t *testing.T) {
+	val, err := JustGenerics(uint(42)).ToInt64()
+	assert.Equal(t, int64(42), val)
+	assert.NoError(t, err)
+}
+
+// ====== Targeted overflow branches for ToByte ======
+
+func TestToByteWithFloat64Overflow(t *testing.T) {
+	val, err := JustGenerics(float64(300)).ToByte()
+	assert.Equal(t, byte(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted overflow branches for ToUint ======
+
+func TestToUintWithUint64Overflow(t *testing.T) {
+	val, err := JustGenerics(uint64(math.MaxUint32 + 1)).ToUint()
+	assert.Equal(t, uint(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted overflow branches for ToUint16 ======
+
+func TestToUint16WithUint32Overflow(t *testing.T) {
+	val, err := JustGenerics(uint32(math.MaxUint16 + 1)).ToUint16()
+	assert.Equal(t, uint16(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted overflow branches for ToUint32 ======
+
+func TestToUint32WithInt64Overflow(t *testing.T) {
+	val, err := JustGenerics(int64(math.MaxUint32 + 1)).ToUint32()
+	assert.Equal(t, uint32(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted overflow branches for ToUintptr ======
+
+func TestToUintptrWithUint64Overflow(t *testing.T) {
+	val, err := JustGenerics(uint64(math.MaxUint64)).ToUintptr()
+	maxUintptr := uint64(^uintptr(0))
+	if uint64(math.MaxUint64) > maxUintptr {
+		assert.Equal(t, uintptr(0), val)
+		assert.Equal(t, ErrConversionSizeOverflow, err)
+	} else {
+		assert.Equal(t, uintptr(math.MaxUint64), val)
+		assert.NoError(t, err)
+	}
+}
+
+// ====== Targeted overflow branches for ToInt (int64) ======
+
+func TestToIntWithInt64Overflow(t *testing.T) {
+	val, err := JustGenerics(int64(math.MaxInt32) + 1).ToInt()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToIntWithInt64Underflow(t *testing.T) {
+	val, err := JustGenerics(int64(math.MinInt32) - 1).ToInt()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted overflow branches for ToInt8 ======
+
+func TestToInt8WithInt32Overflow(t *testing.T) {
+	val, err := JustGenerics(int32(200)).ToInt8()
+	assert.Equal(t, int8(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToInt8WithInt64Overflow(t *testing.T) {
+	val, err := JustGenerics(int64(200)).ToInt8()
+	assert.Equal(t, int8(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToInt8WithFloat64Overflow(t *testing.T) {
+	val, err := JustGenerics(float64(200)).ToInt8()
+	assert.Equal(t, int8(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted overflow branches for ToInt16 ======
+
+func TestToInt16WithInt32Overflow(t *testing.T) {
+	val, err := JustGenerics(int32(70000)).ToInt16()
+	assert.Equal(t, int16(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToInt16WithInt64Overflow(t *testing.T) {
+	val, err := JustGenerics(int64(70000)).ToInt16()
+	assert.Equal(t, int16(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToInt16WithFloat32Overflow(t *testing.T) {
+	val, err := JustGenerics(float32(70000)).ToInt16()
+	assert.Equal(t, int16(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToInt16WithFloat64Overflow(t *testing.T) {
+	val, err := JustGenerics(float64(70000)).ToInt16()
+	assert.Equal(t, int16(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted overflow/success branches for ToInt32 ======
+
+func TestToInt32WithIntOverflow(t *testing.T) {
+	if strconv.IntSize == 64 {
+		val, err := JustGenerics(int(math.MaxInt32) + 1).ToInt32()
+		assert.Equal(t, int32(0), val)
+		assert.Equal(t, ErrConversionSizeOverflow, err)
+	}
+}
+
+// ====== Targeted success branches for ToInt64 ======
+
+func TestToInt64WithUint64Success(t *testing.T) {
+	val, err := JustGenerics(uint64(42)).ToInt64()
+	assert.Equal(t, int64(42), val)
+	assert.NoError(t, err)
+}
+
+func TestToInt64WithBoolTrue(t *testing.T) {
+	val, err := JustGenerics(true).ToInt64()
+	assert.Equal(t, int64(1), val)
+	assert.NoError(t, err)
+}
+
+// ====== Targeted overflow branches for ToByte ======
+
+func TestToByteWithInt32Overflow(t *testing.T) {
+	val, err := JustGenerics(int32(300)).ToByte()
+	assert.Equal(t, byte(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted overflow branches for ToUint ======
+
+func TestToUintWithUintptrOverflow(t *testing.T) {
+	if ^uintptr(0) > math.MaxUint32 {
+		val, err := JustGenerics(uintptr(uint64(math.MaxUint32) + 1)).ToUint()
+		assert.Equal(t, uint(0), val)
+		assert.Equal(t, ErrConversionSizeOverflow, err)
+	}
+}
+
+// ====== Targeted overflow branches for ToUint16 ======
+
+func TestToUint16WithInt32Overflow(t *testing.T) {
+	val, err := JustGenerics(int32(70000)).ToUint16()
+	assert.Equal(t, uint16(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToUint16WithInt64Overflow(t *testing.T) {
+	val, err := JustGenerics(int64(70000)).ToUint16()
+	assert.Equal(t, uint16(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToUint16WithFloat32Overflow(t *testing.T) {
+	val, err := JustGenerics(float32(70000)).ToUint16()
+	assert.Equal(t, uint16(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToUint16WithFloat64Overflow(t *testing.T) {
+	val, err := JustGenerics(float64(70000)).ToUint16()
+	assert.Equal(t, uint16(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted overflow branches for ToUint32 ======
+
+func TestToUint32WithFloat32Overflow(t *testing.T) {
+	// MaxUint32 rounds up to 2^32 in float32, so use a value > 2^32 to overflow
+	val, err := JustGenerics(float32(1 << 33)).ToUint32()
+	assert.Equal(t, uint32(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToUint32WithUintptrOverflow(t *testing.T) {
+	if ^uintptr(0) > math.MaxUint32 {
+		val, err := JustGenerics(uintptr(uint64(math.MaxUint32) + 1)).ToUint32()
+		assert.Equal(t, uint32(0), val)
+		assert.Equal(t, ErrConversionSizeOverflow, err)
+	}
+}
+
+func TestToUint32WithIntOverflow(t *testing.T) {
+	if strconv.IntSize == 64 {
+		val, err := JustGenerics(int(uint64(math.MaxUint32) + 1)).ToUint32()
+		assert.Equal(t, uint32(0), val)
+		assert.Equal(t, ErrConversionSizeOverflow, err)
+	}
+}
+
+// ====== Targeted overflow branches for ToUint64 ======
+
+func TestToUint64WithFloat32Overflow(t *testing.T) {
+	// 1e20 > math.MaxUint64 (~1.8e19), triggers overflow in float32 comparison
+	val, err := JustGenerics(float32(1e20)).ToUint64()
+	assert.Equal(t, uint64(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+// ====== Targeted coverage: ToBool non-zero paths ======
+
+func TestToBoolWithIntNonZero(t *testing.T) {
+	m := JustGenerics(5)
+	val, err := m.ToBool()
+	assert.NoError(t, err)
+	assert.True(t, val)
+}
+
+// ====== Targeted coverage: ToFloat64/ToFloat32 plain int path ======
+
+func TestToFloat64WithIntZero(t *testing.T) {
+	m := JustGenerics(0)
+	val, err := m.ToFloat64()
+	assert.NoError(t, err)
+	assert.Equal(t, 0.0, val)
+}
+
+func TestToFloat32WithIntZero(t *testing.T) {
+	m := JustGenerics(0)
+	val, err := m.ToFloat32()
+	assert.NoError(t, err)
+	assert.Equal(t, float32(0.0), val)
+}
+
+func TestToIntWithFloat32Underflow(t *testing.T) {
+	val, err := JustGenerics(float32(math.MinInt32) * 2).ToInt()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToIntWithFloat64Underflow(t *testing.T) {
+	val, err := JustGenerics(float64(math.MinInt32) * 2).ToInt()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToByteWithUint16Overflow(t *testing.T) {
+	val, err := JustGenerics(uint16(256)).ToByte()
+	assert.Equal(t, byte(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToByteWithUint32Overflow(t *testing.T) {
+	val, err := JustGenerics(uint32(256)).ToByte()
+	assert.Equal(t, byte(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToByteWithUint64Overflow(t *testing.T) {
+	val, err := JustGenerics(uint64(256)).ToByte()
+	assert.Equal(t, byte(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToByteWithUintptrOverflow(t *testing.T) {
+	val, err := JustGenerics(uintptr(256)).ToByte()
+	assert.Equal(t, byte(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToByteWithInt16Overflow(t *testing.T) {
+	val, err := JustGenerics(int16(256)).ToByte()
+	assert.Equal(t, byte(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToByteWithInt64Overflow(t *testing.T) {
+	val, err := JustGenerics(int64(256)).ToByte()
+	assert.Equal(t, byte(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToByteWithFloat32Overflow(t *testing.T) {
+	val, err := JustGenerics(float32(256)).ToByte()
+	assert.Equal(t, byte(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToInt64WithUintptrOverflowLarge(t *testing.T) {
+	val, err := JustGenerics(uintptr(^uintptr(0))).ToInt64()
+	if uint64(^uintptr(0)) > math.MaxInt64 {
+		assert.Equal(t, int64(0), val)
+		assert.Equal(t, ErrConversionSizeOverflow, err)
+	} else {
+		assert.NoError(t, err)
+	}
+}
+
+func TestToInt64WithFloat32OverflowLarge(t *testing.T) {
+	val, err := JustGenerics(float32(math.MaxUint64)).ToInt64()
+	assert.Equal(t, int64(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToUint64WithFloat64Overflow(t *testing.T) {
+	val, err := JustGenerics(float64(math.MaxUint64) * 2.0).ToUint64()
+	assert.Equal(t, uint64(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestToUintptrWithInt64Overflow(t *testing.T) {
+	maxUintptr := ^uintptr(0)
+	if uint64(maxUintptr) < math.MaxInt64 {
+		val, err := JustGenerics(int64(1 << 40)).ToUintptr()
+		assert.Equal(t, uintptr(0), val)
 		assert.Equal(t, ErrConversionSizeOverflow, err)
 	}
 }

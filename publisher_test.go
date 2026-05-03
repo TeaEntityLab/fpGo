@@ -2,6 +2,7 @@ package fpgo
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -116,4 +117,31 @@ func TestPublisherSubscribeOnHandler(t *testing.T) {
 
 	p2 := p.SubscribeOn(h)
 	assert.NotNil(t, p2)
+}
+
+func TestPublisherPublishWithSubOn(t *testing.T) {
+	p := Publisher.New()
+	p2 := p.SubscribeOn(Handler.GetDefault())
+
+	done := make(chan struct{})
+	p2.Subscribe(Subscription[interface{}]{
+		OnNext: func(in interface{}) {
+			close(done)
+		},
+	})
+
+	p.Publish(1)
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for async handler")
+	}
+}
+
+func TestPublisherPublishNilSubscriber(t *testing.T) {
+	p := Publisher.New()
+
+	assert.NotPanics(t, func() {
+		p.Publish(1)
+	})
 }

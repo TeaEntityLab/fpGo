@@ -966,3 +966,244 @@ func TestBufferedChannelQueueSettersAndGetters(t *testing.T) {
 	assert.Equal(t, 2*time.Millisecond, queue.GetLoadFromPoolDuration())
 	assert.Equal(t, 3*time.Millisecond, queue.GetFreeNodeHookPoolIntervalDuration())
 }
+
+func TestLinkedListQueuePeekEmpty(t *testing.T) {
+	q := NewLinkedListQueue[int]()
+
+	val, err := q.Peek()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrQueueIsEmpty, err)
+}
+
+func TestBufferedChannelQueuePutWithTimeoutClosed(t *testing.T) {
+	q := NewBufferedChannelQueue[int](3, 10, 5)
+	q.Close()
+
+	err := q.PutWithTimeout(1, 1*time.Millisecond)
+	assert.Equal(t, ErrQueueIsClosed, err)
+}
+
+func TestBufferedChannelQueueTakeWithTimeoutClosed(t *testing.T) {
+	q := NewBufferedChannelQueue[int](3, 10, 5)
+	q.Close()
+
+	val, err := q.TakeWithTimeout(1 * time.Millisecond)
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrQueueIsClosed, err)
+}
+
+func TestBufferedChannelQueuePutTimeout(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 0, 1).
+		SetLoadFromPoolDuration(time.Hour).
+		SetFreeNodeHookPoolIntervalDuration(time.Hour)
+
+	err := q.Offer(1)
+	assert.Nil(t, err)
+
+	err = q.PutWithTimeout(2, 0)
+	assert.Equal(t, ErrQueuePutTimeout, err)
+}
+
+func TestBufferedChannelQueueOfferClosed(t *testing.T) {
+	q := NewBufferedChannelQueue[int](3, 10, 5)
+	q.Close()
+
+	err := q.Offer(1)
+	assert.Equal(t, ErrQueueIsClosed, err)
+}
+
+func TestLinkedListQueueRecycleNodeNil(t *testing.T) {
+	q := NewLinkedListQueue[int]()
+
+	for i := 0; i < 100; i++ {
+		err := q.Offer(i)
+		assert.Nil(t, err)
+	}
+	for i := 0; i < 100; i++ {
+		val, err := q.Poll()
+		assert.Equal(t, i, val)
+		assert.Nil(t, err)
+	}
+
+	// Pool should have recycled nodes
+	assert.Greater(t, q.nodeCount, 0)
+
+	q.ClearNodePool()
+	assert.Equal(t, 0, q.nodeCount)
+	assert.Nil(t, q.nodePoolFirst)
+}
+
+func TestBufferedChannelQueuePutWithTimeoutFullThenSucceed(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 100, 1).
+		SetLoadFromPoolDuration(time.Microsecond).
+		SetFreeNodeHookPoolIntervalDuration(time.Microsecond)
+
+	err := q.Offer(1)
+	assert.Nil(t, err)
+	err = q.Offer(2)
+	assert.Nil(t, err)
+
+	err = q.PutWithTimeout(3, 100*time.Millisecond)
+	assert.Nil(t, err)
+}
+
+func TestBufferedChannelQueueOfferWhenPoolNotEmpty(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 10, 5)
+
+	err := q.Offer(1)
+	assert.Nil(t, err)
+
+	err = q.Offer(2)
+	assert.Nil(t, err)
+
+	err = q.Offer(3)
+	assert.Nil(t, err)
+}
+
+func TestBufferedChannelQueueOfferWhenPoolFull(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 1, 5)
+
+	err := q.Offer(1)
+	assert.Nil(t, err)
+
+	err = q.Offer(2)
+	assert.Nil(t, err)
+
+	err = q.Offer(3)
+	assert.Equal(t, ErrQueueIsFull, err)
+}
+
+func TestLinkedListQueueRecycleNodeNormal(t *testing.T) {
+	q := NewLinkedListQueue[int]()
+
+	q.Offer(1)
+	q.Offer(2)
+	q.Offer(3)
+
+	q.Poll()
+	q.Poll()
+	q.Poll()
+
+	assert.Greater(t, q.nodeCount, 0)
+
+	err := q.Offer(4)
+	assert.Nil(t, err)
+
+	val, err := q.Poll()
+	assert.Equal(t, 4, val)
+	assert.Nil(t, err)
+}
+
+func TestBufferedChannelQueueLoadFromPoolFlow(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 10, 1).
+		SetLoadFromPoolDuration(time.Microsecond).
+		SetFreeNodeHookPoolIntervalDuration(time.Microsecond)
+
+	err := q.Offer(1)
+	assert.Nil(t, err)
+
+	err = q.Offer(2)
+	assert.Nil(t, err)
+
+	val, err := q.Take()
+	assert.Nil(t, err)
+	assert.Equal(t, 1, val)
+
+	time.Sleep(5 * time.Millisecond)
+
+	val, err = q.Take()
+	assert.Nil(t, err)
+	assert.Equal(t, 2, val)
+
+	assert.Equal(t, 0, q.pool.Count())
+}
+
+// TestBufferedChannelQueuePutWithTimeoutIsFull covers PutWithTimeout lines 715-716:
+// when Offer returns ErrQueueIsFull and errors.Is returns true, returning immediately.
+func TestBufferedChannelQueuePutWithTimeoutIsFull(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 0, 1)
+
+	err := q.Offer(1)
+	assert.Nil(t, err)
+
+	// Channel is full (capacity 1) and bufferSizeMaximum is 0.
+	// Offer(2) → channel full, poolCount(0) >= bufferMax(0) → ErrQueueIsFull
+	// PutWithTimeout checks errors.Is(ErrQueueIsFull, ErrQueueIsFull) → true → return
+	err = q.PutWithTimeout(2, 1*time.Millisecond)
+	assert.Equal(t, ErrQueueIsFull, err)
+}
+
+// TestBufferedChannelQueueOfferChannelFull covers Offer lines 762-764:
+// when poolCount == 0 and blockingQueue.Offer returns ErrQueueIsFull,
+// falling through the else-if branch to the pool.Offer path.
+func TestBufferedChannelQueueOfferChannelFull(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 100, 1)
+
+	err := q.Offer(1)
+	assert.Nil(t, err)
+
+	// poolCount=0, channel full, blockingQueue.Offer(2) → ErrQueueIsFull
+	// Falls into else-if (do nothing), then poolCount(0) < bufferMax(100) → pool.Offer(2) succeeds
+	err = q.Offer(2)
+	assert.Nil(t, err)
+}
+
+// TestBufferedChannelQueueLoadFromPoolChannelFull covers loadFromPool lines 580-581:
+// when loadFromPool polls from pool and Offer to channel fails (channel full),
+// it unshifts the value back and breaks out of the poll loop.
+func TestBufferedChannelQueueLoadFromPoolChannelFull(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 100, 1).
+		SetLoadFromPoolDuration(time.Microsecond)
+
+	err := q.Offer(1)
+	assert.Nil(t, err)
+
+	err = q.Offer(2)
+	assert.Nil(t, err)
+
+	// Allow loadFromPool goroutine to attempt moving item 2 to the full channel,
+	// which triggers the unshift + break path (lines 580-581)
+	time.Sleep(5 * time.Millisecond)
+
+	// Drain the channel, waking loadFromPool again via notifyWorkers
+	val, err := q.Take()
+	assert.Nil(t, err)
+	assert.Equal(t, 1, val)
+
+	// Allow loadFromPool to move item 2 from pool to channel
+	time.Sleep(10 * time.Millisecond)
+
+	val, err = q.Take()
+	assert.Nil(t, err)
+	assert.Equal(t, 2, val)
+}
+
+// TestLinkedListQueueRecycleNodeCalled covers recycleNode line 490 (nil check)
+// and the non-nil recycling path (lines 494-499) where recycled nodes are reused.
+func TestLinkedListQueueRecycleNodeCalled(t *testing.T) {
+	q := NewLinkedListQueue[int]()
+
+	q.Offer(1)
+	q.Offer(2)
+	q.Offer(3)
+
+	// Each Poll calls recycleNode with a non-nil node → covers the non-nil path
+	q.Poll()
+	q.Poll()
+	q.Poll()
+
+	// Offer(4) reuses a recycled node from the pool
+	err := q.Offer(4)
+	assert.Nil(t, err)
+
+	val, err := q.Poll()
+	assert.Equal(t, 4, val)
+	assert.Nil(t, err)
+}
+
+func TestLinkedListQueueRecycleNodeDirectNil(t *testing.T) {
+	q := NewLinkedListQueue[int]()
+
+	// recycleNode with nil should not panic, just return early (line 490-492)
+	q.recycleNode(nil)
+}

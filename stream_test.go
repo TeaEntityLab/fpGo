@@ -746,3 +746,253 @@ func TestMapSetDefBranchCoverage(t *testing.T) {
 	interEmpty := s.Intersection(SetFromArray[int, bool]([]int{})).(*MapSetDef[int, bool])
 	assert.Equal(t, 0, interEmpty.Size())
 }
+
+func TestStreamConcatEmptySlices(t *testing.T) {
+	s := StreamFromArray([]int{1, 2})
+	result := s.Concat()
+	assert.Equal(t, []int{1, 2}, result.ToArray())
+}
+
+func TestStreamRemoveNegativeIndex(t *testing.T) {
+	s := StreamFromArray([]int{1, 2, 3})
+	result := s.Remove(-1)
+	assert.Equal(t, []int{1, 2, 3}, result.ToArray())
+}
+
+func TestStreamRemoveOutOfBounds(t *testing.T) {
+	s := StreamFromArray([]int{1, 2, 3})
+	result := s.Remove(10)
+	assert.Equal(t, []int{1, 2, 3}, result.ToArray())
+}
+
+func TestStreamRemoveItemEmpty(t *testing.T) {
+	s := StreamFromArray([]int{1, 2, 3})
+	result := s.RemoveItem()
+	assert.Equal(t, []int{1, 2, 3}, result.ToArray())
+}
+
+func TestStreamExtendEmpty(t *testing.T) {
+	s := StreamFromArray([]int{1, 2, 3})
+	result := s.Extend()
+	assert.Equal(t, []int{1, 2, 3}, result.ToArray())
+}
+
+func TestStreamSetAddEmpty(t *testing.T) {
+	s := SetFromArray[int, int]([]int{1, 2})
+	result := s.Add()
+	assert.Equal(t, 2, result.Size())
+}
+
+func TestStreamSetRemoveKeysEmpty(t *testing.T) {
+	s := SetFromArray[int, int]([]int{1, 2})
+	result := s.RemoveKeys()
+	assert.Equal(t, 2, result.Size())
+}
+
+func TestStreamSetRemoveValuesEmpty(t *testing.T) {
+	s := SetFromArray[int, int]([]int{1, 2})
+	result := s.RemoveValues()
+	assert.Equal(t, 2, result.Size())
+}
+
+func TestStreamSetMinusNilInput(t *testing.T) {
+	s := SetFromArray[int, int]([]int{1, 2})
+	result := s.Minus(nil)
+	assert.Equal(t, 2, result.Size())
+}
+
+func TestStreamSetUnionNilInput(t *testing.T) {
+	s := SetFromArray[int, int]([]int{1, 2})
+	result := s.Union(nil)
+	assert.Equal(t, 2, result.Size())
+}
+
+func TestStreamSetIntersectionNilInput(t *testing.T) {
+	s := SetFromArray[int, int]([]int{1, 2})
+	result := s.Intersection(nil)
+	assert.Equal(t, 0, result.Size())
+}
+
+func TestStreamSetUnionWithData(t *testing.T) {
+	ss1 := StreamSetFromArray[int, int]([]int{1, 2})
+	ss2 := StreamSetFromArray[int, int]([]int{2, 3})
+	result := ss1.Union(ss2)
+	assert.Equal(t, 3, result.Size())
+	assert.True(t, result.ContainsKey(1))
+	assert.True(t, result.ContainsKey(2))
+	assert.True(t, result.ContainsKey(3))
+}
+
+func TestStreamSetIntersectionWithData(t *testing.T) {
+	ss1 := StreamSetFromArray[int, int]([]int{1, 2, 3})
+	ss2 := StreamSetFromArray[int, int]([]int{2, 3, 4})
+	result := ss1.Intersection(ss2)
+	assert.Equal(t, 2, result.Size())
+	assert.True(t, result.ContainsKey(2))
+	assert.True(t, result.ContainsKey(3))
+}
+
+func TestStreamSetMinusStreamsWithData(t *testing.T) {
+	ss1 := StreamSetFromArray[int, int]([]int{1, 2})
+	ss1.Get(1).Append(10, 20, 30)
+	ss1.Get(2).Append(40, 50)
+
+	ss2 := StreamSetFromArray[int, int]([]int{1})
+	ss2.Get(1).Append(20, 40)
+
+	result := ss1.MinusStreams(ss2)
+	assert.NotNil(t, result)
+	assert.Equal(t, 2, result.Size())
+	assert.True(t, result.ContainsKey(1))
+	assert.True(t, result.ContainsKey(2))
+}
+
+func TestStreamSetDefMinusStreamsNilInput(t *testing.T) {
+	ss := StreamSetFromArray[int, int]([]int{1, 2})
+	result := ss.MinusStreams(nil)
+	assert.NotNil(t, result)
+	assert.Equal(t, 0, result.Size())
+}
+
+func TestStreamSetDefIntersectionNilInput(t *testing.T) {
+	ss := StreamSetFromArray[int, int]([]int{1, 2})
+	result := ss.Intersection(nil)
+	assert.NotNil(t, result)
+	assert.Equal(t, 0, result.Size())
+}
+
+func TestStreamSetDefUnionNilInput(t *testing.T) {
+	ss := StreamSetFromArray[int, int]([]int{1, 2})
+	result := ss.Union(nil)
+	assert.Equal(t, 2, result.Size())
+}
+
+func TestMapSetDefAddWithExistingKey(t *testing.T) {
+	s := SetFromArray[int, int]([]int{1, 2})
+	result := s.Add(1)
+	assert.Equal(t, 2, result.Size())
+	assert.True(t, result.ContainsKey(1))
+	assert.True(t, result.ContainsKey(2))
+}
+
+func TestStreamSetDefUnionWithStreamData(t *testing.T) {
+	ss1 := StreamSetFromArray[int, int]([]int{1, 2})
+	ss1.Set(1, StreamFrom(10, 20))
+
+	ss2 := StreamSetFromArray[int, int]([]int{1, 3})
+	ss2.Set(1, StreamFrom(30))
+
+	result := ss1.Union(ss2)
+	assert.Equal(t, 3, result.Size())
+	assert.True(t, result.ContainsKey(1))
+	assert.True(t, result.ContainsKey(2))
+	assert.True(t, result.ContainsKey(3))
+
+	v := result.Get(1)
+	assert.NotNil(t, v)
+	assert.Equal(t, 3, v.Len())
+	assert.Equal(t, 10, v.Get(0))
+	assert.Equal(t, 20, v.Get(1))
+	assert.Equal(t, 30, v.Get(2))
+}
+
+func TestStreamSetDefUnionWithNilStream(t *testing.T) {
+	ss1 := StreamSetFromArray[int, int]([]int{1, 2})
+	ss1.Set(1, nil)
+
+	ss2 := StreamSetFromArray[int, int]([]int{1, 3})
+	ss2.Set(1, StreamFrom(10))
+
+	result := ss1.Union(ss2)
+	assert.Equal(t, 3, result.Size())
+	assert.True(t, result.ContainsKey(1))
+	assert.True(t, result.ContainsKey(2))
+	assert.True(t, result.ContainsKey(3))
+
+	v := result.Get(1)
+	assert.NotNil(t, v)
+	assert.Equal(t, 1, v.Len())
+	assert.Equal(t, 10, v.Get(0))
+}
+
+func TestStreamSetDefIntersectionWithStreamData(t *testing.T) {
+	ss1 := StreamSetFromArray[int, int]([]int{1, 2, 3})
+	ss1.Set(1, StreamFrom(10, 20, 30))
+	ss1.Set(2, StreamFrom(40, 50))
+
+	ss2 := StreamSetFromArray[int, int]([]int{1, 2, 4})
+	ss2.Set(1, StreamFrom(20, 30, 40))
+	ss2.Set(2, StreamFrom(60))
+
+	result := ss1.Intersection(ss2)
+	assert.Equal(t, 2, result.Size())
+	assert.True(t, result.ContainsKey(1))
+	assert.True(t, result.ContainsKey(2))
+
+	v := result.Get(1)
+	assert.NotNil(t, v)
+	assert.Equal(t, 2, v.Len())
+	assert.Equal(t, 20, v.Get(0))
+	assert.Equal(t, 30, v.Get(1))
+}
+
+func TestStreamSetDefMinusStreamsWithStreamData(t *testing.T) {
+	ss1 := StreamSetFromArray[int, int]([]int{1, 2})
+	ss1.Set(1, StreamFrom(10, 20, 30))
+	ss1.Set(2, StreamFrom(40, 50))
+
+	ss2 := StreamSetFromArray[int, int]([]int{1, 2, 3})
+	ss2.Set(1, StreamFrom(20, 40))
+
+	result := ss1.MinusStreams(ss2)
+	assert.NotNil(t, result)
+	assert.Equal(t, 2, result.Size())
+	assert.True(t, result.ContainsKey(1))
+	assert.True(t, result.ContainsKey(2))
+
+	v := result.Get(1)
+	assert.NotNil(t, v)
+	assert.Equal(t, 2, v.Len())
+	assert.Equal(t, 10, v.Get(0))
+	assert.Equal(t, 30, v.Get(1))
+}
+
+func TestStreamSetDefMinusStreamsWithNilStream(t *testing.T) {
+	ss1 := StreamSetFromArray[int, int]([]int{1, 2})
+	ss1.Set(1, nil)
+
+	ss2 := StreamSetFromArray[int, int]([]int{1})
+	ss2.Set(1, StreamFrom(10, 20))
+
+	result := ss1.MinusStreams(ss2)
+	assert.NotNil(t, result)
+	assert.Equal(t, 2, result.Size())
+	assert.True(t, result.ContainsKey(1))
+	assert.True(t, result.ContainsKey(2))
+}
+
+func TestStreamSetDefIntersectionWithNilStream(t *testing.T) {
+	ss1 := StreamSetFromArray[int, int]([]int{1, 2})
+	ss1.Set(1, nil)
+
+	ss2 := StreamSetFromArray[int, int]([]int{1, 2})
+	ss2.Set(1, StreamFrom(10, 20, 30))
+
+	result := ss1.Intersection(ss2)
+	assert.Equal(t, 2, result.Size())
+	assert.True(t, result.ContainsKey(1))
+	assert.True(t, result.ContainsKey(2))
+
+	v := result.Get(1)
+	assert.NotNil(t, v)
+	assert.Equal(t, 0, v.Len())
+}
+
+func TestStreamExtendWithNilStream(t *testing.T) {
+	s := StreamFromArray([]int{1, 2})
+	result := s.Extend(nil, nil)
+	assert.NotNil(t, result)
+	assert.Equal(t, 2, result.Len())
+	assert.Equal(t, 1, result.Get(0))
+	assert.Equal(t, 2, result.Get(1))
+}

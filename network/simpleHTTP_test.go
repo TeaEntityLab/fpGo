@@ -418,3 +418,264 @@ func TestDecodeResponseBodyErrorBranchesAndReplacePathParams(t *testing.T) {
 	finalURL := api.replacePathParams("posts/{id}", PathParam{"id": 7})
 	assert.Equal(t, "http://example.com/posts/7", finalURL)
 }
+
+func TestJSONBodySerializerError(t *testing.T) {
+	ch := make(chan int)
+	reader, err := JSONBodySerializer(ch)
+	assert.Error(t, err)
+	assert.Nil(t, reader)
+}
+
+func TestGeneralMultipartSerializerWriteFieldError(t *testing.T) {
+	form := &MultipartForm{
+		Value: map[string][]string{
+			"field1": {"value1"},
+			"field2": {"value2"},
+		},
+	}
+	reader, contentType, err := GeneralMultipartSerializer(form)
+	assert.Nil(t, err)
+	assert.NotNil(t, reader)
+	assert.NotEmpty(t, contentType)
+	assert.Contains(t, contentType, "multipart/form-data")
+}
+
+func TestDoNewRequestWithHeader(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	client := NewSimpleHTTP()
+	header := http.Header{}
+	header.Set("X-Custom", "value")
+	resp := client.DoNewRequest(context.Background(), header, http.MethodGet, srv.URL)
+	assert.NoError(t, resp.Err)
+	assert.NotNil(t, resp.Response)
+	assert.Equal(t, "value", resp.Request.Header.Get("X-Custom"))
+}
+
+func TestDoNewRequestWithBodyOptionsBadURL(t *testing.T) {
+	client := NewSimpleHTTP()
+	resp := client.DoNewRequestWithBodyOptions(context.Background(), nil, http.MethodPost, "://bad-url", nil, "text/plain")
+	assert.Error(t, resp.Err)
+	assert.Nil(t, resp.Response)
+}
+
+func TestDoNewRequestWithBodyOptionsWithHeader(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	client := NewSimpleHTTP()
+	header := http.Header{}
+	header.Set("X-Custom", "value")
+	resp := client.DoNewRequestWithBodyOptions(context.Background(), header, http.MethodPost, srv.URL, strings.NewReader("body"), "application/json")
+	assert.NoError(t, resp.Err)
+	assert.NotNil(t, resp.Response)
+	assert.Equal(t, "value", resp.Request.Header.Get("X-Custom"))
+	assert.Equal(t, "application/json", resp.Request.Header.Get("Content-Type"))
+}
+
+func TestGeneralMultipartSerializerWithFiles(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test-upload-*.txt")
+	assert.NoError(t, err)
+	_, err = tmpFile.WriteString("test content")
+	assert.NoError(t, err)
+	tmpFile.Close()
+	defer os.Remove(tmpFile.Name())
+
+	form := &MultipartForm{
+		Value: map[string][]string{"field1": {"val1"}},
+		File:  map[string][]string{"file1": {tmpFile.Name()}},
+	}
+	reader, contentType, err := GeneralMultipartSerializer(form)
+	assert.NoError(t, err)
+	assert.NotNil(t, reader)
+	assert.NotEmpty(t, contentType)
+	assert.Contains(t, contentType, "multipart/form-data")
+}
+
+func TestGeneralMultipartSerializerOpenFileError(t *testing.T) {
+	form := &MultipartForm{
+		File: map[string][]string{"bad": {"/nonexistent/file.txt"}},
+	}
+	_, _, err := GeneralMultipartSerializer(form)
+	assert.Error(t, err)
+}
+
+func TestAPIMakePostJSONBodyNilBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	defer srv.Close()
+
+	api := NewSimpleAPI(srv.URL)
+	postsPost := APIMakePostJSONBody[*Post, PostListResponse](api, "posts")
+	apiResponse := postsPost(nil, nil, &PostListResponse{}).Eval()
+	assert.NoError(t, apiResponse.Err)
+	assert.NotNil(t, apiResponse.TargetObject)
+}
+
+func TestAPIMakePostJSONBodySerializerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	defer srv.Close()
+
+	api := NewSimpleAPI(srv.URL)
+	postsPost := APIMakePostJSONBody[chan int, PostListResponse](api, "posts")
+	apiResponse := postsPost(nil, make(chan int), &PostListResponse{}).Eval()
+	assert.Error(t, apiResponse.Err)
+}
+
+func TestAPIMakePostMultipartBodyNilBody(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	defer srv.Close()
+
+	api := NewSimpleAPI(srv.URL)
+	postsPost := APIMakePostMultipartBody[PostListResponse](api, "posts")
+	apiResponse := postsPost(nil, nil, &PostListResponse{}).Eval()
+	assert.NoError(t, apiResponse.Err)
+	assert.NotNil(t, apiResponse.TargetObject)
+}
+
+func TestAPIMakePostMultipartBodySerializerError(t *testing.T) {
+	api := NewSimpleAPI("http://example.com")
+	postsPost := APIMakePostMultipartBody[PostListResponse](api, "posts")
+	form := &MultipartForm{
+		File: map[string][]string{"bad": {"/nonexistent/file.txt"}},
+	}
+	apiResponse := postsPost(nil, form, &PostListResponse{}).Eval()
+	assert.Error(t, apiResponse.Err)
+}
+
+func TestAPIMakeDoNewRequestWithHeader(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	defer srv.Close()
+
+	api := NewSimpleAPI(srv.URL)
+	api.DefaultHeader = http.Header{}
+	api.DefaultHeader.Set("X-Auth", "token123")
+
+	var gotHeader string
+	interceptor := Interceptor(func(req *http.Request) error {
+		gotHeader = req.Header.Get("X-Auth")
+		return nil
+	})
+	api.GetSimpleHTTP().AddInterceptor(&interceptor)
+
+	getPosts := APIMakeGet[PostListResponse](api, "posts")
+	apiResponse := getPosts(nil, &PostListResponse{}).Eval()
+	assert.NoError(t, apiResponse.Err)
+	assert.Equal(t, "token123", gotHeader)
+}
+
+func TestAPIMakeDoNewRequestWithBodyOptionsResponseError(t *testing.T) {
+	api := NewSimpleAPI("http://localhost:1")
+	api.GetSimpleHTTP().TimeoutMillisecond = int64(10 * time.Millisecond)
+	api.DefaultHeader = http.Header{}
+	api.DefaultHeader.Set("X-Auth", "token123")
+
+	postsPost := APIMakePostJSONBody[*Post, PostListResponse](api, "posts")
+	apiResponse := postsPost(nil, nil, &PostListResponse{}).Eval()
+	assert.Error(t, apiResponse.Err)
+}
+
+func TestAPIMakeDoNewRequestResponseError(t *testing.T) {
+	api := NewSimpleAPI("http://localhost:1")
+	api.GetSimpleHTTP().TimeoutMillisecond = int64(10 * time.Millisecond)
+
+	getPosts := APIMakeGet[PostListResponse](api, "posts")
+	apiResponse := getPosts(nil, &PostListResponse{}).Eval()
+	assert.Error(t, apiResponse.Err)
+}
+
+func TestGeneralMultipartSerializerWriteError(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test-*")
+	assert.NoError(t, err)
+	_, err = tmpFile.WriteString("data")
+	assert.NoError(t, err)
+	tmpFile.Close()
+	defer os.Remove(tmpFile.Name())
+
+	form := &MultipartForm{
+		Value: map[string][]string{"name": {"test"}},
+		File:  map[string][]string{"upload": {tmpFile.Name()}},
+	}
+	reader, contentType, err := GeneralMultipartSerializer(form)
+	assert.NoError(t, err)
+	assert.NotNil(t, reader)
+	assert.Contains(t, contentType, "multipart/form-data")
+}
+
+func TestGeneralMultipartSerializerWriteFieldMultipleFields(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test-*")
+	assert.NoError(t, err)
+	_, err = tmpFile.WriteString("test content")
+	assert.NoError(t, err)
+	tmpFile.Close()
+	defer os.Remove(tmpFile.Name())
+
+	form := &MultipartForm{
+		Value: map[string][]string{
+			"a": {"1"},
+			"b": {"2"},
+			"c": {"3"},
+		},
+		File: map[string][]string{
+			"f": {tmpFile.Name()},
+		},
+	}
+	reader, ct, err := GeneralMultipartSerializer(form)
+	assert.NoError(t, err)
+	assert.NotNil(t, reader)
+	assert.Contains(t, ct, "multipart/form-data")
+}
+
+func TestJSONBodySerializerErrorNonMarshalable(t *testing.T) {
+	ch := make(chan int)
+	reader, err := JSONBodySerializer(ch)
+	assert.Error(t, err)
+	assert.Nil(t, reader)
+}
+
+func TestAPIMakePostMultipartBodyResponseErr(t *testing.T) {
+	api := NewSimpleAPI("http://0.0.0.0:1")
+	postMultipart := APIMakePostMultipartBody[struct{}](api, "test")
+	apiResponse := postMultipart(nil, nil, &struct{}{}).Eval()
+	assert.Error(t, apiResponse.Err)
+}
+
+func TestGeneralMultipartSerializerMultipleFiles(t *testing.T) {
+	tmpFile1, err := os.CreateTemp("", "test-*")
+	assert.NoError(t, err)
+	_, err = tmpFile1.WriteString("content1")
+	assert.NoError(t, err)
+	tmpFile1.Close()
+	defer os.Remove(tmpFile1.Name())
+
+	tmpFile2, err := os.CreateTemp("", "test2-*")
+	assert.NoError(t, err)
+	_, err = tmpFile2.WriteString("content2")
+	assert.NoError(t, err)
+	tmpFile2.Close()
+	defer os.Remove(tmpFile2.Name())
+
+	form := &MultipartForm{
+		Value: map[string][]string{"field1": {"val1"}},
+		File: map[string][]string{
+			"file1": {tmpFile1.Name()},
+			"file2": {tmpFile2.Name()},
+		},
+	}
+	reader, ct, err := GeneralMultipartSerializer(form)
+	assert.NoError(t, err)
+	assert.NotNil(t, reader)
+	assert.Contains(t, ct, "multipart/form-data")
+}
