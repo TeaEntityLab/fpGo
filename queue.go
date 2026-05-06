@@ -568,6 +568,9 @@ func (q *BufferedChannelQueue[T]) loadFromPool() {
 		var pollErr, offerErr error
 
 		for q.pool.Count() > 0 {
+			if q.isClosed.Get() {
+				break
+			}
 			// Try poll from the pool
 			val, pollErr = q.pool.Poll()
 			if pollErr != nil {
@@ -589,6 +592,10 @@ func (q *BufferedChannelQueue[T]) loadFromPool() {
 }
 
 func (q *BufferedChannelQueue[T]) notifyWorkers() {
+	if q.isClosed.Get() {
+		return
+	}
+
 	q.loadWorkerCh.Offer(1)
 	q.freeNodeWorkerCh.Offer(1)
 }
@@ -646,12 +653,16 @@ func (q *BufferedChannelQueue[T]) GetChannel() chan T {
 
 // Count Count items
 func (q *BufferedChannelQueue[T]) Count() int {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+
 	if q.isClosed.Get() {
 		return 0
 	}
 
-	q.lock.RLock()
-	defer q.lock.RUnlock()
+	if q.blockingQueue == nil || q.pool == nil {
+		return 0
+	}
 
 	return len(q.blockingQueue) + q.pool.Count()
 }
@@ -666,8 +677,13 @@ func (q *BufferedChannelQueue[T]) Close() {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
+	if q.isClosed.Get() {
+		return
+	}
+
 	q.isClosed.Set(true)
 	close(q.loadWorkerCh)
+	close(q.freeNodeWorkerCh)
 	close(q.blockingQueue)
 }
 
@@ -696,17 +712,20 @@ func (q *BufferedChannelQueue[T]) Put(val T) error {
 
 // PutWithTimeout Put the T val(blocking), with timeout
 func (q *BufferedChannelQueue[T]) PutWithTimeout(val T, timeout time.Duration) error {
-	//  	q.lock.Lock()
-	//  	defer q.lock.Unlock()
-
 	if q.isClosed.Get() {
 		return ErrQueueIsClosed
 	}
 
 	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		//fmt.Println("iteration")
-		q.loadWorkerCh.Offer(1)
+	for {
+		if q.isClosed.Get() {
+			return ErrQueueIsClosed
+		}
+		if !time.Now().Before(deadline) {
+			break
+		}
+
+		q.notifyWorkers()
 
 		err := q.Offer(val)
 		if err == nil {
@@ -715,11 +734,10 @@ func (q *BufferedChannelQueue[T]) PutWithTimeout(val T, timeout time.Duration) e
 		if errors.Is(err, ErrQueueIsFull) {
 			return err
 		}
-		q.loadWorkerCh.Offer(1)
+
+		q.notifyWorkers()
 		time.Sleep(q.loadFromPoolDuration)
 	}
-
-	//return q.blockingQueue.PutWithTimeout(val, timeout)
 
 	return ErrQueuePutTimeout
 }
@@ -778,7 +796,7 @@ func (q *BufferedChannelQueue[T]) Offer(val T) error {
 	}
 
 	q.pool.Offer(val)
-	q.loadWorkerCh.Offer(1)
+	q.notifyWorkers()
 	return nil
 }
 

@@ -222,6 +222,27 @@ func TestSort(t *testing.T) {
 	assert.Equal(t, "23411", tempString)
 }
 
+func TestStreamEdgeCases(t *testing.T) {
+	base := StreamFrom(1, 2, 3)
+
+	assert.False(t, base.IsSubset(nil))
+	assert.True(t, base.IsSuperset(nil))
+	assert.Equal(t, []int{}, base.Intersection(nil).ToArray())
+	assert.Same(t, base, base.Minus(nil))
+	assert.Same(t, base, base.RemoveItem())
+	assert.Same(t, base, base.Remove(-1))
+	assert.Same(t, base, base.Remove(99))
+	assert.Same(t, base, base.Concat())
+	assert.Same(t, base, base.Extend())
+
+	extended := StreamFrom(1, 2).Extend(nil, StreamFrom(3, 4))
+	assert.Equal(t, []int{1, 2, 3, 4}, extended.ToArray())
+
+	sorted := base.SortByIndex(func(i, j int) bool { return base.Get(i) > base.Get(j) })
+	assert.Equal(t, []int{3, 2, 1}, sorted.ToArray())
+	assert.Equal(t, []int{1, 2, 3}, base.ToArray())
+}
+
 func TestStreamSetOperation(t *testing.T) {
 	var s *StreamDef[int]
 	var s2 *StreamDef[int]
@@ -735,6 +756,11 @@ func TestMapSetDefBranchCoverage(t *testing.T) {
 	assert.True(t, added.ContainsKey(3))
 	same := s.Add().(*MapSetDef[int, bool])
 	assert.True(t, same.ContainsKey(1))
+
+	removedKeysSame := s.RemoveKeys().(*MapSetDef[int, bool])
+	assert.Equal(t, s.Size(), removedKeysSame.Size())
+	removedValuesSame := s.RemoveValues().(*MapSetDef[int, bool])
+	assert.Equal(t, s.Size(), removedValuesSame.Size())
 
 	unionNil := s.Union(nil).(*MapSetDef[int, bool])
 	assert.Equal(t, s.Size(), unionNil.Size())

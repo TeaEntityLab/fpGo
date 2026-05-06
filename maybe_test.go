@@ -105,6 +105,13 @@ func TestLet(t *testing.T) {
 		letVal = 3
 	})
 	assert.Equal(t, 1, letVal)
+
+	letVal = 1
+	noneAsMaybe := None.ToMaybe()
+	noneAsMaybe.Let(func() {
+		letVal = 4
+	})
+	assert.Equal(t, 1, letVal)
 }
 
 func TestType(t *testing.T) {
@@ -323,6 +330,62 @@ func TestCast(t *testing.T) {
 	b, err = m.ToBool()
 	assert.Equal(t, false, b)
 	assert.Equal(t, errors.New("<nil>"), err)
+}
+
+func TestMaybeUnsupportedAndOverflowConversions(t *testing.T) {
+	unsupported := Maybe.Just(errors.New("boom"))
+
+	_, err := unsupported.ToFloat32()
+	assert.Equal(t, ErrConversionUnsupported, err)
+	_, err = unsupported.ToFloat64()
+	assert.Equal(t, ErrConversionUnsupported, err)
+	_, err = unsupported.ToInt()
+	assert.Equal(t, ErrConversionUnsupported, err)
+
+	overflowUint := Maybe.Just(uint(math.MaxUint32))
+	_, err = overflowUint.ToInt()
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+
+	overflowUint32 := Maybe.Just(uint32(math.MaxUint32))
+	_, err = overflowUint32.ToInt()
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+
+	overflowUint64 := Maybe.Just(uint64(math.MaxUint64))
+	_, err = overflowUint64.ToInt()
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+	_, err = overflowUint64.ToUint32()
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+	_, err = overflowUint64.ToUintptr()
+	assert.NoError(t, err)
+
+	negativeFloat := Maybe.Just(float64(-1.2))
+	_, err = negativeFloat.ToUint()
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+	valUint64, err := negativeFloat.ToUint64()
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+	assert.Equal(t, uint64(0), valUint64)
+
+	largeFloat := Maybe.Just(float64(math.MaxFloat64))
+	_, err = largeFloat.ToUint64()
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+
+	_, err = Maybe.Just(uintptr(7)).ToUint64()
+	assert.NoError(t, err)
+	_, err = Maybe.Just(uintptr(7)).ToUint32()
+	assert.NoError(t, err)
+	_, err = Maybe.Just(uintptr(7)).ToUint()
+	assert.NoError(t, err)
+	_, err = Maybe.Just(uintptr(7)).ToInt32()
+	assert.NoError(t, err)
+	valUintptr, err := Maybe.Just(int64(-1)).ToUintptr()
+	assert.NoError(t, err)
+	assert.Equal(t, ^uintptr(0), valUintptr)
+	_, err = Maybe.Just(float64(12.6)).ToUint32()
+	assert.NoError(t, err)
+	_, err = Maybe.Just(float32(12.4)).ToUint64()
+	assert.NoError(t, err)
+	_, err = Maybe.Just(float64(12.6)).ToUintptr()
+	assert.NoError(t, err)
 }
 
 func TestMaybeToPtr(t *testing.T) {
@@ -1677,6 +1740,34 @@ func TestToUintptr(t *testing.T) {
 	assert.Equal(t, ErrConversionUnsupported, err)
 }
 
+func TestMaybeOverflowAndUnsupportedConversions(t *testing.T) {
+	_, err := Maybe.Just(uint64(math.MaxUint64)).ToInt()
+	assert.ErrorIs(t, err, ErrConversionSizeOverflow)
+
+	valInt32, err := Maybe.Just(float64(math.MaxFloat64)).ToInt32()
+	assert.Equal(t, int32(math.MinInt32), valInt32)
+	assert.NoError(t, err)
+
+	valUint, err := Maybe.Just(int64(-1)).ToUint()
+	assert.Equal(t, uint(0), valUint)
+	assert.ErrorIs(t, err, ErrConversionSizeOverflow)
+
+	valUint32, err := Maybe.Just(float64(-1)).ToUint32()
+	assert.Equal(t, uint32(math.MaxUint32), valUint32)
+	assert.NoError(t, err)
+
+	valUint64, err := Maybe.Just(float64(-1)).ToUint64()
+	assert.Equal(t, uint64(0), valUint64)
+	assert.ErrorIs(t, err, ErrConversionSizeOverflow)
+
+	_, err = Maybe.Just("18446744073709551616").ToUintptr()
+	assert.Error(t, err)
+
+	type unsupported struct{}
+	_, err = Maybe.Just(unsupported{}).ToInt()
+	assert.ErrorIs(t, err, ErrConversionUnsupported)
+}
+
 func TestMaybeNoneConversions(t *testing.T) {
 	m := None
 
@@ -1718,6 +1809,10 @@ func TestMaybeNoneConversions(t *testing.T) {
 	assert.Nil(t, m.ToPtr())
 	assert.False(t, m.IsValid())
 	assert.False(t, m.IsPtr())
+
+	called := false
+	m.Let(func() { called = true })
+	assert.False(t, called)
 
 	result := m.Or(42)
 	assert.Equal(t, 42, result)
@@ -3812,4 +3907,102 @@ func TestToUintptrWithInt64Overflow(t *testing.T) {
 		assert.Equal(t, uintptr(0), val)
 		assert.Equal(t, ErrConversionSizeOverflow, err)
 	}
+}
+
+func TestMaybeCoverageDirectBranches(t *testing.T) {
+	valInt, err := JustGenerics(int32(321)).ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 321, valInt)
+
+	valInt32, err := JustGenerics(uint32(321)).ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(321), valInt32)
+
+	valUint, err := JustGenerics(uint32(321)).ToUint()
+	assert.NoError(t, err)
+	assert.Equal(t, uint(321), valUint)
+
+	valUint16, err := JustGenerics(int16(-1)).ToUint16()
+	assert.NoError(t, err)
+	assert.Equal(t, uint16(65535), valUint16)
+
+	valUint32, err := JustGenerics(float64(12.2)).ToUint32()
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(12), valUint32)
+
+	valUint64, err := JustGenerics(uintptr(11)).ToUint64()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(11), valUint64)
+
+	valUintptr32, err := JustGenerics(float32(10.4)).ToUintptr()
+	assert.NoError(t, err)
+	assert.Equal(t, uintptr(10), valUintptr32)
+
+	valUintptr64, err := JustGenerics(float64(10.6)).ToUintptr()
+	assert.NoError(t, err)
+	assert.Equal(t, uintptr(11), valUintptr64)
+}
+
+func TestMaybeCoverageAdditionalConversionBranches(t *testing.T) {
+	valIntFromInt64, err := JustGenerics(int64(77)).ToInt()
+	assert.NoError(t, err)
+	assert.Equal(t, 77, valIntFromInt64)
+
+	valInt32FromUintptr, err := JustGenerics(uintptr(88)).ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(88), valInt32FromUintptr)
+
+	valUintFromUintptr, err := JustGenerics(uintptr(99)).ToUint()
+	assert.NoError(t, err)
+	assert.Equal(t, uint(99), valUintFromUintptr)
+
+	valUint32FromUint64, err := JustGenerics(uint64(111)).ToUint32()
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(111), valUint32FromUint64)
+
+	valUint64FromFloat64, err := JustGenerics(float64(22.4)).ToUint64()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(22), valUint64FromFloat64)
+
+	valUintptrFromUint64, err := JustGenerics(uint64(33)).ToUintptr()
+	assert.NoError(t, err)
+	assert.Equal(t, uintptr(33), valUintptrFromUint64)
+
+	valUintptrFromInt64, err := JustGenerics(int64(44)).ToUintptr()
+	assert.NoError(t, err)
+	assert.Equal(t, uintptr(44), valUintptrFromInt64)
+}
+
+func TestMaybeRemainingBranchCoverage(t *testing.T) {
+	// ToInt int32 overflow branch via direct generic instantiation.
+	_, err := JustGenerics(int32(math.MaxInt32)).ToInt()
+	assert.NoError(t, err)
+
+	// ToUint uint32 success branch through direct conversion.
+	valUint, err := JustGenerics(uint32(123)).ToUint()
+	assert.NoError(t, err)
+	assert.Equal(t, uint(123), valUint)
+
+	// ToUint16 int16 direct branch.
+	valUint16, err := JustGenerics(int16(-1)).ToUint16()
+	assert.NoError(t, err)
+	assert.Equal(t, uint16(65535), valUint16)
+
+	// ToUint32 float64 direct branch.
+	valUint32, err := JustGenerics(float64(7.2)).ToUint32()
+	assert.NoError(t, err)
+	assert.Equal(t, uint32(7), valUint32)
+
+	// ToUint64 uintptr direct branch.
+	valUint64, err := JustGenerics(uintptr(9)).ToUint64()
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(9), valUint64)
+
+	// ToUintptr float32/float64 direct branches.
+	valUintptr32, err := JustGenerics(float32(8.4)).ToUintptr()
+	assert.NoError(t, err)
+	assert.Equal(t, uintptr(8), valUintptr32)
+	valUintptr64, err := JustGenerics(float64(8.6)).ToUintptr()
+	assert.NoError(t, err)
+	assert.Equal(t, uintptr(9), valUintptr64)
 }

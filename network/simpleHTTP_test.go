@@ -254,6 +254,95 @@ func TestSimpleAPIMultipart(t *testing.T) {
 	assert.Equal(t, 0, len(actualForm.File["file"]))
 }
 
+func TestGeneralMultipartSerializerMultipleFilesAndValues(t *testing.T) {
+	file1, err := os.CreateTemp("", "fpgo-multipart-1-*.txt")
+	assert.NoError(t, err)
+	defer os.Remove(file1.Name())
+	_, err = file1.WriteString("first")
+	assert.NoError(t, err)
+	assert.NoError(t, file1.Close())
+
+	file2, err := os.CreateTemp("", "fpgo-multipart-2-*.txt")
+	assert.NoError(t, err)
+	defer os.Remove(file2.Name())
+	_, err = file2.WriteString("second")
+	assert.NoError(t, err)
+	assert.NoError(t, file2.Close())
+
+	reader, contentType, err := GeneralMultipartSerializer(&MultipartForm{
+		Value: map[string][]string{
+			"alpha": {"1", "2"},
+			"beta":  {"x"},
+		},
+		File: map[string][]string{
+			"file": {file1.Name(), file2.Name()},
+		},
+	})
+	assert.NoError(t, err)
+	assert.Contains(t, contentType, "multipart/form-data")
+
+	body, err := io.ReadAll(reader)
+	assert.NoError(t, err)
+	_, params, err := mime.ParseMediaType(contentType)
+	assert.NoError(t, err)
+
+	multipartReader := multipart.NewReader(bytes.NewReader(body), params["boundary"])
+	form, err := multipartReader.ReadForm(1024 * 1024)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"1", "2"}, form.Value["alpha"])
+	assert.Equal(t, []string{"x"}, form.Value["beta"])
+	assert.Len(t, form.File["file"], 2)
+}
+
+func TestGeneralMultipartSerializerMissingFile(t *testing.T) {
+	reader, contentType, err := GeneralMultipartSerializer(&MultipartForm{
+		Value: map[string][]string{"alpha": {"1"}},
+		File:  map[string][]string{"file": {"/definitely/missing/file.txt"}},
+	})
+	assert.Nil(t, reader)
+	assert.Equal(t, "", contentType)
+	assert.Error(t, err)
+}
+
+func TestGeneralMultipartSerializerNilFormPanics(t *testing.T) {
+	assert.Panics(t, func() {
+		_, _, _ = GeneralMultipartSerializer(nil)
+	})
+}
+
+func TestSimpleHTTPRecursiveVisitWithoutTransportPanics(t *testing.T) {
+	client := &SimpleHTTPDef{}
+	req := httptest.NewRequest(http.MethodGet, "http://example.com", nil)
+
+	assert.Panics(t, func() {
+		_, _ = client.RoundTrip(req)
+	})
+}
+
+func TestAPIMakeJSONAndMultipartMethodSelection(t *testing.T) {
+	var methods []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		methods = append(methods, req.Method)
+		_, err := w.Write([]byte(`{"data":[]}`))
+		assert.NoError(t, err)
+	}))
+	defer server.Close()
+
+	api := NewSimpleAPI(server.URL)
+
+	putJSON := APIMakePutJSONBody[Post, PostListResponse](api, "posts")
+	patchJSON := APIMakePatchJSONBody[Post, PostListResponse](api, "posts")
+	putMultipart := APIMakePutMultipartBody[PostListResponse](api, "posts")
+	patchMultipart := APIMakePatchMultipartBody[PostListResponse](api, "posts")
+
+	assert.NoError(t, putJSON(nil, Post{ID: 1}, &PostListResponse{}).Eval().Err)
+	assert.NoError(t, patchJSON(nil, Post{ID: 2}, &PostListResponse{}).Eval().Err)
+	assert.NoError(t, putMultipart(nil, &MultipartForm{Value: map[string][]string{"k": {"v"}}}, &PostListResponse{}).Eval().Err)
+	assert.NoError(t, patchMultipart(nil, &MultipartForm{Value: map[string][]string{"k": {"v"}}}, &PostListResponse{}).Eval().Err)
+
+	assert.Equal(t, []string{http.MethodPost, http.MethodPost, http.MethodPost, http.MethodPost}, methods)
+}
+
 func TestSimpleHTTPInterceptor(t *testing.T) {
 	client := NewSimpleHTTP()
 
@@ -505,6 +594,44 @@ func TestGeneralMultipartSerializerOpenFileError(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestGeneralMultipartSerializerMultipleValuesAndFiles(t *testing.T) {
+	tmpFile1, err := os.CreateTemp("", "test-upload-1-*.txt")
+	assert.NoError(t, err)
+	_, err = tmpFile1.WriteString("first")
+	assert.NoError(t, err)
+	assert.NoError(t, tmpFile1.Close())
+	defer os.Remove(tmpFile1.Name())
+
+	tmpFile2, err := os.CreateTemp("", "test-upload-2-*.txt")
+	assert.NoError(t, err)
+	_, err = tmpFile2.WriteString("second")
+	assert.NoError(t, err)
+	assert.NoError(t, tmpFile2.Close())
+	defer os.Remove(tmpFile2.Name())
+
+	form := &MultipartForm{
+		Value: map[string][]string{"field": {"v1", "v2"}},
+		File:  map[string][]string{"file": {tmpFile1.Name(), tmpFile2.Name()}},
+	}
+
+	reader, contentType, err := GeneralMultipartSerializer(form)
+	assert.NoError(t, err)
+	assert.NotNil(t, reader)
+	assert.Contains(t, contentType, "multipart/form-data")
+
+	bodyBytes, err := io.ReadAll(reader)
+	assert.NoError(t, err)
+
+	_, params, err := mime.ParseMediaType(contentType)
+	assert.NoError(t, err)
+
+	multipartReader := multipart.NewReader(bytes.NewReader(bodyBytes), params["boundary"])
+	actualForm, err := multipartReader.ReadForm(4096)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"v1", "v2"}, actualForm.Value["field"])
+	assert.Len(t, actualForm.File["file"], 2)
+}
+
 func TestAPIMakePostJSONBodyNilBody(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`{"data":[]}`))
@@ -678,4 +805,46 @@ func TestGeneralMultipartSerializerMultipleFiles(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, reader)
 	assert.Contains(t, ct, "multipart/form-data")
+}
+
+func TestGeneralMultipartSerializerEmptyForm(t *testing.T) {
+	reader, contentType, err := GeneralMultipartSerializer(&MultipartForm{})
+	assert.NoError(t, err)
+	assert.NotNil(t, reader)
+	assert.Contains(t, contentType, "multipart/form-data")
+}
+
+func TestGeneralMultipartSerializerValueAndFileRoundTrip(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "multipart-roundtrip-*.txt")
+	assert.NoError(t, err)
+	_, err = tmpFile.WriteString("payload")
+	assert.NoError(t, err)
+	assert.NoError(t, tmpFile.Close())
+	defer os.Remove(tmpFile.Name())
+
+	reader, contentType, err := GeneralMultipartSerializer(&MultipartForm{
+		Value: map[string][]string{"field": {"value"}},
+		File:  map[string][]string{"upload": {tmpFile.Name()}},
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, reader)
+	assert.Contains(t, contentType, "multipart/form-data")
+
+	body, err := io.ReadAll(reader)
+	assert.NoError(t, err)
+	_, params, err := mime.ParseMediaType(contentType)
+	assert.NoError(t, err)
+
+	multipartReader := multipart.NewReader(bytes.NewReader(body), params["boundary"])
+	form, err := multipartReader.ReadForm(1024 * 1024)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"value"}, form.Value["field"])
+	assert.Len(t, form.File["upload"], 1)
+}
+
+func TestGeneralMultipartSerializerNilMapsAndCloseErrorFree(t *testing.T) {
+	reader, contentType, err := GeneralMultipartSerializer(&MultipartForm{})
+	assert.NoError(t, err)
+	assert.NotNil(t, reader)
+	assert.Contains(t, contentType, "multipart/form-data")
 }

@@ -259,6 +259,63 @@ func TestWorkerPoolScheduleWithTimeoutQueueFull(t *testing.T) {
 	assert.Equal(t, ErrWorkerPoolScheduleTimeout, err)
 }
 
+func TestWorkerPoolScheduleWithTimeoutClosedDuringRetry(t *testing.T) {
+	pool := NewDefaultWorkerPool(
+		fpgo.NewBufferedChannelQueue[func()](1, 0, 1),
+		nil,
+	)
+	pool.SetWorkerSizeMaximum(0)
+	pool.SetWorkerSizeStandBy(0)
+	pool.SetWorkerBatchSize(0)
+	pool.SetScheduleRetryInterval(20 * time.Millisecond)
+
+	assert.NoError(t, pool.Schedule(func() { time.Sleep(50 * time.Millisecond) }))
+
+	done := make(chan error, 1)
+	go func() {
+		done <- pool.ScheduleWithTimeout(func() {}, 60*time.Millisecond)
+	}()
+
+	time.Sleep(5 * time.Millisecond)
+	pool.Close()
+
+	assert.Equal(t, ErrWorkerPoolIsClosed, <-done)
+}
+
+func TestWorkerPoolScheduleWithTimeoutRetryIntervalClampAndDirectReturn(t *testing.T) {
+	pool := NewDefaultWorkerPool(
+		fpgo.NewBufferedChannelQueue[func()](1, 0, 1),
+		nil,
+	)
+	pool.SetWorkerSizeMaximum(0)
+	pool.SetWorkerSizeStandBy(0)
+	pool.SetWorkerBatchSize(0)
+	pool.SetScheduleRetryInterval(100 * time.Millisecond)
+
+	assert.NoError(t, pool.Schedule(func() { time.Sleep(20 * time.Millisecond) }))
+	assert.Equal(t, ErrWorkerPoolScheduleTimeout, pool.ScheduleWithTimeout(func() {}, 3*time.Millisecond))
+
+	pool.Close()
+	assert.Equal(t, ErrWorkerPoolIsClosed, pool.ScheduleWithTimeout(func() {}, 10*time.Millisecond))
+}
+
+func TestWorkerPoolScheduleWithTimeoutSuccessAfterRetry(t *testing.T) {
+	pool := NewDefaultWorkerPool(
+		fpgo.NewBufferedChannelQueue[func()](1, 0, 1),
+		nil,
+	)
+	pool.SetWorkerSizeMaximum(1)
+	pool.SetWorkerSizeStandBy(0)
+	pool.SetWorkerBatchSize(1)
+	pool.SetScheduleRetryInterval(2 * time.Millisecond)
+	pool.SetSpawnWorkerDuration(1 * time.Millisecond)
+	pool.SetWorkerExpiryDuration(100 * time.Millisecond)
+
+	assert.NoError(t, pool.Schedule(func() { time.Sleep(5 * time.Millisecond) }))
+	assert.NoError(t, pool.ScheduleWithTimeout(func() {}, 50*time.Millisecond))
+	pool.Close()
+}
+
 func TestWorkerPoolGenerateWorkerWithMaximumEarlyReturn(t *testing.T) {
 	pool := NewDefaultWorkerPool(
 		fpgo.NewBufferedChannelQueue[func()](3, 10, 5),
@@ -367,6 +424,90 @@ func TestWorkerPoolWorkerPanicRecovered(t *testing.T) {
 	assert.True(t, called)
 
 	pool.Close()
+}
+
+func TestWorkerPoolScheduleWithTimeoutImmediateSuccess(t *testing.T) {
+	pool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](3, 10, 5), nil)
+	defer pool.Close()
+
+	ran := make(chan struct{}, 1)
+	err := pool.ScheduleWithTimeout(func() {
+		ran <- struct{}{}
+	}, 20*time.Millisecond)
+	assert.NoError(t, err)
+
+	select {
+	case <-ran:
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("expected scheduled job to run")
+	}
+}
+
+func TestWorkerPoolScheduleWithTimeoutTimeout(t *testing.T) {
+	pool := NewDefaultWorkerPool(
+		fpgo.NewBufferedChannelQueue[func()](1, 0, 1),
+		nil,
+	)
+	defer pool.Close()
+	pool.SetWorkerSizeMaximum(0)
+	pool.SetWorkerSizeStandBy(0)
+	pool.SetWorkerBatchSize(0)
+	pool.SetScheduleRetryInterval(time.Millisecond)
+
+	assert.NoError(t, pool.Schedule(func() {}))
+	err := pool.ScheduleWithTimeout(func() {}, 5*time.Millisecond)
+	assert.Equal(t, ErrWorkerPoolScheduleTimeout, err)
+}
+
+func TestWorkerPoolScheduleWithTimeoutImmediateError(t *testing.T) {
+	pool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](1, 1, 1), nil)
+	pool.Close()
+
+	err := pool.ScheduleWithTimeout(func() {}, 20*time.Millisecond)
+	assert.Equal(t, ErrWorkerPoolIsClosed, err)
+}
+
+func TestWorkerPoolScheduleWithTimeoutZeroTimeout(t *testing.T) {
+	pool := NewDefaultWorkerPool(
+		fpgo.NewBufferedChannelQueue[func()](1, 0, 1),
+		nil,
+	)
+	defer pool.Close()
+	pool.SetWorkerSizeMaximum(0)
+	pool.SetWorkerSizeStandBy(0)
+	pool.SetWorkerBatchSize(0)
+
+	assert.NoError(t, pool.Schedule(func() {}))
+	err := pool.ScheduleWithTimeout(func() {}, 0)
+	assert.Equal(t, ErrWorkerPoolScheduleTimeout, err)
+}
+
+func TestWorkerPoolScheduleWithTimeoutRetryIntervalClamp(t *testing.T) {
+	pool := NewDefaultWorkerPool(
+		fpgo.NewBufferedChannelQueue[func()](1, 0, 1),
+		nil,
+	)
+	defer pool.Close()
+	pool.SetWorkerSizeMaximum(0)
+	pool.SetWorkerSizeStandBy(0)
+	pool.SetWorkerBatchSize(0)
+	pool.SetScheduleRetryInterval(time.Hour)
+
+	assert.NoError(t, pool.Schedule(func() {}))
+	start := time.Now()
+	err := pool.ScheduleWithTimeout(func() {}, 9*time.Millisecond)
+	elapsed := time.Since(start)
+	assert.Equal(t, ErrWorkerPoolScheduleTimeout, err)
+	assert.Less(t, elapsed, 200*time.Millisecond)
+}
+
+func TestWorkerPoolScheduleWithTimeoutNoRetryNeededOnClosedPool(t *testing.T) {
+	pool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](1, 1, 1), nil)
+	pool.Close()
+	assert.True(t, pool.IsClosed())
+
+	err := pool.ScheduleWithTimeout(func() {}, time.Millisecond)
+	assert.Equal(t, ErrWorkerPoolIsClosed, err)
 }
 
 func TestWorkerPoolExpiryStandby(t *testing.T) {

@@ -549,6 +549,62 @@ func TestBufferedChannelQueuePutWithTimeout(t *testing.T) {
 	assert.Equal(t, ErrQueueIsClosed, err)
 }
 
+func TestBufferedChannelQueueClosedAndFullBranches(t *testing.T) {
+	closedQueue := NewBufferedChannelQueue[int](1, 1, 1)
+	closedQueue.Close()
+	assert.Equal(t, 0, closedQueue.Count())
+	assert.Equal(t, ErrQueueIsClosed, closedQueue.Offer(1))
+	assert.Equal(t, ErrQueueIsClosed, closedQueue.PutWithTimeout(1, time.Millisecond))
+	_, err := closedQueue.Take()
+	assert.Equal(t, ErrQueueIsClosed, err)
+	_, err = closedQueue.TakeWithTimeout(time.Millisecond)
+	assert.Equal(t, ErrQueueIsClosed, err)
+	assert.NotPanics(t, func() { closedQueue.notifyWorkers() })
+
+	countQueue := NewBufferedChannelQueue[int](1, 1, 1)
+	countQueue.blockingQueue = nil
+	assert.Equal(t, 0, countQueue.Count())
+
+	fullQueue := NewBufferedChannelQueue[int](1, 0, 1).
+		SetLoadFromPoolDuration(5 * time.Millisecond).
+		SetFreeNodeHookPoolIntervalDuration(time.Millisecond)
+	assert.NoError(t, fullQueue.Offer(1))
+	assert.Equal(t, ErrQueueIsFull, fullQueue.Offer(2))
+	assert.Equal(t, ErrQueueIsFull, fullQueue.PutWithTimeout(3, 10*time.Millisecond))
+	fullQueue.Close()
+}
+
+func TestBufferedChannelQueueLoadFromPoolAndTimeoutBranches(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 4, 1).
+		SetLoadFromPoolDuration(time.Millisecond).
+		SetFreeNodeHookPoolIntervalDuration(time.Millisecond)
+
+	assert.NoError(t, q.Offer(1))
+	assert.NoError(t, q.Offer(2))
+	assert.Equal(t, 1, q.pool.Count())
+
+	v, err := q.TakeWithTimeout(10 * time.Millisecond)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, v)
+
+	q.notifyWorkers()
+	time.Sleep(4 * time.Millisecond)
+	assert.Equal(t, 1, q.Count())
+	assert.Equal(t, 0, q.pool.Count())
+
+	v, err = q.TakeWithTimeout(10 * time.Millisecond)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, v)
+
+	timeoutQueue := NewBufferedChannelQueue[int](1, 1, 1).
+		SetLoadFromPoolDuration(2 * time.Millisecond).
+		SetFreeNodeHookPoolIntervalDuration(time.Millisecond)
+	timeoutQueue.Close()
+	assert.Equal(t, ErrQueueIsClosed, timeoutQueue.PutWithTimeout(3, 3*time.Millisecond))
+
+	q.Close()
+}
+
 func TestLinkedListQueueClear(t *testing.T) {
 	queue := NewLinkedListQueue[int]()
 	queue.Offer(1)
@@ -699,11 +755,32 @@ func TestBufferedChannelQueueClose(t *testing.T) {
 	assert.False(t, bufferedChannelQueue.IsClosed())
 
 	bufferedChannelQueue.Close()
+	bufferedChannelQueue.Close()
 
 	assert.True(t, bufferedChannelQueue.IsClosed())
+	assert.Equal(t, 0, bufferedChannelQueue.Count())
 
 	err := bufferedChannelQueue.Offer(1)
 	assert.Equal(t, ErrQueueIsClosed, err)
+
+	err = bufferedChannelQueue.Put(1)
+	assert.Equal(t, ErrQueueIsClosed, err)
+
+	_, err = bufferedChannelQueue.Take()
+	assert.Equal(t, ErrQueueIsClosed, err)
+
+	_, err = bufferedChannelQueue.TakeWithTimeout(time.Millisecond)
+	assert.Equal(t, ErrQueueIsClosed, err)
+
+	_, err = bufferedChannelQueue.Poll()
+	assert.Equal(t, ErrQueueIsClosed, err)
+
+	err = bufferedChannelQueue.PutWithTimeout(1, time.Millisecond)
+	assert.Equal(t, ErrQueueIsClosed, err)
+
+	assert.NotPanics(t, func() {
+		bufferedChannelQueue.notifyWorkers()
+	})
 }
 
 func TestBufferedChannelQueueConcurrentOfferTake(t *testing.T) {
@@ -1207,3 +1284,96 @@ func TestLinkedListQueueRecycleNodeDirectNil(t *testing.T) {
 	// recycleNode with nil should not panic, just return early (line 490-492)
 	q.recycleNode(nil)
 }
+
+func TestBufferedChannelQueueWorkersEdgeBranches(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 4, 1).
+		SetLoadFromPoolDuration(10 * time.Millisecond).
+		SetFreeNodeHookPoolIntervalDuration(10 * time.Millisecond)
+	defer q.Close()
+
+	// Cover loadFromPool break when queue closes while a pooled item exists.
+	assert.NoError(t, q.Offer(1))
+	assert.NoError(t, q.Offer(2))
+	assert.Equal(t, 1, q.pool.Count())
+	q.isClosed.Set(true)
+	q.loadWorkerCh <- 1
+	time.Sleep(5 * time.Millisecond)
+	assert.Equal(t, 1, q.pool.Count())
+	q.isClosed.Set(false)
+
+	// Cover notifyWorkers early return when closed.
+	q.isClosed.Set(true)
+	assert.NotPanics(t, func() { q.notifyWorkers() })
+}
+
+func TestBufferedChannelQueuePollClosed(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 1, 1)
+	q.Close()
+
+	val, err := q.Poll()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrQueueIsClosed, err)
+}
+
+func TestBufferedChannelQueueCountNilPool(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 1, 1)
+	q.pool = nil
+	assert.Equal(t, 0, q.Count())
+	q.Close()
+}
+
+func TestBufferedChannelQueueCountNilBlockingQueue(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 1, 1)
+	originalBlockingQueue := q.blockingQueue
+	q.blockingQueue = nil
+	assert.Equal(t, 0, q.Count())
+	q.blockingQueue = originalBlockingQueue
+	q.Close()
+}
+
+func TestBufferedChannelQueueGetChannelClosed(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 1, 1)
+	q.Close()
+
+	ch := q.GetChannel()
+	assert.NotNil(t, ch)
+	assert.Equal(t, 0, len(ch))
+}
+
+func TestBufferedChannelQueueIsClosedAfterDoubleClose(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 1, 1)
+	assert.False(t, q.IsClosed())
+
+	q.Close()
+	q.Close()
+
+	assert.True(t, q.IsClosed())
+}
+
+func TestBufferedChannelQueuePutDelegatesToOfferOnClosedQueue(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 1, 1)
+	q.Close()
+
+	err := q.Put(1)
+	assert.Equal(t, ErrQueueIsClosed, err)
+}
+
+func TestBufferedChannelQueueGetChannelOpen(t *testing.T) {
+	q := NewBufferedChannelQueue[int](2, 2, 1)
+	defer q.Close()
+
+	ch := q.GetChannel()
+	assert.NotNil(t, ch)
+	assert.Equal(t, cap(q.blockingQueue), cap(ch))
+}
+
+func TestBufferedChannelQueueTakeClosed(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 1, 1)
+	q.Close()
+
+	val, err := q.Take()
+	assert.Equal(t, 0, val)
+	assert.Equal(t, ErrQueueIsClosed, err)
+}
+
+
