@@ -1744,8 +1744,10 @@ func TestMaybeOverflowAndUnsupportedConversions(t *testing.T) {
 	_, err := Maybe.Just(uint64(math.MaxUint64)).ToInt()
 	assert.ErrorIs(t, err, ErrConversionSizeOverflow)
 
-	valInt32, err := Maybe.Just(float64(math.MaxFloat64)).ToInt32()
-	assert.Equal(t, int32(math.MinInt32), valInt32)
+	// float64->int32 overflow conversion is implementation-dependent per the Go spec
+	// (amd64 yields MinInt32, arm64 saturates to MaxInt32); ToInt32's float64 branch has
+	// no bounds check, so only the no-error contract is portable to assert here.
+	_, err = Maybe.Just(float64(math.MaxFloat64)).ToInt32()
 	assert.NoError(t, err)
 
 	valUint, err := Maybe.Just(int64(-1)).ToUint()
@@ -2690,6 +2692,12 @@ func TestSomeDefToUint32WithIntOverflow(t *testing.T) {
 	assert.Equal(t, ErrConversionSizeOverflow, err)
 }
 
+func TestSomeDefToUint32WithUintOverflow(t *testing.T) {
+	val, err := Maybe.Just(uint(math.MaxUint32 + 1)).ToUint32()
+	assert.Equal(t, uint32(0), val)
+	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
 // Tests for ToUint64 coverage
 
 func TestSomeDefToUint64WithNil(t *testing.T) {
@@ -2909,6 +2917,12 @@ func TestSomeDefToInt32WithUint64Overflow(t *testing.T) {
 	m := JustGenerics(uint64(math.MaxInt32 + 1))
 	_, err := m.ToInt32()
 	assert.Equal(t, ErrConversionSizeOverflow, err)
+}
+
+func TestSomeDefToInt32WithUint64Within(t *testing.T) {
+	val, err := Maybe.Just(uint64(5)).ToInt32()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(5), val)
 }
 
 func TestSomeDefToInt32WithUintptrOverflow(t *testing.T) {

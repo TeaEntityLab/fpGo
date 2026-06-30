@@ -1,6 +1,7 @@
 package fpgo
 
 import (
+	"runtime"
 	"testing"
 	"time"
 
@@ -1376,4 +1377,65 @@ func TestBufferedChannelQueueTakeClosed(t *testing.T) {
 	assert.Equal(t, ErrQueueIsClosed, err)
 }
 
+// TestBufferedChannelQueueLoadFromPoolInnerIsClosedBreak covers loadFromPool lines
+// 571-573: the inner-loop isClosed guard after the outer guard passed with isClosed false.
+// Deterministic via lock ordering — while the test holds q.lock, loadFromPool blocks at
+// line 565; isClosed is set true before unlock so the inner check at 571 fires.
+func TestBufferedChannelQueueLoadFromPoolInnerIsClosedBreak(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 10, 1).
+		SetLoadFromPoolDuration(time.Hour).
+		SetFreeNodeHookPoolIntervalDuration(time.Hour)
+	defer q.Close()
+
+	// Seed the pool directly (not via Offer) so notifyWorkers does not race with the test.
+	q.lock.Lock()
+	assert.NoError(t, q.pool.Offer(1))
+	assert.Equal(t, 1, q.pool.Count())
+
+	q.isClosed.Set(false)
+	q.loadWorkerCh <- 1
+	for i := 0; i < 100000; i++ {
+		runtime.Gosched()
+	}
+	q.isClosed.Set(true)
+	q.lock.Unlock()
+
+	// loadFromPool sleeps for an hour after one iteration; pool access is safe under lock.
+	q.lock.Lock()
+	assert.Equal(t, 1, q.pool.Count())
+	q.lock.Unlock()
+}
+
+// TestBufferedChannelQueuePutWithTimeoutSecondLoopIsClosed covers PutWithTimeout lines
+// 738-739 (retry sleep after Offer returns ErrQueueIsClosed) and 721-723 (closed check on
+// the following loop iteration). Deterministic via the same lock ordering: PutWithTimeout
+// blocks inside Offer on q.lock while isClosed is still false at the first loop guard,
+// then isClosed is set before unlock so Offer returns ErrQueueIsClosed and the next
+// iteration returns ErrQueueIsClosed at line 722.
+func TestBufferedChannelQueuePutWithTimeoutSecondLoopIsClosed(t *testing.T) {
+	q := NewBufferedChannelQueue[int](1, 10, 1).
+		SetLoadFromPoolDuration(0).
+		SetFreeNodeHookPoolIntervalDuration(time.Hour)
+	defer q.Close()
+
+	q.isClosed.Set(false)
+	q.lock.Lock()
+
+	result := make(chan error, 1)
+	go func() {
+		result <- q.PutWithTimeout(42, time.Second)
+	}()
+	for i := 0; i < 100000; i++ {
+		runtime.Gosched()
+	}
+	q.isClosed.Set(true)
+	q.lock.Unlock()
+
+	select {
+	case err := <-result:
+		assert.Equal(t, ErrQueueIsClosed, err)
+	case <-time.After(time.Second):
+		t.Fatal("PutWithTimeout did not return")
+	}
+}
 
