@@ -13,7 +13,7 @@ var (
 	ErrConversionUnsupported = errors.New("unsupported")
 	// ErrConversionNil Conversion Nil
 	ErrConversionNil = errors.New("<nil>")
-	// ErrConversionNil Conversion Size Overflow
+	// ErrConversionSizeOverflow Conversion Size Overflow
 	ErrConversionSizeOverflow = errors.New("size overflow")
 )
 

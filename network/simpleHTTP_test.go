@@ -2,6 +2,8 @@ package network
 
 import (
 	"bytes"
+	"errors"
+	"io"
 	"io/ioutil"
 	"mime"
 	"mime/multipart"
@@ -10,6 +12,7 @@ import (
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -238,4 +241,144 @@ func TestSimpleAPIMultipart(t *testing.T) {
 	actualForm, _ = multipartReader.ReadForm(1024)
 	assert.Equal(t, sentValues, actualForm.Value)
 	assert.Equal(t, 0, len(actualForm.File["file"]))
+}
+
+func TestSimpleHTTPClientGetterSetter(t *testing.T) {
+	client := NewSimpleHTTP()
+
+	httpClient := client.GetHTTPClient()
+	assert.NotNil(t, httpClient)
+
+	newClient := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+	client.SetHTTPClient(newClient)
+	assert.Equal(t, newClient, client.GetHTTPClient())
+}
+
+func TestAppendQueryParams(t *testing.T) {
+	bare := AppendQueryParams("http://example.com/path", QueryParam{"a": 1, "b": "x y"})
+	assert.Contains(t, bare, "a=1")
+	assert.Contains(t, bare, "b=x+y")
+	assert.Contains(t, bare, "http://example.com/path?")
+
+	merged := AppendQueryParams("http://example.com/path?a=old&c=3", QueryParam{"a": "new", "b": 2})
+	assert.Contains(t, merged, "a=new")
+	assert.Contains(t, merged, "b=2")
+	assert.Contains(t, merged, "c=3")
+
+	unchangedEmpty := AppendQueryParams("http://example.com/path?keep=1", QueryParam{})
+	assert.Equal(t, "http://example.com/path?keep=1", unchangedEmpty)
+
+	unchangedBadURL := AppendQueryParams("://bad-url", QueryParam{"a": 1})
+	assert.Equal(t, "://bad-url", unchangedBadURL)
+}
+
+func TestMakeHeadAndMakeOptions(t *testing.T) {
+	var gotMethod string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+
+	api := NewSimpleAPI(server.URL)
+	api.ResponseDeserializer = func(body []byte, target interface{}) (interface{}, error) {
+		return target, nil
+	}
+
+	headFn := api.MakeHead("posts")
+	headResp := headFn(nil, &struct{}{}).Eval().(*ResponseWithError)
+	assert.NoError(t, headResp.Err)
+	assert.Equal(t, http.MethodHead, gotMethod)
+
+	optionsFn := api.MakeOptions("posts")
+	optionsResp := optionsFn(nil, &struct{}{}).Eval().(*ResponseWithError)
+	assert.NoError(t, optionsResp.Err)
+	assert.Equal(t, http.MethodOptions, gotMethod)
+}
+
+func TestGetContextTimeoutBranches(t *testing.T) {
+	client := NewSimpleHTTP()
+	client.TimeoutMillisecond = 100
+	ctx, cancel := client.GetContextTimeout()
+	defer cancel()
+	deadline, ok := ctx.Deadline()
+	assert.True(t, ok)
+	expected := time.Now().Add(100 * time.Millisecond)
+	diff := deadline.Sub(expected)
+	if diff < 0 {
+		diff = -diff
+	}
+	assert.Less(t, diff, 50*time.Millisecond,
+		"TimeoutMillisecond=100 should produce ~100ms deadline, not ~100ns")
+
+	client.TimeoutMillisecond = 0
+	ctx2, cancel2 := client.GetContextTimeout()
+	defer cancel2()
+	deadline2, ok2 := ctx2.Deadline()
+	assert.True(t, ok2)
+	expected2 := time.Now().Add(DefaultTimeoutMillisecond)
+	diff2 := deadline2.Sub(expected2)
+	if diff2 < 0 {
+		diff2 = -diff2
+	}
+	assert.Less(t, diff2, 50*time.Millisecond)
+}
+
+type errReadCloser struct{}
+
+func (e errReadCloser) Read(p []byte) (n int, err error) {
+	return 0, errors.New("read failed")
+}
+func (e errReadCloser) Close() error { return nil }
+
+type trackingReadCloser struct {
+	data    []byte
+	pos     int
+	closed  bool
+	onClose func()
+}
+
+func (t *trackingReadCloser) Read(p []byte) (n int, err error) {
+	if t.pos >= len(t.data) {
+		return 0, io.EOF
+	}
+	n = copy(p, t.data[t.pos:])
+	t.pos += n
+	return n, nil
+}
+
+func (t *trackingReadCloser) Close() error {
+	t.closed = true
+	if t.onClose != nil {
+		t.onClose()
+	}
+	return nil
+}
+
+func TestDecodeResponseBodyClosesBody(t *testing.T) {
+	closed := false
+	body := &trackingReadCloser{
+		data:    []byte(`{"value":42}`),
+		onClose: func() { closed = true },
+	}
+	api := NewSimpleAPI("http://example.com")
+	api.ResponseDeserializer = func(b []byte, target interface{}) (interface{}, error) {
+		return target, nil
+	}
+	resp := &ResponseWithError{
+		Response: &http.Response{Body: body},
+	}
+	target := struct{}{}
+	result := api.decodeResponseBody(resp, &target)
+	assert.NoError(t, result.Err)
+	assert.True(t, closed, "response body should be closed after decoding")
+
+	readErrResp := &ResponseWithError{
+		Response: &http.Response{Body: errReadCloser{}},
+	}
+	readResult := api.decodeResponseBody(readErrResp, &target)
+	assert.Error(t, readResult.Err)
 }

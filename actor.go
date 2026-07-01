@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// ErrActorAskTimeout is returned when an Ask operation exceeds its timeout.
 var ErrActorAskTimeout = fmt.Errorf("ErrActorAskTimeout")
 
 // ActorHandle A target could send messages
@@ -176,7 +177,7 @@ func (askSelf *AskDef) AskOnce(target ActorHandle) interface{} {
 	return <-ch
 }
 
-// AskOnce Sender Ask with timeout
+// AskOnceWithTimeout Sender Ask with timeout
 func (askSelf *AskDef) AskOnceWithTimeout(target ActorHandle, timeout time.Duration) (interface{}, error) {
 	ch := askSelf.AskChannel(target)
 	var result interface{}

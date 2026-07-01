@@ -120,7 +120,7 @@ func NewConcurrentStack(stack Stack) *ConcurrentStack {
 	}
 }
 
-// Put Put the val(probably blocking)
+// Push Push the val(probably blocking)
 func (q *ConcurrentStack) Push(val interface{}) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
@@ -128,7 +128,7 @@ func (q *ConcurrentStack) Push(val interface{}) error {
 	return q.stack.Push(val)
 }
 
-// Take Take the val(probably blocking)
+// Pop Pop the val(probably blocking)
 func (q *ConcurrentStack) Pop() (interface{}, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
@@ -592,6 +592,13 @@ func (q *BufferedChannelQueue) loadFromPool() {
 		}
 
 		q.lock.Lock()
+
+		// Re-check under lock: Close() sets isClosed and closes blockingQueue
+		// while holding q.lock, so an Offer here would panic on a closed channel.
+		if q.isClosed.Get() {
+			q.lock.Unlock()
+			break
+		}
 
 		var val interface{}
 		var pollErr, offerErr error

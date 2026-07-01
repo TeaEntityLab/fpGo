@@ -223,7 +223,10 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 		// Recover & Recycle
 		defer func() {
 			if panic := recover(); panic != nil {
-				if handler := workerPoolSelf.panicHandler; handler != nil {
+				workerPoolSelf.lock.RLock()
+				handler := workerPoolSelf.panicHandler
+				workerPoolSelf.lock.RUnlock()
+				if handler != nil {
 					handler(panic)
 				}
 			}
@@ -298,13 +301,17 @@ func (workerPoolSelf *DefaultWorkerPool) SetJobQueue(jobQueue *fpgo.BufferedChan
 
 // SetIsJobQueueClosedWhenClose Set is the JobQueue closed when the WorkerPool.Close()
 func (workerPoolSelf *DefaultWorkerPool) SetIsJobQueueClosedWhenClose(isJobQueueClosedWhenClose bool) *DefaultWorkerPool {
+	workerPoolSelf.lock.Lock()
 	workerPoolSelf.isJobQueueClosedWhenClose = isJobQueueClosedWhenClose
+	workerPoolSelf.lock.Unlock()
 	return workerPoolSelf
 }
 
 // SetPanicHandler Set the panicHandler(handle/log panic inside workers)
 func (workerPoolSelf *DefaultWorkerPool) SetPanicHandler(panicHandler func(interface{})) *DefaultWorkerPool {
+	workerPoolSelf.lock.Lock()
 	workerPoolSelf.panicHandler = panicHandler
+	workerPoolSelf.lock.Unlock()
 	return workerPoolSelf
 }
 

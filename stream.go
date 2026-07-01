@@ -53,7 +53,7 @@ func (streamSelf *StreamDef) FromArrayInt(old []int) *StreamDef {
 	return streamSelf.FromArray(new)
 }
 
-// FromArrayByte New Stream instance from an int8 array
+// FromArrayByte New Stream instance from a byte slice
 func (streamSelf *StreamDef) FromArrayByte(old []byte) *StreamDef {
 	new := make([]interface{}, len(old))
 	for i, v := range old {
@@ -680,12 +680,12 @@ func (streamSetSelf *StreamSetDef) MinusStreams(input *StreamSetDef) *StreamSetD
 	return result
 }
 
-/**
-TODO DUPLICATED ZONE (temporarily)
-BEGIN
-**/
+// StreamSetDef provides *StreamSetDef-typed set operations. These intentionally
+// wrap the embedded SetDef methods but differ on nil/empty inputs (documented
+// per method below), so they are NOT redundant with the promoted SetDef API.
 
-// IsSubsetByKey TODO NOTE !!Duplicated!! returns true or false by checking if set1 is a subset of set2
+// IsSubsetByKey reports whether this StreamSet is a subset of input (by key).
+// Returns false when input is nil or empty.
 func (streamSetSelf *StreamSetDef) IsSubsetByKey(input *StreamSetDef) bool {
 	if input == nil || input.Size() == 0 {
 		return false
@@ -694,7 +694,8 @@ func (streamSetSelf *StreamSetDef) IsSubsetByKey(input *StreamSetDef) bool {
 	return streamSetSelf.SetDef.IsSubsetByKey(&input.SetDef)
 }
 
-// IsSupersetByKey TODO NOTE !!Duplicated!! returns true or false by checking if set1 is a superset of set2
+// IsSupersetByKey reports whether this StreamSet is a superset of input (by key).
+// Returns true when input is nil or empty (every set is a superset of the empty set).
 func (streamSetSelf *StreamSetDef) IsSupersetByKey(input *StreamSetDef) bool {
 	if input == nil || input.Size() == 0 {
 		return true
@@ -703,7 +704,8 @@ func (streamSetSelf *StreamSetDef) IsSupersetByKey(input *StreamSetDef) bool {
 	return streamSetSelf.SetDef.IsSupersetByKey(&input.SetDef)
 }
 
-// Minus TODO NOTE !!Duplicated!! Get all of this StreamSet but not in the given StreamSet
+// Minus returns a new StreamSet with all keys of this StreamSet not in input.
+// Returns an empty StreamSet when input is nil or empty.
 func (streamSetSelf *StreamSetDef) Minus(input *StreamSetDef) *StreamSetDef {
 	if input == nil || input.Size() == 0 {
 		return NewStreamSet()
@@ -711,11 +713,6 @@ func (streamSetSelf *StreamSetDef) Minus(input *StreamSetDef) *StreamSetDef {
 
 	return &StreamSetDef{SetDef: *streamSetSelf.SetDef.Minus(&input.SetDef)}
 }
-
-/**
-TODO DUPLICATED ZONE (temporarily)
-END
-**/
 
 // StreamSet StreamSet utils instance
 var StreamSet StreamSetDef
