@@ -221,7 +221,15 @@ func TestFPFunctions(t *testing.T) {
 		aVal, _ := Maybe.Just(a).ToInt()
 		return aVal%2 == 0
 	}, 1, 3, 5, 7, 9))
-	assert.Equal(t, map[interface{}]interface{}{1: "a", 2: "b", 3: "c"}, Zip([]interface{}{1, 2, 3}, []interface{}{"a", "b", "c"}))
+	zipResult, zipErr := Zip([]interface{}{1, 2, 3}, []interface{}{"a", "b", "c"})
+	assert.NoError(t, zipErr)
+	assert.Equal(t, map[interface{}]interface{}{1: "a", 2: "b", 3: "c"}, zipResult)
+	zipEmpty, zipEmptyErr := Zip([]interface{}{}, []interface{}{"a"})
+	assert.Nil(t, zipEmpty)
+	assert.Equal(t, ErrZipEmptyList, zipEmptyErr)
+	zipMismatch, zipMismatchErr := Zip([]interface{}{1, 2}, []interface{}{"a"})
+	assert.Nil(t, zipMismatch)
+	assert.Equal(t, ErrZipLengthMismatch, zipMismatchErr)
 	assert.Equal(t, [][]interface{}{{1, 3, 5, 7}, {2, 4, 6, 8}}, Partition(func(a interface{}) bool {
 		aVal, _ := Maybe.Just(a).ToInt()
 		return aVal%2 == 1

@@ -1,6 +1,7 @@
 package fpgo
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -977,28 +978,35 @@ func IsZero(v interface{}) bool {
 	return false
 }
 
+// ErrZipEmptyList is returned by Zip when either input slice is empty.
+var ErrZipEmptyList = errors.New("zip: both slices must be non-empty")
+
+// ErrZipLengthMismatch is returned by Zip when the input slices differ in length.
+var ErrZipLengthMismatch = errors.New("zip: slices must have equal length")
+
 // Zip takes two inputs: first list of type: []interface{}, second list of type: []interface{}.
-// Then it merges two list and returns a new map of type: map[interface{}]interface{}
-func Zip(list1 []interface{}, list2 []interface{}) map[interface{}]interface{} {
+// Then it merges two lists and returns a new map of type: map[interface{}]interface{}.
+// It returns ErrZipEmptyList if either slice is empty, or ErrZipLengthMismatch if the
+// slices differ in length.
+func Zip(list1 []interface{}, list2 []interface{}) (map[interface{}]interface{}, error) {
 	newMap := make(map[interface{}]interface{})
 
 	len1 := len(list1)
 	len2 := len(list2)
 
 	if len1 == 0 || len2 == 0 {
-		return newMap
+		return nil, ErrZipEmptyList
 	}
 
-	minLen := len1
-	if len2 < minLen {
-		minLen = len2
+	if len1 != len2 {
+		return nil, ErrZipLengthMismatch
 	}
 
-	for i := 0; i < minLen; i++ {
+	for i := 0; i < len1; i++ {
 		newMap[list1[i]] = list2[i]
 	}
 
-	return newMap
+	return newMap, nil
 }
 
 // GroupBy creates a map where the key is a group identifier and the value is a slice with the elements that have the same identifer
