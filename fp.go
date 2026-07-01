@@ -642,6 +642,81 @@ func Merge(map1, map2 map[interface{}]interface{}) map[interface{}]interface{} {
 	return newMap
 }
 
+// Max returns the max item from the list (by numeric value).
+// Returns nil if the list is either empty or nil.
+func Max(list ...interface{}) interface{} {
+	if len(list) == 0 {
+		return nil
+	}
+	result := list[0]
+	resultVal, _ := Maybe.Just(result).ToFloat64()
+	for _, v := range list {
+		val, _ := Maybe.Just(v).ToFloat64()
+		if val > resultVal {
+			result, resultVal = v, val
+		}
+	}
+	return result
+}
+
+// Min returns the min item from the list (by numeric value).
+// Returns nil if the list is either empty or nil.
+func Min(list ...interface{}) interface{} {
+	if len(list) == 0 {
+		return nil
+	}
+	result := list[0]
+	resultVal, _ := Maybe.Just(result).ToFloat64()
+	for _, v := range list {
+		val, _ := Maybe.Just(v).ToFloat64()
+		if val < resultVal {
+			result, resultVal = v, val
+		}
+	}
+	return result
+}
+
+// MinMax returns the min and max items from the list (by numeric value).
+// Returns nil,nil if the list is either empty or nil.
+func MinMax(list ...interface{}) (interface{}, interface{}) {
+	if len(list) == 0 {
+		return nil, nil
+	}
+	min, max := list[0], list[0]
+	minVal, _ := Maybe.Just(min).ToFloat64()
+	maxVal := minVal
+	for _, v := range list {
+		val, _ := Maybe.Just(v).ToFloat64()
+		if val < minVal {
+			min, minVal = v, val
+		} else if val > maxVal {
+			max, maxVal = v, val
+		}
+	}
+	return min, max
+}
+
+func IsNeg(v interface{}) bool { val, _ := Maybe.Just(v).ToFloat64(); return val < 0 }
+func IsPos(v interface{}) bool { val, _ := Maybe.Just(v).ToFloat64(); return val > 0 }
+
+func Range(lower, higher int, hops ...int) []interface{} {
+	hop := 1
+	if len(hops) > 0 {
+		if hops[0] <= 0 {
+			return make([]interface{}, 0)
+		}
+		hop = hops[0]
+	}
+	if lower >= higher {
+		return make([]interface{}, 0)
+	}
+	l := make([]interface{}, 0)
+	for v := lower; v < higher; v += hop {
+		l = append(l, v)
+	}
+	return l
+}
+
 // PMap applies the function(1st argument) on each item in the list and returns a new list.
 //
 //	Order of new list is guaranteed. This feature can be disabled by passing: PMapOption{RandomOrder: true} to gain performance

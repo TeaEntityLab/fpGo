@@ -240,6 +240,9 @@ func (simpleHTTPSelf *SimpleHTTPDef) DoRequest(request *http.Request) *ResponseW
 // PathParam Path params for API usages
 type PathParam map[string]interface{}
 
+// QueryParam Query params for API usages
+type QueryParam map[string]interface{}
+
 // MultipartForm Path params for API usages
 type MultipartForm struct {
 	Value map[string][]string
@@ -363,6 +366,16 @@ func (simpleAPISelf *SimpleAPIDef) MakeDelete(relativeURL string) APINoBody {
 	return simpleAPISelf.MakeDoNewRequest(http.MethodDelete, relativeURL)
 }
 
+// MakeHead Make a Head API
+func (simpleAPISelf *SimpleAPIDef) MakeHead(relativeURL string) APINoBody {
+	return simpleAPISelf.MakeDoNewRequest(http.MethodHead, relativeURL)
+}
+
+// MakeOptions Make an Options API
+func (simpleAPISelf *SimpleAPIDef) MakeOptions(relativeURL string) APINoBody {
+	return simpleAPISelf.MakeDoNewRequest(http.MethodOptions, relativeURL)
+}
+
 // MakePostJSONBody Make a Post API with json Body
 func (simpleAPISelf *SimpleAPIDef) MakePostJSONBody(relativeURL string) APIHasBody {
 	return simpleAPISelf.MakeDoNewRequestWithBodySerializer(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
@@ -481,4 +494,24 @@ func (simpleAPISelf *SimpleAPIDef) replacePathParams(relativeURL string, pathPar
 		finalURL = strings.ReplaceAll(finalURL, fmt.Sprintf("{%s}", k), fmt.Sprintf("%v", v))
 	}
 	return simpleAPISelf.BaseURL + "/" + finalURL
+}
+
+// AppendQueryParams appends the given query params to rawURL as a URL-encoded
+// query string. Existing query params on rawURL are preserved. Values are
+// stringified via fmt.Sprintf("%v", ...). Returns rawURL unchanged if query is
+// empty, or if rawURL cannot be parsed.
+func AppendQueryParams(rawURL string, query QueryParam) string {
+	if len(query) == 0 {
+		return rawURL
+	}
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+	values := parsed.Query()
+	for k, v := range query {
+		values.Set(k, fmt.Sprintf("%v", v))
+	}
+	parsed.RawQuery = values.Encode()
+	return parsed.String()
 }

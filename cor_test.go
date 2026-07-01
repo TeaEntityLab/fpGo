@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -122,4 +123,42 @@ func TestCorDoNotation(t *testing.T) {
 	})
 
 	assert.Equal(t, expectedInt, (actual))
+}
+
+func TestCorNewAndStart(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var ran AtomBool
+
+	cor := Cor.NewAndStart(func() {
+		ran.Set(true)
+		wg.Done()
+	})
+	assert.NotNil(t, cor)
+
+	wg.Wait()
+	assert.True(t, ran.Get())
+	assert.True(t, cor.IsStarted())
+	assert.Eventually(t, cor.IsDone, time.Second, time.Millisecond)
+
+	assert.NotPanics(t, func() { cor.Start() })
+}
+
+func TestCorStartAlreadyStarted(t *testing.T) {
+	c := Cor.New(func() {})
+	c.Start()
+	assert.NotPanics(t, func() {
+		c.Start()
+	})
+	assert.True(t, c.IsStarted())
+}
+
+func TestCorStartWithValAlreadyStarted(t *testing.T) {
+	c := Cor.New(func() {})
+	c.Start()
+	time.Sleep(10 * time.Millisecond)
+	assert.NotPanics(t, func() {
+		c.StartWithVal(1)
+	})
+	assert.True(t, c.IsStarted())
 }

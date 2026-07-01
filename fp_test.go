@@ -379,3 +379,62 @@ func TestPatternMatching(t *testing.T) {
 	assert.Equal(t, "SumType 1 1", Either(NewCompData(myType, ("1"), ("1")), patterns...))
 	assert.Equal(t, "got this object: TEST", Either("TEST", patterns...))
 }
+
+func TestMax(t *testing.T) {
+	assert.Equal(t, 9, Max(3, 1, 4, 1, 5, 9, 2, 6))
+	assert.Equal(t, -1, Max(-5, -1, -3))
+	assert.Equal(t, int32(5), Max(int32(1), int32(5), int32(3)))
+	assert.Equal(t, float64(2.5), Max(1, float64(2.5), 2))
+	assert.Nil(t, Max())
+	assert.Nil(t, Max([]interface{}{}...))
+}
+func TestMin(t *testing.T) {
+	assert.Equal(t, 1, Min(3, 1, 4, 1, 5, 9, 2, 6))
+	assert.Equal(t, -5, Min(-5, -1, -3))
+	assert.Equal(t, int32(1), Min(int32(1), int32(5), int32(3)))
+	assert.Equal(t, float64(1.5), Min(2, float64(1.5), 3))
+	assert.Nil(t, Min())
+	assert.Nil(t, Min([]interface{}{}...))
+}
+func TestMinMax(t *testing.T) {
+	min, max := MinMax(3, 1, 4, 1, 5, 9, 2, 6)
+	assert.Equal(t, 1, min)
+	assert.Equal(t, 9, max)
+	min, max = MinMax(-5, -1, -3)
+	assert.Equal(t, -5, min)
+	assert.Equal(t, -1, max)
+	min, max = MinMax(int32(3), float64(1.5), int64(9))
+	assert.Equal(t, float64(1.5), min)
+	assert.Equal(t, int64(9), max)
+	min, max = MinMax()
+	assert.Nil(t, min)
+	assert.Nil(t, max)
+}
+func TestIsNeg(t *testing.T) {
+	assert.True(t, IsNeg(-1))
+	assert.False(t, IsNeg(1))
+	assert.False(t, IsNeg(0))
+	assert.True(t, IsNeg(int32(-1)))
+	assert.False(t, IsNeg(int64(1)))
+	assert.True(t, IsNeg(float64(-1.5)))
+	assert.False(t, IsNeg("not-a-number"))
+	assert.False(t, IsNeg(nil))
+}
+func TestIsPos(t *testing.T) {
+	assert.True(t, IsPos(1))
+	assert.False(t, IsPos(-1))
+	assert.False(t, IsPos(0))
+	assert.True(t, IsPos(int32(1)))
+	assert.False(t, IsPos(int64(-1)))
+	assert.True(t, IsPos(float64(1.5)))
+	assert.False(t, IsPos("not-a-number"))
+	assert.False(t, IsPos(nil))
+}
+func TestRange(t *testing.T) {
+	assert.Equal(t, []interface{}{-2, -1, 0, 1}, Range(-2, 2))
+	assert.Equal(t, []interface{}{0, 1}, Range(0, 2))
+	assert.Equal(t, []interface{}{3, 5}, Range(3, 7, 2))
+	assert.Equal(t, []interface{}{}, Range(5, 2))
+	assert.Equal(t, []interface{}{}, Range(1, 5, 0))
+	assert.Equal(t, []interface{}{}, Range(1, 5, -1))
+}

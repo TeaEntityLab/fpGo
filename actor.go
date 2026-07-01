@@ -2,6 +2,7 @@ package fpgo
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -22,8 +23,9 @@ type ActorDef struct {
 
 	context map[string]interface{}
 
-	children map[time.Time]*ActorDef
-	parent   *ActorDef
+	childrenLock sync.RWMutex
+	children     map[time.Time]*ActorDef
+	parent       *ActorDef
 }
 
 var defaultActor *ActorDef
@@ -73,13 +75,17 @@ func (actorSelf *ActorDef) Spawn(effect func(*ActorDef, interface{})) *ActorDef 
 	}
 
 	newOne.parent = actorSelf
+	actorSelf.childrenLock.Lock()
 	actorSelf.children[newOne.id] = newOne
+	actorSelf.childrenLock.Unlock()
 
 	return newOne
 }
 
 // GetChild Get a child Actor by ID
 func (actorSelf *ActorDef) GetChild(id time.Time) *ActorDef {
+	actorSelf.childrenLock.RLock()
+	defer actorSelf.childrenLock.RUnlock()
 	return actorSelf.children[id]
 }
 
