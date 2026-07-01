@@ -791,6 +791,33 @@ func TestBufferedChannelQueueClose(t *testing.T) {
 	})
 }
 
+func TestBufferedChannelQueueCloseStopsFreeNodeGoroutine(t *testing.T) {
+	runtime.GC()
+	time.Sleep(10 * time.Millisecond)
+	baseline := runtime.NumGoroutine()
+
+	const n = 50
+	queues := make([]*BufferedChannelQueue[int], n)
+	for i := 0; i < n; i++ {
+		queues[i] = NewBufferedChannelQueue[int](3, 10, 5).
+			SetFreeNodeHookPoolIntervalDuration(time.Millisecond).
+			SetLoadFromPoolDuration(time.Millisecond)
+	}
+	for _, q := range queues {
+		q.Close()
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		runtime.GC()
+		time.Sleep(20 * time.Millisecond)
+		if runtime.NumGoroutine() <= baseline+5 {
+			return
+		}
+	}
+	assert.LessOrEqual(t, runtime.NumGoroutine(), baseline+5)
+}
+
 func TestBufferedChannelQueueConcurrentOfferTake(t *testing.T) {
 	bufferedChannelQueue := NewBufferedChannelQueue[int](10, 100, 20).
 		SetLoadFromPoolDuration(time.Millisecond).
