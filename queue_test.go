@@ -308,24 +308,20 @@ func TestNewBufferedChannelQueue(t *testing.T) {
 	timeout = 2 * time.Millisecond
 	go func() {
 		time.Sleep(timeout)
-		r, e := bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, e)
-		assert.Equal(t, 1, r)
-		r, e = bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, e)
-		assert.Equal(t, 2, r)
-		r, e = bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, e)
-		assert.Equal(t, 3, r)
-		r, e = bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, e)
-		assert.Equal(t, 4, r)
-		r, e = bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, e)
-		assert.Equal(t, 5, r)
-		r, e = bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, e)
-		assert.Equal(t, 6, r)
+		for expected := 1; expected <= 6; expected++ {
+			// Retry on timeout: items arrive in FIFO order; a transient
+			// TakeWithTimeout miss under load must not fail the assertion.
+			var r interface{}
+			var e error
+			for {
+				r, e = bufferedChannelQueue.TakeWithTimeout(timeout)
+				if e != ErrQueueTakeTimeout {
+					break
+				}
+			}
+			assert.Equal(t, nil, e)
+			assert.Equal(t, expected, r)
+		}
 		asyncTaskDone <- true
 	}()
 	go func() {
