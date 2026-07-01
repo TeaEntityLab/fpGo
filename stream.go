@@ -248,7 +248,10 @@ func (streamSelf *StreamDef) Append(item ...interface{}) *StreamDef {
 // Remove Remove an item by its index
 func (streamSelf *StreamDef) Remove(index int) *StreamDef {
 	if index >= 0 && index < streamSelf.Len() {
-		(*streamSelf) = append((*streamSelf)[:index], (*streamSelf)[index+1:]...)
+		result := make(StreamDef, 0, streamSelf.Len()-1)
+		result = append(result, (*streamSelf)[:index]...)
+		result = append(result, (*streamSelf)[index+1:]...)
+		*streamSelf = result
 	}
 	return streamSelf
 }

@@ -50,6 +50,9 @@ type PMapOption struct {
 
 // Compose Compose the functions from right to left (Math: f(g(x)) Compose: Compose(f, g)(x))
 func Compose(fnList ...func(...interface{}) []interface{}) func(...interface{}) []interface{} {
+	if len(fnList) == 0 {
+		return func(s ...interface{}) []interface{} { return s }
+	}
 	return func(s ...interface{}) []interface{} {
 		f := fnList[0]
 		nextFnList := fnList[1:]
@@ -64,6 +67,9 @@ func Compose(fnList ...func(...interface{}) []interface{}) func(...interface{}) 
 
 // Pipe Pipe the functions from left to right
 func Pipe(fnList ...func(...interface{}) []interface{}) func(...interface{}) []interface{} {
+	if len(fnList) == 0 {
+		return func(s ...interface{}) []interface{} { return s }
+	}
 	return func(s ...interface{}) []interface{} {
 		lastIndex := len(fnList) - 1
 		f := fnList[lastIndex]
@@ -246,8 +252,9 @@ func Difference(arrList ...[]interface{}) []interface{} {
 // Distinct removes duplicates.
 //
 // Example
-// 	list := []int{8, 2, 8, 0, 2, 0}
-// 	Distinct(list...) // returns [8, 2, 0]
+//
+//	list := []int{8, 2, 8, 0, 2, 0}
+//	Distinct(list...) // returns [8, 2, 0]
 func Distinct(list ...interface{}) []interface{} {
 	// Keep order
 	resultIndex := 0
@@ -296,7 +303,8 @@ func IsDistinct(list ...interface{}) bool {
 // DropEq returns a new list after dropping the given item
 //
 // Example:
-// 	DropEq(1, 1, 2, 3, 1) // returns [2, 3]
+//
+//	DropEq(1, 1, 2, 3, 1) // returns [2, 3]
 func DropEq(num interface{}, list ...interface{}) []interface{} {
 	var newList []interface{}
 	for _, v := range list {
@@ -336,14 +344,16 @@ func DropLast(count int, list ...interface{}) []interface{} {
 // DropWhile drops the items from the list as long as condition satisfies.
 //
 // Takes two inputs
-//	1. Function: takes one input and returns boolean
-//	2. list
+//  1. Function: takes one input and returns boolean
+//  2. list
 //
 // Returns:
-// 	New List.
-//  Empty list if either one of arguments or both of them are nil
+//
+//		New List.
+//	 Empty list if either one of arguments or both of them are nil
 //
 // Example: Drops even number. Returns the remaining items once odd number is found in the list.
+//
 //	DropWhile(isEven, 4, 2, 3, 4, 5) // Returns [3, 4, 5]
 //
 //	func isEven(num int) bool {
@@ -425,6 +435,7 @@ func IsEqualMap(map1, map2 map[interface{}]interface{}) bool {
 // Every returns true if supplied function returns logical true for every item in the list
 //
 // Example:
+//
 //	Every(even, 8, 2, 10, 4) // Returns true
 //
 //	func isEven(num int) bool {
@@ -448,6 +459,7 @@ func Every(f Predicate, list ...interface{}) bool {
 // Exists checks if given item exists in the list
 //
 // Example:
+//
 //	Exists(8, 8, 2, 10, 4) // Returns true
 //	Exists(8) // Returns false
 func Exists(input interface{}, list ...interface{}) bool {
@@ -631,8 +643,9 @@ func Merge(map1, map2 map[interface{}]interface{}) map[interface{}]interface{} {
 }
 
 // PMap applies the function(1st argument) on each item in the list and returns a new list.
-//  Order of new list is guaranteed. This feature can be disabled by passing: PMapOption{RandomOrder: true} to gain performance
-//  Run in parallel. no_of_goroutines = no_of_items_in_list or 3rd argument can be passed to fix the number of goroutines.
+//
+//	Order of new list is guaranteed. This feature can be disabled by passing: PMapOption{RandomOrder: true} to gain performance
+//	Run in parallel. no_of_goroutines = no_of_items_in_list or 3rd argument can be passed to fix the number of goroutines.
 //
 // Takes 3 inputs. 3rd argument is option
 //  1. Function - takes 1 input
@@ -760,14 +773,16 @@ func Reverse(list ...interface{}) []interface{} {
 // Some finds item in the list based on supplied function.
 //
 // Takes 2 input:
-//	1. Function
-//	2. List
+//  1. Function
+//  2. List
 //
 // Returns:
+//
 //	bool.
 //	True if condition satisfies, else false
 //
 // Example:
+//
 //	Some(isEven, 8, 2, 10, 4) // Returns true
 //	Some(isEven, 1, 3, 5, 7) // Returns false
 //	Some(nil) // Returns false

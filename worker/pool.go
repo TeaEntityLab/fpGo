@@ -17,6 +17,8 @@ var (
 	ErrWorkerPoolIsClosed = errors.New("workerPool is closed")
 	// ErrWorkerPoolScheduleTimeout WorkerPool Schedule Timeout
 	ErrWorkerPoolScheduleTimeout = errors.New("workerPool schedule timeout")
+	// ErrWorkerPoolJobQueueIsNil WorkerPool JobQueue Is Nil
+	ErrWorkerPoolJobQueueIsNil = errors.New("workerPool JobQueue is nil")
 )
 
 // WorkerPool
@@ -79,6 +81,7 @@ type DefaultWorkerPool struct {
 	workerCount   int
 	workerBusy    int
 	spawnWorkerCh fpgo.ChannelQueue
+	done          chan struct{}
 	lastAliveTime time.Time
 
 	// Settings
@@ -94,7 +97,7 @@ func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue, settings *Default
 		jobQueue: jobQueue,
 
 		spawnWorkerCh: fpgo.NewChannelQueue(1),
-
+		done:          make(chan struct{}),
 		// Settings
 		DefaultWorkerPoolSettings: *settings,
 	}
@@ -107,30 +110,42 @@ func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue, settings *Default
 func (workerPoolSelf *DefaultWorkerPool) trySpawn() {
 	workerPoolSelf.lock.RLock()
 	batchSize := workerPoolSelf.workerBatchSize
+	workerCount := workerPoolSelf.workerCount
+	workerBusy := workerPoolSelf.workerBusy
+	workerSizeStandBy := workerPoolSelf.workerSizeStandBy
+	workerSizeMaximum := workerPoolSelf.workerSizeMaximum
+	lastAliveTime := workerPoolSelf.lastAliveTime
+	workerJamDuration := workerPoolSelf.workerJamDuration
+	jobQueue := workerPoolSelf.jobQueue
+	workerPoolSelf.lock.RUnlock()
+
+	queueCount := 0
+	if jobQueue != nil {
+		queueCount = jobQueue.Count()
+	}
+
 	var expectedWorkerCount int
 	if batchSize > 0 {
-		expectedWorkerCount = workerPoolSelf.jobQueue.Count() / batchSize
-		if workerPoolSelf.jobQueue.Count()%batchSize > 0 {
+		expectedWorkerCount = queueCount / batchSize
+		if queueCount%batchSize > 0 {
 			expectedWorkerCount++
 		}
 	}
-	if workerPoolSelf.workerSizeStandBy > expectedWorkerCount {
-		expectedWorkerCount = workerPoolSelf.workerSizeStandBy
+	if workerSizeStandBy > expectedWorkerCount {
+		expectedWorkerCount = workerSizeStandBy
 	}
-	if workerPoolSelf.workerSizeMaximum > 0 &&
-		expectedWorkerCount > workerPoolSelf.workerSizeMaximum {
-		expectedWorkerCount = workerPoolSelf.workerSizeMaximum
+	if workerSizeMaximum > 0 && expectedWorkerCount > workerSizeMaximum {
+		expectedWorkerCount = workerSizeMaximum
 	}
 	// Avoid Jam if (now - lastAliveTime) is over workerJamDuration
-	if time.Now().Sub(workerPoolSelf.lastAliveTime) > workerPoolSelf.workerJamDuration &&
-		workerPoolSelf.workerBusy >= workerPoolSelf.workerCount &&
-		workerPoolSelf.workerCount >= expectedWorkerCount {
-		expectedWorkerCount = workerPoolSelf.workerCount + 1
+	if time.Since(lastAliveTime) > workerJamDuration &&
+		workerBusy >= workerCount &&
+		workerCount >= expectedWorkerCount {
+		expectedWorkerCount = workerCount + 1
 	}
-	workerPoolSelf.lock.RUnlock()
 
-	if workerPoolSelf.workerCount < expectedWorkerCount {
-		for i := workerPoolSelf.workerCount; i < expectedWorkerCount; i++ {
+	if workerCount < expectedWorkerCount {
+		for i := workerCount; i < expectedWorkerCount; i++ {
 			workerPoolSelf.generateWorkerWithMaximum(expectedWorkerCount)
 		}
 	}
@@ -138,7 +153,10 @@ func (workerPoolSelf *DefaultWorkerPool) trySpawn() {
 
 // PreAllocWorkerSize PreAllocate Workers
 func (workerPoolSelf *DefaultWorkerPool) PreAllocWorkerSize(preAllocWorkerSize int) {
-	for i := workerPoolSelf.workerCount; i < preAllocWorkerSize; i++ {
+	workerPoolSelf.lock.RLock()
+	current := workerPoolSelf.workerCount
+	workerPoolSelf.lock.RUnlock()
+	for i := current; i < preAllocWorkerSize; i++ {
 		workerPoolSelf.generateWorkerWithMaximum(preAllocWorkerSize)
 	}
 }
@@ -150,19 +168,40 @@ func (workerPoolSelf *DefaultWorkerPool) spawnLoop() {
 		}
 	}()
 
-	for range workerPoolSelf.spawnWorkerCh {
-		if workerPoolSelf.IsClosed() {
-			break
+	for {
+		select {
+		case <-workerPoolSelf.done:
+			return
+		case _, ok := <-workerPoolSelf.spawnWorkerCh:
+			if !ok {
+				return
+			}
+			if workerPoolSelf.IsClosed() {
+				return
+			}
+
+			workerPoolSelf.trySpawn()
+
+			workerPoolSelf.lock.RLock()
+			spawnWorkerDuration := workerPoolSelf.spawnWorkerDuration
+			workerPoolSelf.lock.RUnlock()
+			time.Sleep(spawnWorkerDuration)
 		}
-
-		workerPoolSelf.trySpawn()
-
-		time.Sleep(workerPoolSelf.spawnWorkerDuration)
 	}
 }
 
 func (workerPoolSelf *DefaultWorkerPool) notifyWorkers() {
-	if workerPoolSelf.workerCount < workerPoolSelf.workerSizeStandBy || workerPoolSelf.jobQueue.Count() > 0 {
+	workerPoolSelf.lock.RLock()
+	workerCount := workerPoolSelf.workerCount
+	workerSizeStandBy := workerPoolSelf.workerSizeStandBy
+	jobQueue := workerPoolSelf.jobQueue
+	workerPoolSelf.lock.RUnlock()
+
+	queueCount := 0
+	if jobQueue != nil {
+		queueCount = jobQueue.Count()
+	}
+	if workerCount < workerSizeStandBy || queueCount > 0 {
 		workerPoolSelf.spawnWorkerCh.Offer(1)
 	}
 }
@@ -200,14 +239,26 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 		// Do Jobs
 	loopLabel:
 		for {
+			workerPoolSelf.lock.Lock()
 			workerPoolSelf.lastAliveTime = time.Now()
+			workerPoolSelf.lock.Unlock()
 
 			if workerPoolSelf.IsClosed() {
 				return
 			}
 
+			workerPoolSelf.lock.RLock()
+			expiryDuration := workerPoolSelf.workerExpiryDuration
+			jobQueue := workerPoolSelf.jobQueue
+			workerPoolSelf.lock.RUnlock()
+
+			var jobCh chan interface{}
+			if jobQueue != nil {
+				jobCh = jobQueue.GetChannel()
+			}
+
 			select {
-			case job := <-workerPoolSelf.jobQueue.GetChannel():
+			case job := <-jobCh:
 				if job != nil {
 					workerPoolSelf.lock.Lock()
 					isBusy = true
@@ -221,15 +272,16 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 					isBusy = false
 					workerPoolSelf.lock.Unlock()
 				}
-			case <-time.After(workerPoolSelf.workerExpiryDuration):
+			case <-time.After(expiryDuration):
 				workerPoolSelf.lock.RLock()
 				workerCount := workerPoolSelf.workerCount
-				if workerCount > workerPoolSelf.workerSizeStandBy ||
-					workerCount > workerPoolSelf.workerSizeMaximum {
-					workerPoolSelf.lock.RUnlock()
+				workerSizeStandBy := workerPoolSelf.workerSizeStandBy
+				workerSizeMaximum := workerPoolSelf.workerSizeMaximum
+				workerPoolSelf.lock.RUnlock()
+				if workerCount > workerSizeStandBy ||
+					workerCount > workerSizeMaximum {
 					break loopLabel
 				}
-				workerPoolSelf.lock.RUnlock()
 			}
 		}
 	}()
@@ -237,7 +289,10 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 
 // SetJobQueue Set the JobQueue(WARNING: if the pool has started to use, doing this is not safe)
 func (workerPoolSelf *DefaultWorkerPool) SetJobQueue(jobQueue *fpgo.BufferedChannelQueue) *DefaultWorkerPool {
+	workerPoolSelf.lock.Lock()
 	workerPoolSelf.jobQueue = jobQueue
+	workerPoolSelf.lock.Unlock()
+	workerPoolSelf.notifyWorkers()
 	return workerPoolSelf
 }
 
@@ -255,55 +310,71 @@ func (workerPoolSelf *DefaultWorkerPool) SetPanicHandler(panicHandler func(inter
 
 // SetWorkerBatchSize Set the workerBatchSize(queued jobs number that every worker could have)
 func (workerPoolSelf *DefaultWorkerPool) SetWorkerBatchSize(workerBatchSize int) *DefaultWorkerPool {
+	workerPoolSelf.lock.Lock()
 	workerPoolSelf.workerBatchSize = workerBatchSize
+	workerPoolSelf.lock.Unlock()
 	workerPoolSelf.notifyWorkers()
 	return workerPoolSelf
 }
 
 // SetWorkerSizeStandBy Set the workerSizeStandBy
 func (workerPoolSelf *DefaultWorkerPool) SetWorkerSizeStandBy(workerSizeStandBy int) *DefaultWorkerPool {
+	workerPoolSelf.lock.Lock()
 	workerPoolSelf.workerSizeStandBy = workerSizeStandBy
+	workerPoolSelf.lock.Unlock()
 	workerPoolSelf.notifyWorkers()
 	return workerPoolSelf
 }
 
 // SetWorkerSizeMaximum Set the workerSizeMaximum
 func (workerPoolSelf *DefaultWorkerPool) SetWorkerSizeMaximum(workerSizeMaximum int) *DefaultWorkerPool {
+	workerPoolSelf.lock.Lock()
 	workerPoolSelf.workerSizeMaximum = workerSizeMaximum
+	workerPoolSelf.lock.Unlock()
 	workerPoolSelf.notifyWorkers()
 	return workerPoolSelf
 }
 
 // SetSpawnWorkerDuration Set the spawnWorkerDuration(Checking repeating by the interval/duration)
 func (workerPoolSelf *DefaultWorkerPool) SetSpawnWorkerDuration(spawnWorkerDuration time.Duration) *DefaultWorkerPool {
+	workerPoolSelf.lock.Lock()
+	defer workerPoolSelf.lock.Unlock()
 	workerPoolSelf.spawnWorkerDuration = spawnWorkerDuration
 	return workerPoolSelf
 }
 
 // SetWorkerExpiryDuration The worker would be dead if the worker is idle without jobs over the duration
 func (workerPoolSelf *DefaultWorkerPool) SetWorkerExpiryDuration(workerExpiryDuration time.Duration) *DefaultWorkerPool {
+	workerPoolSelf.lock.Lock()
 	workerPoolSelf.workerExpiryDuration = workerExpiryDuration
+	workerPoolSelf.lock.Unlock()
 	workerPoolSelf.notifyWorkers()
 	return workerPoolSelf
 }
 
 // SetWorkerJamDuration A new worker would be created if there's no available worker to do jobs over the duration
 func (workerPoolSelf *DefaultWorkerPool) SetWorkerJamDuration(workerJamDuration time.Duration) *DefaultWorkerPool {
+	workerPoolSelf.lock.Lock()
 	workerPoolSelf.workerJamDuration = workerJamDuration
+	workerPoolSelf.lock.Unlock()
 	workerPoolSelf.notifyWorkers()
 	return workerPoolSelf
 }
 
 // SetScheduleRetryInterval Retry interval for ScheduleWithTimeout
 func (workerPoolSelf *DefaultWorkerPool) SetScheduleRetryInterval(scheduleRetryInterval time.Duration) *DefaultWorkerPool {
+	workerPoolSelf.lock.Lock()
 	workerPoolSelf.scheduleRetryInterval = scheduleRetryInterval
+	workerPoolSelf.lock.Unlock()
 	workerPoolSelf.notifyWorkers()
 	return workerPoolSelf
 }
 
 // SetDefaultWorkerPoolSettings Set the defaultWorkerPoolSettings
 func (workerPoolSelf *DefaultWorkerPool) SetDefaultWorkerPoolSettings(defaultWorkerPoolSettings DefaultWorkerPoolSettings) *DefaultWorkerPool {
+	workerPoolSelf.lock.Lock()
 	workerPoolSelf.DefaultWorkerPoolSettings = defaultWorkerPoolSettings
+	workerPoolSelf.lock.Unlock()
 	workerPoolSelf.notifyWorkers()
 	return workerPoolSelf
 }
@@ -313,15 +384,26 @@ func (workerPoolSelf *DefaultWorkerPool) IsClosed() bool {
 	return workerPoolSelf.isClosed.Get()
 }
 
+func (workerPoolSelf *DefaultWorkerPool) getWorkerCount() int {
+	workerPoolSelf.lock.RLock()
+	defer workerPoolSelf.lock.RUnlock()
+	return workerPoolSelf.workerCount
+}
+
 // Close Close the DefaultWorkerPool
 func (workerPoolSelf *DefaultWorkerPool) Close() {
-	if workerPoolSelf.IsClosed() {
+	if !workerPoolSelf.isClosed.CompareAndSwap(false, true) {
 		return
 	}
-	workerPoolSelf.isClosed.Set(true)
+	close(workerPoolSelf.done)
 
-	if workerPoolSelf.isJobQueueClosedWhenClose {
-		workerPoolSelf.jobQueue.Close()
+	workerPoolSelf.lock.RLock()
+	isJobQueueClosedWhenClose := workerPoolSelf.isJobQueueClosedWhenClose
+	jobQueue := workerPoolSelf.jobQueue
+	workerPoolSelf.lock.RUnlock()
+
+	if isJobQueueClosedWhenClose && jobQueue != nil {
+		jobQueue.Close()
 	}
 }
 
@@ -330,9 +412,17 @@ func (workerPoolSelf *DefaultWorkerPool) Schedule(fn func()) error {
 	if workerPoolSelf.IsClosed() {
 		return ErrWorkerPoolIsClosed
 	}
+
+	workerPoolSelf.lock.RLock()
+	jobQueue := workerPoolSelf.jobQueue
+	workerPoolSelf.lock.RUnlock()
+	if jobQueue == nil {
+		return ErrWorkerPoolJobQueueIsNil
+	}
+
 	defer workerPoolSelf.spawnWorkerCh.Offer(1)
 
-	err := workerPoolSelf.jobQueue.Offer(fn)
+	err := jobQueue.Offer(fn)
 	if err == fpgo.ErrQueueIsFull {
 		return ErrWorkerPoolJobQueueIsFull
 	}
@@ -347,7 +437,9 @@ func (workerPoolSelf *DefaultWorkerPool) ScheduleWithTimeout(fn func(), timeout 
 		return err
 	}
 
+	workerPoolSelf.lock.RLock()
 	retryInterval := workerPoolSelf.scheduleRetryInterval
+	workerPoolSelf.lock.RUnlock()
 	if retryInterval > timeout/3 {
 		// retryInterval = timeout * 95 / 100 / 3
 		retryInterval = timeout / 3
@@ -368,9 +460,7 @@ func (workerPoolSelf *DefaultWorkerPool) ScheduleWithTimeout(fn func(), timeout 
 			return ErrWorkerPoolScheduleTimeout
 		}
 		time.Sleep(retryInterval)
-
 	}
-	return err
 }
 
 // Invokable

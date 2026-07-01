@@ -26,6 +26,19 @@ func (atomBoolSelf *AtomBool) Get() bool {
 	return false
 }
 
+// CompareAndSwap atomically sets the bool to newValue if it currently equals
+// oldValue, returning true when the swap happened. Useful for close-once guards.
+func (atomBoolSelf *AtomBool) CompareAndSwap(oldValue, newValue bool) bool {
+	var oldInt, newInt int32
+	if oldValue {
+		oldInt = 1
+	}
+	if newValue {
+		newInt = 1
+	}
+	return atomic.CompareAndSwapInt32(&(atomBoolSelf.flag), oldInt, newInt)
+}
+
 // CorOp Cor Yield Operation/Delegation/Callback
 type CorOp struct {
 	cor *CorDef
@@ -126,7 +139,9 @@ func (corSelf *CorDef) YieldRef(out interface{}) interface{} {
 			cor.resultCh <- out
 		})
 	}
-	result = op.val
+	if op != nil {
+		result = op.val
+	}
 
 	return result
 }
@@ -185,9 +200,8 @@ func (corSelf *CorDef) IsStarted() bool {
 }
 
 func (corSelf *CorDef) close() {
-	corSelf.isClosed.Set(true)
-
 	corSelf.closedM.Lock()
+	corSelf.isClosed.Set(true)
 	if corSelf.resultCh != nil {
 		close(corSelf.resultCh)
 	}
@@ -198,10 +212,11 @@ func (corSelf *CorDef) close() {
 }
 
 func (corSelf *CorDef) doCloseSafe(fn func()) {
+	corSelf.closedM.Lock()
 	if corSelf.IsDone() {
+		corSelf.closedM.Unlock()
 		return
 	}
-	corSelf.closedM.Lock()
 	fn()
 	corSelf.closedM.Unlock()
 }

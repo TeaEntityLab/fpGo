@@ -24,7 +24,7 @@ func (obj TestCustomInt) CompareTo(input interface{}) int {
 type TestCustomString string
 
 func (obj TestCustomString) CompareTo(input interface{}) int {
-	return strings.Compare(string(obj), string(input.(TestCustomString)))
+	return strings.Compare(string(input.(TestCustomString)), string(obj))
 }
 
 type TestCustomObject struct {

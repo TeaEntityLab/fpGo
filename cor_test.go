@@ -83,13 +83,14 @@ func TestCorDoNotation(t *testing.T) {
 	expectedInt = 3
 	// Cor c1
 	var c1 *CorDef
-	c1 = Cor.NewAndStart(func() {
+	c1 = Cor.New(func() {
 		self := c1
 
 		val := self.YieldRef((1))
 		Maybe.Just(val).ToInt()
 		logMessage(self, "c1 val", val)
 	})
+	c1.Start()
 	// Testee
 	actual = Cor.DoNotation(func(self *CorDef) interface{} {
 		logMessage(self, "Do Notation", "init")

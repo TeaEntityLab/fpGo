@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -130,7 +129,7 @@ func (simpleHTTPSelf *SimpleHTTPDef) recursiveVisit(request *http.Request, index
 // GetContextTimeout Get Context by TimeoutMillisecond
 func (simpleHTTPSelf *SimpleHTTPDef) GetContextTimeout() (context.Context, context.CancelFunc) {
 	if simpleHTTPSelf.TimeoutMillisecond > 0 {
-		return context.WithTimeout(context.Background(), time.Duration(simpleHTTPSelf.TimeoutMillisecond))
+		return context.WithTimeout(context.Background(), time.Duration(simpleHTTPSelf.TimeoutMillisecond)*time.Millisecond)
 	}
 
 	return context.WithTimeout(context.Background(), DefaultTimeoutMillisecond)
@@ -371,12 +370,12 @@ func (simpleAPISelf *SimpleAPIDef) MakePostJSONBody(relativeURL string) APIHasBo
 
 // MakePutJSONBody Make a Put API with json Body
 func (simpleAPISelf *SimpleAPIDef) MakePutJSONBody(relativeURL string) APIHasBody {
-	return simpleAPISelf.MakeDoNewRequestWithBodySerializer(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+	return simpleAPISelf.MakeDoNewRequestWithBodySerializer(http.MethodPut, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
 }
 
 // MakePatchJSONBody Make a Patch API with json Body
 func (simpleAPISelf *SimpleAPIDef) MakePatchJSONBody(relativeURL string) APIHasBody {
-	return simpleAPISelf.MakeDoNewRequestWithBodySerializer(http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+	return simpleAPISelf.MakeDoNewRequestWithBodySerializer(http.MethodPatch, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
 }
 
 // MakePostMultipartBody Make a Post API with multipart Body
@@ -386,12 +385,12 @@ func (simpleAPISelf *SimpleAPIDef) MakePostMultipartBody(relativeURL string) API
 
 // MakePutMultipartBody Make a Put API with multipart Body
 func (simpleAPISelf *SimpleAPIDef) MakePutMultipartBody(relativeURL string) APIMultipart {
-	return simpleAPISelf.MakeDoNewRequestWithMultipartSerializer(http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
+	return simpleAPISelf.MakeDoNewRequestWithMultipartSerializer(http.MethodPut, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
 }
 
 // MakePatchMultipartBody Make a Patch API with multipart Body
 func (simpleAPISelf *SimpleAPIDef) MakePatchMultipartBody(relativeURL string) APIMultipart {
-	return simpleAPISelf.MakeDoNewRequestWithMultipartSerializer(http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
+	return simpleAPISelf.MakeDoNewRequestWithMultipartSerializer(http.MethodPatch, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
 }
 
 // MakeDoNewRequestWithBodySerializer Make a API with request body options
@@ -466,7 +465,8 @@ func (simpleAPISelf *SimpleAPIDef) MakeDoNewRequest(method string, relativeURL s
 
 // decodeResponseBody Make a API without body options
 func (simpleAPISelf *SimpleAPIDef) decodeResponseBody(response *ResponseWithError, target interface{}) *ResponseWithError {
-	responseBody, readResponseErr := ioutil.ReadAll(response.Response.Body)
+	defer response.Response.Body.Close()
+	responseBody, readResponseErr := io.ReadAll(response.Response.Body)
 	if readResponseErr != nil {
 		response.Err = readResponseErr
 		return response
@@ -478,7 +478,7 @@ func (simpleAPISelf *SimpleAPIDef) decodeResponseBody(response *ResponseWithErro
 func (simpleAPISelf *SimpleAPIDef) replacePathParams(relativeURL string, pathParam PathParam) string {
 	finalURL := relativeURL
 	for k, v := range pathParam {
-		finalURL = strings.ReplaceAll(relativeURL, fmt.Sprintf("{%s}", k), fmt.Sprintf("%v", v))
+		finalURL = strings.ReplaceAll(finalURL, fmt.Sprintf("{%s}", k), fmt.Sprintf("%v", v))
 	}
 	return simpleAPISelf.BaseURL + "/" + finalURL
 }

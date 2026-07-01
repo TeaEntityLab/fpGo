@@ -15,8 +15,9 @@ type ActorHandle interface {
 // ActorDef Actor model inspired by Erlang/Akka
 type ActorDef struct {
 	id       time.Time
-	isClosed bool
+	isClosed AtomBool
 	ch       chan interface{}
+	done     chan struct{}
 	effect   func(*ActorDef, interface{})
 
 	context map[string]interface{}
@@ -42,6 +43,7 @@ func (actorSelf *ActorDef) NewByOptions(effect func(*ActorDef, interface{}), ioC
 	newOne := ActorDef{
 		id:       time.Now(),
 		ch:       ioCh,
+		done:     make(chan struct{}),
 		effect:   effect,
 		context:  context,
 		children: map[time.Time]*ActorDef{},
@@ -53,17 +55,20 @@ func (actorSelf *ActorDef) NewByOptions(effect func(*ActorDef, interface{}), ioC
 
 // Send Send a message to the Actor
 func (actorSelf *ActorDef) Send(message interface{}) {
-	if actorSelf.isClosed {
+	if actorSelf.isClosed.Get() {
 		return
 	}
 
-	actorSelf.ch <- message
+	select {
+	case <-actorSelf.done:
+	case actorSelf.ch <- message:
+	}
 }
 
 // Spawn Spawn a new Actor with parent(this actor)
 func (actorSelf *ActorDef) Spawn(effect func(*ActorDef, interface{})) *ActorDef {
 	newOne := Actor.New(effect)
-	if actorSelf.isClosed {
+	if actorSelf.isClosed.Get() {
 		return newOne
 	}
 
@@ -90,19 +95,29 @@ func (actorSelf *ActorDef) GetID() time.Time {
 
 // Close Close the Actor
 func (actorSelf *ActorDef) Close() {
-	actorSelf.isClosed = true
+	if !actorSelf.isClosed.CompareAndSwap(false, true) {
+		return
+	}
 
-	close(actorSelf.ch)
+	close(actorSelf.done)
 }
 
 // IsClosed Check is Closed
 func (actorSelf *ActorDef) IsClosed() bool {
-	return actorSelf.isClosed
+	return actorSelf.isClosed.Get()
 }
 
 func (actorSelf *ActorDef) run() {
-	for message := range actorSelf.ch {
-		actorSelf.effect(actorSelf, message)
+	for {
+		select {
+		case <-actorSelf.done:
+			return
+		case message, ok := <-actorSelf.ch:
+			if !ok {
+				return
+			}
+			actorSelf.effect(actorSelf, message)
+		}
 	}
 }
 
@@ -129,7 +144,11 @@ func (askSelf *AskDef) NewByOptions(message interface{}, ioCh chan interface{}) 
 
 // AskNewGenerics New Ask instance
 func AskNewGenerics(message interface{}) *AskDef {
-	return AskNewByOptionsGenerics(message, make(chan interface{}))
+	// Buffered (cap 1) so Reply never blocks and never needs a live receiver:
+	// after AskOnceWithTimeout times out there is no reader, and an unbuffered
+	// channel would either deadlock the replying actor goroutine or (once the
+	// ask side closed it) panic with "send on closed channel".
+	return AskNewByOptionsGenerics(message, make(chan interface{}, 1))
 }
 
 // AskNewByOptionsGenerics New Ask by its options
@@ -147,8 +166,6 @@ func AskNewByOptionsGenerics(message interface{}, ioCh chan interface{}) *AskDef
 // AskOnce Sender Ask
 func (askSelf *AskDef) AskOnce(target ActorHandle) interface{} {
 	ch := askSelf.AskChannel(target)
-	defer close(ch)
-	// var err error
 
 	return <-ch
 }
@@ -156,7 +173,6 @@ func (askSelf *AskDef) AskOnce(target ActorHandle) interface{} {
 // AskOnce Sender Ask with timeout
 func (askSelf *AskDef) AskOnceWithTimeout(target ActorHandle, timeout time.Duration) (interface{}, error) {
 	ch := askSelf.AskChannel(target)
-	defer close(ch)
 	var result interface{}
 	select {
 	case result = <-ch:
@@ -183,9 +199,6 @@ func (askSelf *AskDef) Reply(response interface{}) {
 var Ask AskDef
 
 func init() {
-	// Ask = *Ask.New(0, nil)
-	// Actor = *Actor.New(func(_ *ActorDef, _ interface{}) {})
-	// Actor.Close()
-	Actor.isClosed = true
+	Actor.isClosed.Set(true)
 	defaultActor = &Actor
 }

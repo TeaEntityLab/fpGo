@@ -34,9 +34,9 @@ func _compareBySortDescriptors(item1 interface{}, item2 interface{}, sortDescrip
 	result := 0
 	if key1 != nil && key2 != nil {
 		if descriptor.IsAscending() {
-			key1.CompareTo(key2)
+			result = key1.CompareTo(key2)
 		} else {
-			key2.CompareTo(key1)
+			result = key2.CompareTo(key1)
 		}
 	}
 	if key1 != nil && key2 == nil {

@@ -63,8 +63,8 @@ func (q *ConcurrentQueue) Put(val interface{}) error {
 
 // Take Take the val(probably blocking)
 func (q *ConcurrentQueue) Take() (interface{}, error) {
-	q.lock.RLock()
-	defer q.lock.RUnlock()
+	q.lock.Lock()
+	defer q.lock.Unlock()
 
 	return q.queue.Take()
 }
@@ -79,10 +79,30 @@ func (q *ConcurrentQueue) Offer(val interface{}) error {
 
 // Poll Poll the val(non-blocking)
 func (q *ConcurrentQueue) Poll() (interface{}, error) {
-	q.lock.RLock()
-	defer q.lock.RUnlock()
+	q.lock.Lock()
+	defer q.lock.Unlock()
 
 	return q.queue.Poll()
+}
+
+// Count Count Items (thread-safe)
+func (q *ConcurrentQueue) Count() int {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+	if counter, ok := q.queue.(interface{ Count() int }); ok {
+		return counter.Count()
+	}
+	return 0
+}
+
+// NodePoolCount Count cached nodes in pool (thread-safe)
+func (q *ConcurrentQueue) NodePoolCount() int {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+	if counter, ok := q.queue.(interface{ NodePoolCount() int }); ok {
+		return counter.NodePoolCount()
+	}
+	return 0
 }
 
 // ConcurrentStack
@@ -110,8 +130,8 @@ func (q *ConcurrentStack) Push(val interface{}) error {
 
 // Take Take the val(probably blocking)
 func (q *ConcurrentStack) Pop() (interface{}, error) {
-	q.lock.RLock()
-	defer q.lock.RUnlock()
+	q.lock.Lock()
+	defer q.lock.Unlock()
 
 	return q.stack.Pop()
 }
@@ -307,6 +327,11 @@ func (q *LinkedListQueue) putAllIntoPool(first *DoublyListItem) {
 	}
 }
 
+// NodePoolCount Count cached LinkedListItem nodes in nodePool
+func (q *LinkedListQueue) NodePoolCount() int {
+	return q.nodeCount
+}
+
 // Count Count Items
 func (q *LinkedListQueue) Count() int {
 	return q.count
@@ -419,6 +444,8 @@ func (q *LinkedListQueue) Shift() (interface{}, error) {
 	q.first = node.Next
 	if q.first == nil {
 		q.last = nil
+	} else {
+		q.first.Prev = nil
 	}
 	val := *node.Val
 
@@ -459,6 +486,8 @@ func (q *LinkedListQueue) Pop() (interface{}, error) {
 	q.last = node.Prev
 	if q.last == nil {
 		q.first = nil
+	} else {
+		q.last.Next = nil
 	}
 	val := *node.Val
 	q.recycleNode(node)
@@ -589,6 +618,11 @@ func (q *BufferedChannelQueue) loadFromPool() {
 }
 
 func (q *BufferedChannelQueue) notifyWorkers() {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+	if q.isClosed.Get() {
+		return
+	}
 	q.loadWorkerCh.Offer(1)
 	q.freeNodeWorkerCh.Offer(1)
 }
@@ -625,6 +659,13 @@ func (q *BufferedChannelQueue) GetBufferSizeMaximum() int {
 // GetNodeHookPoolSize Get nodeHookPoolSize(the buffering node hooks ideal size)
 func (q *BufferedChannelQueue) GetNodeHookPoolSize() int {
 	return q.nodeHookPoolSize
+}
+
+// PoolNodeCount Count cached nodes in pool (thread-safe)
+func (q *BufferedChannelQueue) PoolNodeCount() int {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+	return q.pool.nodeCount
 }
 
 // GetLoadFromPoolDuration Get loadFromPoolDuration(the interval to take buffered items into the ChannelQueue)

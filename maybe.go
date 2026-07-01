@@ -972,7 +972,10 @@ func (maybeSelf someDef) ToUint32() (uint32, error) {
 		return 0, ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		return uint32(math.Round(val)), err
+		if val >= 0 && val <= math.MaxUint32 {
+			return uint32(math.Round(val)), err
+		}
+		return 0, ErrConversionSizeOverflow
 	}
 }
 
@@ -1101,10 +1104,16 @@ func (maybeSelf someDef) ToUintptr() (uintptr, error) {
 		return uintptr(0), ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		return uintptr(math.Round(float64(val))), err
+		if val >= 0 && float64(val) <= float64(maxUintptr) {
+			return uintptr(math.Round(float64(val))), err
+		}
+		return uintptr(0), ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		return uintptr(math.Round(val)), err
+		if val >= 0 && val <= float64(maxUintptr) {
+			return uintptr(math.Round(val)), err
+		}
+		return uintptr(0), ErrConversionSizeOverflow
 	}
 }
 

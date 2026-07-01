@@ -73,7 +73,7 @@ func (publisherSelf *PublisherDef) Unsubscribe(s *Subscription) {
 func (publisherSelf *PublisherDef) Publish(result interface{}) {
 	var subscribers []*Subscription
 	publisherSelf.doSubscribeSafe(func() {
-		subscribers = publisherSelf.subscribers
+		subscribers = append(subscribers, publisherSelf.subscribers...)
 	})
 
 	for _, s := range subscribers {
