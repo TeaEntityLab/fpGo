@@ -169,7 +169,11 @@ func (askSelf *AskDef[T, R]) NewByOptions(message T, ioCh chan R) *AskDef[T, R] 
 
 // AskNewGenerics New Ask instance
 func AskNewGenerics[T any, R any](message T) *AskDef[T, R] {
-	return AskNewByOptionsGenerics[T, R](message, make(chan R))
+	// Buffered (cap 1) so Reply never blocks and never needs a live receiver:
+	// after AskOnceWithTimeout times out there is no reader, and an unbuffered
+	// channel would either deadlock the replying actor goroutine or (once the
+	// ask side closed it) panic with "send on closed channel".
+	return AskNewByOptionsGenerics[T, R](message, make(chan R, 1))
 }
 
 // AskNewByOptionsGenerics New Ask by its options
@@ -187,8 +191,6 @@ func AskNewByOptionsGenerics[T any, R any](message T, ioCh chan R) *AskDef[T, R]
 // AskOnce Sender Ask
 func (askSelf *AskDef[T, R]) AskOnce(target ActorHandle[interface{}]) R {
 	ch := askSelf.AskChannel(target)
-	defer close(ch)
-	// var err error
 
 	return <-ch
 }
@@ -196,7 +198,6 @@ func (askSelf *AskDef[T, R]) AskOnce(target ActorHandle[interface{}]) R {
 // AskOnceWithTimeout Sender Ask with timeout
 func (askSelf *AskDef[T, R]) AskOnceWithTimeout(target ActorHandle[interface{}], timeout time.Duration) (R, error) {
 	ch := askSelf.AskChannel(target)
-	defer close(ch)
 	var result R
 	select {
 	case result = <-ch:
@@ -215,6 +216,12 @@ func (askSelf *AskDef[T, R]) AskChannel(target ActorHandle[interface{}]) chan R 
 }
 
 // Reply Receiver Reply
+//
+// A blocking send, so callers that pass their own unbuffered channel via
+// NewByOptions still receive the response. The library's own AskNewGenerics
+// uses a buffered (cap 1) channel, so Reply into it never blocks even when the
+// asker already timed out and stopped reading — and the ask side never closes
+// that channel, so Reply can never "send on closed channel".
 func (askSelf *AskDef[T, R]) Reply(response R) {
 	askSelf.ch <- response
 }

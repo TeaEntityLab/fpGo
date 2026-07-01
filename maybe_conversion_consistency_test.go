@@ -188,3 +188,36 @@ func TestFloatToIntegerRounding(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint32(13), u32)
 }
+
+// ---- ToUintptr float range-check (bit-pattern rule does NOT apply to floats) -
+//
+// Integer sources keep their two's-complement bits (see TestToUintptrKeepsBitPattern),
+// but float sources are range-checked: float->integer overflow is implementation-
+// defined in Go, so out-of-range / negative floats must return an error rather
+// than a platform-dependent value.
+func TestToUintptrFloatOutOfRangeErrors(t *testing.T) {
+	// Out-of-range positive floats overflow-error (previously silently saturated).
+	for _, tc := range []struct {
+		name string
+		run  func() (uintptr, error)
+	}{
+		{"float64(1e40)", func() (uintptr, error) { return Maybe.Just(float64(1e40)).ToUintptr() }},
+		{"float32(1e30)", func() (uintptr, error) { return Maybe.Just(float32(1e30)).ToUintptr() }},
+		{"float64(MaxFloat64)", func() (uintptr, error) { return Maybe.Just(float64(math.MaxFloat64)).ToUintptr() }},
+		{"float64(-1)", func() (uintptr, error) { return Maybe.Just(float64(-1)).ToUintptr() }},
+		{"float32(-2.5)", func() (uintptr, error) { return Maybe.Just(float32(-2.5)).ToUintptr() }},
+	} {
+		got, err := tc.run()
+		assert.ErrorIsf(t, err, ErrConversionSizeOverflow, "%s.ToUintptr", tc.name)
+		assert.Equalf(t, uintptr(0), got, "%s.ToUintptr value", tc.name)
+	}
+
+	// In-range positive floats still round and succeed (contract preserved).
+	up, err := Maybe.Just(float64(2.3)).ToUintptr()
+	assert.NoError(t, err)
+	assert.Equal(t, uintptr(2), up)
+
+	up, err = Maybe.Just(float32(3.7)).ToUintptr()
+	assert.NoError(t, err)
+	assert.Equal(t, uintptr(4), up)
+}

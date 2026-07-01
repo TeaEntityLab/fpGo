@@ -1178,6 +1178,12 @@ func (maybeSelf someDef[T]) ToUint64() (uint64, error) {
 // signed value as its two's-complement bit pattern (e.g. int64(-1) ->
 // ^uintptr(0)). uintptr is an address/bit-pattern type, so preserving the raw
 // bits is the useful behavior here.
+//
+// Float inputs are the exception to that bit-pattern rule: a float carries no
+// meaningful "address bits", and float->integer overflow is implementation-
+// defined in Go, so float32/float64 sources are range-checked like the numeric
+// unsigned conversions — negative or out-of-range floats (e.g. float64(1e40))
+// return ErrConversionSizeOverflow instead of an implementation-defined value.
 func (maybeSelf someDef[T]) ToUintptr() (uintptr, error) {
 	if maybeSelf.IsNil() {
 		return 0, ErrConversionNil
@@ -1241,10 +1247,16 @@ func (maybeSelf someDef[T]) ToUintptr() (uintptr, error) {
 		return uintptr(0), ErrConversionSizeOverflow
 	case float32:
 		val, err := maybeSelf.ToFloat32()
-		return uintptr(math.Round(float64(val))), err
+		if val >= 0 && float64(val) <= float64(maxUintptr) {
+			return uintptr(math.Round(float64(val))), err
+		}
+		return uintptr(0), ErrConversionSizeOverflow
 	case float64:
 		val, err := maybeSelf.ToFloat64()
-		return uintptr(math.Round(val)), err
+		if val >= 0 && val <= float64(maxUintptr) {
+			return uintptr(math.Round(val)), err
+		}
+		return uintptr(0), ErrConversionSizeOverflow
 	}
 }
 

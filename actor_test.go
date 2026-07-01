@@ -350,3 +350,63 @@ func TestAskNewByOptions(t *testing.T) {
 	assert.NotNil(t, ask)
 	assert.Equal(t, 42, ask.Message)
 }
+
+// TestActorAskReplyAfterTimeoutDoesNotPanicOrBlock guards the Ask reply
+// lifecycle: after AskOnceWithTimeout times out, a late Reply from the actor
+// must neither panic ("send on closed channel") nor block the actor goroutine
+// forever (goroutine leak). The buffered (cap 1) reply channel + non-blocking
+// Reply make the late reply a harmless no-op.
+func TestActorAskReplyAfterTimeoutDoesNotPanicOrBlock(t *testing.T) {
+	release := make(chan struct{})
+	processed := make(chan int, 1)
+
+	actorRoot := Actor.New(func(self *ActorDef[interface{}], input interface{}) {
+		switch val := input.(type) {
+		case *AskDef[interface{}, int]:
+			<-release // stall until the asker has already timed out
+			val.Reply(999)
+			processed <- 1 // proves the goroutine was NOT blocked by Reply
+		}
+	})
+	defer actorRoot.Close()
+
+	// Times out: the actor is stalled on <-release.
+	result, err := AskNewGenerics[interface{}, int](1).AskOnceWithTimeout(actorRoot, 5*time.Millisecond)
+	assert.Equal(t, ErrActorAskTimeout, err)
+	assert.Equal(t, 0, result)
+
+	// Let the actor perform its late Reply into the now-abandoned channel.
+	assert.NotPanics(t, func() {
+		close(release)
+		select {
+		case <-processed:
+		case <-time.After(time.Second):
+			t.Fatal("actor goroutine blocked on Reply after asker timed out")
+		}
+	})
+}
+
+// TestActorAskTimeoutThenReplySucceedsForNextAsk ensures a dropped late reply
+// does not corrupt the actor: a fresh Ask after the timeout still works.
+func TestActorAskTimeoutThenReplySucceedsForNextAsk(t *testing.T) {
+	release := make(chan struct{})
+	actorRoot := Actor.New(func(self *ActorDef[interface{}], input interface{}) {
+		switch val := input.(type) {
+		case *AskDef[interface{}, int]:
+			intVal, _ := Maybe.Just(val.Message).ToInt()
+			if intVal < 0 {
+				<-release // first (negative) ask stalls past its timeout
+			}
+			val.Reply(intVal * 10)
+		}
+	})
+	defer actorRoot.Close()
+
+	_, err := AskNewGenerics[interface{}, int](-1).AskOnceWithTimeout(actorRoot, 5*time.Millisecond)
+	assert.Equal(t, ErrActorAskTimeout, err)
+	close(release)
+
+	result, err := AskNewGenerics[interface{}, int](7).AskOnceWithTimeout(actorRoot, time.Second)
+	assert.NoError(t, err)
+	assert.Equal(t, 70, result)
+}

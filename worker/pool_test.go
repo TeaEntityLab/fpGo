@@ -92,7 +92,11 @@ func TestScheduleWithTimeout(t *testing.T) {
 	assert.Equal(t, ErrWorkerPoolScheduleTimeout, err)
 
 	defaultWorkerPool.SetWorkerSizeMaximum(3)
-	err = workerPool.ScheduleWithTimeout(func() {}, 10*time.Millisecond)
+	// Generous timeout: this asserts that raising the worker ceiling lets the
+	// job schedule (a worker spawns and drains a slot), not that the spawn wins
+	// a tight millisecond race. A small bound here is scheduler-load sensitive
+	// and flakes under `go test ./...`; a real "never schedules" bug still fails.
+	err = workerPool.ScheduleWithTimeout(func() {}, 500*time.Millisecond)
 	assert.Equal(t, nil, err)
 }
 

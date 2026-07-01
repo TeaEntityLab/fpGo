@@ -1,6 +1,8 @@
 package fpgo
 
 import (
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -144,4 +146,40 @@ func TestPublisherPublishNilSubscriber(t *testing.T) {
 	assert.NotPanics(t, func() {
 		p.Publish(1)
 	})
+}
+
+// TestPublisherConcurrentPublishUnsubscribe guards against the shared
+// backing-array race where Publish iterated the subscriber slice's backing
+// array outside the lock while Unsubscribe mutated it in place.
+func TestPublisherConcurrentPublishUnsubscribe(t *testing.T) {
+	p := PublisherNewGenerics[int]()
+
+	var counter int64
+	subs := make([]*Subscription[int], 0, 64)
+	for i := 0; i < 64; i++ {
+		subs = append(subs, p.Subscribe(Subscription[int]{
+			OnNext: func(in int) { atomic.AddInt64(&counter, 1) },
+		}))
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 2000; i++ {
+			p.Publish(i)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for _, s := range subs {
+			p.Unsubscribe(s)
+		}
+	}()
+	wg.Wait()
+
+	// All subscribers removed: a final publish must reach nobody.
+	atomic.StoreInt64(&counter, 0)
+	p.Publish(1)
+	assert.Equal(t, int64(0), atomic.LoadInt64(&counter))
 }

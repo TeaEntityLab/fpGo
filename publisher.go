@@ -78,7 +78,9 @@ func (publisherSelf *PublisherDef[T]) Unsubscribe(s *Subscription[T]) {
 func (publisherSelf *PublisherDef[T]) Publish(result T) {
 	var subscribers []*Subscription[T]
 	publisherSelf.doSubscribeSafe(func() {
-		subscribers = publisherSelf.subscribers
+		// Copy into a fresh slice (not just the header) so iteration below
+		// cannot race Unsubscribe's in-place backing-array mutation.
+		subscribers = append(subscribers, publisherSelf.subscribers...)
 	})
 
 	for _, s := range subscribers {
