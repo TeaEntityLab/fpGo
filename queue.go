@@ -85,6 +85,26 @@ func (q *ConcurrentQueue[T]) Poll() (T, error) {
 	return q.queue.Poll()
 }
 
+// Count Count Items (thread-safe)
+func (q *ConcurrentQueue[T]) Count() int {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+	if counter, ok := q.queue.(interface{ Count() int }); ok {
+		return counter.Count()
+	}
+	return 0
+}
+
+// NodePoolCount Count cached nodes in pool (thread-safe)
+func (q *ConcurrentQueue[T]) NodePoolCount() int {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+	if counter, ok := q.queue.(interface{ NodePoolCount() int }); ok {
+		return counter.NodePoolCount()
+	}
+	return 0
+}
+
 // ConcurrentStack
 
 // ConcurrentStack ConcurrentStack inspired by Collection utils
@@ -310,6 +330,11 @@ func (q *LinkedListQueue[T]) putAllIntoPool(first *DoublyListItem[T]) {
 // Count Count Items
 func (q *LinkedListQueue[T]) Count() int {
 	return q.count
+}
+
+// NodePoolCount Count cached LinkedListItem nodes in nodePool
+func (q *LinkedListQueue[T]) NodePoolCount() int {
+	return q.nodeCount
 }
 
 // ClearNodePool Clear cached LinkedListItem nodes in nodePool
@@ -661,6 +686,16 @@ func (q *BufferedChannelQueue[T]) GetChannel() chan T {
 	q.notifyWorkers()
 
 	return q.blockingQueue
+}
+
+// PoolNodeCount Count cached nodes in pool (thread-safe)
+func (q *BufferedChannelQueue[T]) PoolNodeCount() int {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+	if q.pool == nil {
+		return 0
+	}
+	return q.pool.nodeCount
 }
 
 // Count Count items
