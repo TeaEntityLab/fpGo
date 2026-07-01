@@ -1,6 +1,7 @@
 package fpgo
 
 import (
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -383,9 +384,11 @@ func TestNewBufferedChannelQueue(t *testing.T) {
 
 func TestBufferedChannelQueueConcurrentCloseNotifyNoPanic(t *testing.T) {
 	// Regression: notifyWorkers() sent on loadWorkerCh/freeNodeWorkerCh without
-	// checking isClosed under lock. If Close() closed those channels between the
+	// synchronizing with Close(). If Close() closed those channels between the
 	// isClosed check and the Offer, the Offer would panic with send-on-closed-channel.
-	// Fix: notifyWorkers now checks isClosed under RLock.
+	// Fix: notifyWorkers() acquires a dedicated notifyLock sync.Mutex before sending.
+	// Close() also holds notifyLock while closing loadWorkerCh, freeNodeWorkerCh, and
+	// blockingQueue, so notifyWorkers cannot send on a channel being closed.
 	for i := 0; i < 100; i++ {
 		q := NewBufferedChannelQueue(3, 10000, 100)
 		var wg sync.WaitGroup
@@ -400,6 +403,71 @@ func TestBufferedChannelQueueConcurrentCloseNotifyNoPanic(t *testing.T) {
 			_ = q.GetChannel()
 		}()
 		wg.Wait()
+	}
+}
+
+func TestBufferedChannelQueueDoubleClose(t *testing.T) {
+	q := NewBufferedChannelQueue(3, 10, 5)
+	q.Close()
+	q.Close()
+	assert.True(t, q.IsClosed())
+}
+
+func TestBufferedChannelQueueCloseStopsFreeNodeGoroutine(t *testing.T) {
+	runtime.GC()
+	time.Sleep(10 * time.Millisecond)
+	baseline := runtime.NumGoroutine()
+
+	const n = 50
+	queues := make([]*BufferedChannelQueue, n)
+	for i := 0; i < n; i++ {
+		queues[i] = NewBufferedChannelQueue(3, 10, 5).
+			SetFreeNodeHookPoolIntervalDuration(time.Millisecond).
+			SetLoadFromPoolDuration(time.Millisecond)
+	}
+	for _, q := range queues {
+		q.Close()
+	}
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		runtime.GC()
+		time.Sleep(20 * time.Millisecond)
+		if runtime.NumGoroutine() <= baseline+5 {
+			return
+		}
+	}
+	assert.LessOrEqual(t, runtime.NumGoroutine(), baseline+5)
+}
+
+func TestBufferedChannelQueuePutWithTimeoutClosedMidWait(t *testing.T) {
+	q := NewBufferedChannelQueue(1, 0, 1).
+		SetLoadFromPoolDuration(time.Millisecond)
+	assert.NoError(t, q.Offer(1))
+
+	hold := make(chan struct{})
+	go func() {
+		q.lock.Lock()
+		close(hold)
+		time.Sleep(30 * time.Millisecond)
+		q.lock.Unlock()
+		q.Close()
+	}()
+	<-hold
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- q.PutWithTimeout(2, time.Second)
+	}()
+	for i := 0; i < 100000; i++ {
+		runtime.Gosched()
+	}
+
+	select {
+	case err := <-errCh:
+		assert.Equal(t, ErrQueueIsClosed, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("PutWithTimeout did not return")
 	}
 }
 
