@@ -888,3 +888,72 @@ func TestSimpleAPIHTTPMethods(t *testing.T) {
 	patchMultipart(nil, &MultipartForm{Value: map[string][]string{"id": {"3"}}}, &PostListResponse{}).Eval()
 	assert.Equal(t, http.MethodPatch, actualMethod)
 }
+
+type trackingReadCloser struct {
+	data    []byte
+	pos     int
+	closed  bool
+	onClose func()
+}
+
+func (t *trackingReadCloser) Read(p []byte) (n int, err error) {
+	if t.pos >= len(t.data) {
+		return 0, io.EOF
+	}
+	n = copy(p, t.data[t.pos:])
+	t.pos += n
+	return n, nil
+}
+
+func (t *trackingReadCloser) Close() error {
+	t.closed = true
+	if t.onClose != nil {
+		t.onClose()
+	}
+	return nil
+}
+
+func TestReplacePathParamsMultipleParams(t *testing.T) {
+	api := NewSimpleAPI("http://example.com")
+	result := api.replacePathParams("users/{userId}/posts/{postId}", PathParam{
+		"userId": "123",
+		"postId": "456",
+	})
+	assert.Equal(t, "http://example.com/users/123/posts/456", result)
+}
+
+func TestGetContextTimeoutMillisecondUnit(t *testing.T) {
+	client := NewSimpleHTTP()
+	client.TimeoutMillisecond = 100 // 100ms
+	ctx, cancel := client.GetContextTimeout()
+	defer cancel()
+	deadline, ok := ctx.Deadline()
+	assert.True(t, ok)
+	expected := time.Now().Add(100 * time.Millisecond)
+	diff := deadline.Sub(expected)
+	if diff < 0 {
+		diff = -diff
+	}
+	assert.Less(t, diff, 50*time.Millisecond,
+		"TimeoutMillisecond=100 should produce ~100ms deadline, not ~100ns")
+}
+
+func TestDecodeResponseBodyClosesBody(t *testing.T) {
+	closed := false
+	body := &trackingReadCloser{
+		data:    []byte(`{"value":42}`),
+		onClose: func() { closed = true },
+	}
+	api := NewSimpleAPI("http://example.com")
+	api.ResponseDeserializer = func(b []byte, target interface{}) (interface{}, error) {
+		return target, nil
+	}
+	resp := &APIResponse[int]{
+		ResponseWithError: ResponseWithError{
+			Response: &http.Response{Body: body},
+		},
+	}
+	target := 0
+	decodeResponseBody[int](api, resp, &target)
+	assert.True(t, closed, "response body should be closed after decoding")
+}

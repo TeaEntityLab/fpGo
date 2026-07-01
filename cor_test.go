@@ -276,3 +276,27 @@ func TestCorReceiveOnDone(t *testing.T) {
 	case <-time.After(50 * time.Millisecond):
 	}
 }
+
+func TestCorDoCloseSafeRaceWithClose(t *testing.T) {
+	// Directly race close() and doCloseSafe(). Before the fix, close() set
+	// isClosed BEFORE acquiring closedM, so doCloseSafe() could pass the
+	// IsDone() check, then have close() close the channels, then send on a
+	// closed channel → panic. After the fix, both isClosed.Set and the
+	// IsDone check happen inside closedM, so the send can never hit a closed
+	// channel.
+	for i := 0; i < 1000; i++ {
+		cor := CorNewGenerics[int](func() {})
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cor.close()
+		}()
+		cor.doCloseSafe(func() {
+			if cor.opCh != nil {
+				cor.opCh <- &CorOp[int]{cor: nil, val: 42}
+			}
+		})
+		wg.Wait()
+	}
+}

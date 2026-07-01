@@ -59,7 +59,10 @@ func (handlerSelf *HandlerDef) run() {
 		select {
 		case <-handlerSelf.done:
 			return
-		case fn := <-handlerSelf.ch:
+		case fn, ok := <-handlerSelf.ch:
+			if !ok {
+				return
+			}
 			if fn != nil {
 				fn()
 			}

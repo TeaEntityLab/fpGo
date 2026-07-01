@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -529,4 +530,37 @@ func TestWorkerPoolSpawnLoopPanicRecovery(t *testing.T) {
 
 	pool.Close()
 	assert.True(t, pool.IsClosed())
+}
+
+func TestWorkerPoolCloseStopsSpawnLoop(t *testing.T) {
+	baseline := runtime.NumGoroutine()
+
+	jobQueue := fpgo.NewBufferedChannelQueue[func()](10, 10000, 100)
+	pool := NewDefaultWorkerPool(jobQueue, &DefaultWorkerPoolSettings{
+		isJobQueueClosedWhenClose: true,
+		workerBatchSize:           5,
+		workerSizeStandBy:         0,
+		workerSizeMaximum:         0,
+		spawnWorkerDuration:       100 * time.Millisecond,
+		workerExpiryDuration:      5000 * time.Millisecond,
+		workerJamDuration:         1000 * time.Millisecond,
+		scheduleRetryInterval:     50 * time.Millisecond,
+		panicHandler:              defaultPanicHandler,
+	})
+
+	pool.Close()
+
+	// Before the fix, spawnLoop blocked forever on <-spawnWorkerCh because
+	// Close() never signaled it to exit. After the fix, Close() closes the
+	// done channel, which spawnLoop selects on.
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if runtime.NumGoroutine() <= baseline {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	assert.LessOrEqual(t, runtime.NumGoroutine(), baseline,
+		"spawnLoop goroutine should exit after Close(), not leak")
 }

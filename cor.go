@@ -205,9 +205,8 @@ func (corSelf *CorDef[T]) IsStarted() bool {
 }
 
 func (corSelf *CorDef[T]) close() {
-	corSelf.isClosed.Set(true)
-
 	corSelf.closedM.Lock()
+	corSelf.isClosed.Set(true)
 	if corSelf.resultCh != nil {
 		close(corSelf.resultCh)
 	}
@@ -218,10 +217,11 @@ func (corSelf *CorDef[T]) close() {
 }
 
 func (corSelf *CorDef[T]) doCloseSafe(fn func()) {
+	corSelf.closedM.Lock()
 	if corSelf.IsDone() {
+		corSelf.closedM.Unlock()
 		return
 	}
-	corSelf.closedM.Lock()
 	fn()
 	corSelf.closedM.Unlock()
 }

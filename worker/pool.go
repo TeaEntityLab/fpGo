@@ -81,6 +81,7 @@ type DefaultWorkerPool struct {
 	workerCount   int
 	workerBusy    int
 	spawnWorkerCh fpgo.ChannelQueue[int]
+	done          chan struct{}
 	lastAliveTime time.Time
 
 	// Settings
@@ -96,6 +97,7 @@ func NewDefaultWorkerPool(jobQueue *fpgo.BufferedChannelQueue[func()], settings 
 		jobQueue: jobQueue,
 
 		spawnWorkerCh: fpgo.NewChannelQueue[int](1),
+		done:          make(chan struct{}),
 
 		// Settings
 		DefaultWorkerPoolSettings: *settings,
@@ -168,17 +170,25 @@ func (workerPoolSelf *DefaultWorkerPool) spawnLoop() {
 		}
 	}()
 
-	for range workerPoolSelf.spawnWorkerCh {
-		if workerPoolSelf.IsClosed() {
-			break
+	for {
+		select {
+		case <-workerPoolSelf.done:
+			return
+		case _, ok := <-workerPoolSelf.spawnWorkerCh:
+			if !ok {
+				return
+			}
+			if workerPoolSelf.IsClosed() {
+				return
+			}
+
+			workerPoolSelf.trySpawn()
+
+			workerPoolSelf.lock.RLock()
+			spawnWorkerDuration := workerPoolSelf.spawnWorkerDuration
+			workerPoolSelf.lock.RUnlock()
+			time.Sleep(spawnWorkerDuration)
 		}
-
-		workerPoolSelf.trySpawn()
-
-		workerPoolSelf.lock.RLock()
-		spawnWorkerDuration := workerPoolSelf.spawnWorkerDuration
-		workerPoolSelf.lock.RUnlock()
-		time.Sleep(spawnWorkerDuration)
 	}
 }
 
@@ -388,6 +398,7 @@ func (workerPoolSelf *DefaultWorkerPool) Close() {
 		return
 	}
 	workerPoolSelf.isClosed.Set(true)
+	close(workerPoolSelf.done)
 
 	workerPoolSelf.lock.RLock()
 	isJobQueueClosedWhenClose := workerPoolSelf.isJobQueueClosedWhenClose

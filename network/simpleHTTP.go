@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/url"
@@ -125,7 +124,7 @@ func (simpleHTTPSelf *SimpleHTTPDef) recursiveVisit(request *http.Request, index
 // GetContextTimeout Get Context by TimeoutMillisecond
 func (simpleHTTPSelf *SimpleHTTPDef) GetContextTimeout() (context.Context, context.CancelFunc) {
 	if simpleHTTPSelf.TimeoutMillisecond > 0 {
-		return context.WithTimeout(context.Background(), time.Duration(simpleHTTPSelf.TimeoutMillisecond))
+		return context.WithTimeout(context.Background(), time.Duration(simpleHTTPSelf.TimeoutMillisecond)*time.Millisecond)
 	}
 
 	return context.WithTimeout(context.Background(), DefaultTimeoutMillisecond)
@@ -483,7 +482,8 @@ func APIMakeDoNewRequest[R any](simpleAPISelf *SimpleAPIDef, method string, rela
 
 // decodeResponseBody Make a API without body options
 func decodeResponseBody[R any](simpleAPISelf *SimpleAPIDef, response *APIResponse[R], target *R) *APIResponse[R] {
-	responseBody, readResponseErr := ioutil.ReadAll(response.Response.Body)
+	defer response.Response.Body.Close()
+	responseBody, readResponseErr := io.ReadAll(response.Response.Body)
 	if readResponseErr != nil {
 		response.Err = readResponseErr
 		return response
@@ -498,7 +498,7 @@ func decodeResponseBody[R any](simpleAPISelf *SimpleAPIDef, response *APIRespons
 func (simpleAPISelf *SimpleAPIDef) replacePathParams(relativeURL string, pathParam PathParam) string {
 	finalURL := relativeURL
 	for k, v := range pathParam {
-		finalURL = strings.ReplaceAll(relativeURL, fmt.Sprintf("{%s}", k), fmt.Sprintf("%v", v))
+		finalURL = strings.ReplaceAll(finalURL, fmt.Sprintf("{%s}", k), fmt.Sprintf("%v", v))
 	}
 	return simpleAPISelf.BaseURL + "/" + finalURL
 }

@@ -1,6 +1,7 @@
 package fpgo
 
 import (
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -211,4 +212,29 @@ func TestHandlerConcurrentPostCloseDoesNotPanic(t *testing.T) {
 	}
 	assert.Empty(t, panicCh)
 	assert.True(t, handler.IsClosed())
+}
+
+func TestHandlerRunExitsOnExternalChannelClose(t *testing.T) {
+	baseline := runtime.NumGoroutine()
+
+	ch := make(chan func(), 1)
+	handler := new(HandlerDef).NewByCh(ch)
+
+	// Close the external channel. Before the fix, run() would busy-loop on
+	// the always-ready closed channel (100% CPU, goroutine never exits).
+	// After the fix, the two-value receive detects !ok and returns.
+	close(ch)
+
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if runtime.NumGoroutine() <= baseline {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	assert.LessOrEqual(t, runtime.NumGoroutine(), baseline,
+		"run() goroutine should exit after external channel is closed, not busy-loop")
+
+	handler.Close()
 }
