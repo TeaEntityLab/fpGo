@@ -77,6 +77,26 @@ func TestCorYield(t *testing.T) {
 	assert.Equal(t, expectedInt, actualInt)
 }
 
+func TestCorNewAndStart(t *testing.T) {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	var ran AtomBool
+
+	cor := Cor.NewAndStart(func() {
+		ran.Set(true)
+		wg.Done()
+	})
+	assert.NotNil(t, cor)
+
+	wg.Wait()
+	assert.True(t, ran.Get())
+	assert.True(t, cor.IsStarted())
+	assert.Eventually(t, cor.IsDone, time.Second, time.Millisecond)
+
+	// NewAndStart on an already-done receiver is safe and returns a new started Cor.
+	assert.NotPanics(t, func() { cor.Start() })
+}
+
 func TestCorDoNotation(t *testing.T) {
 	var expectedInt int
 	var actual interface{}
@@ -84,13 +104,14 @@ func TestCorDoNotation(t *testing.T) {
 	expectedInt = 3
 	// Cor c1
 	var c1 *CorDef[interface{}]
-	c1 = Cor.NewAndStart(func() {
+	c1 = Cor.New(func() {
 		self := c1
 
 		val := self.YieldRef((1))
 		Maybe.Just(val).ToInt()
 		logMessage(self, "c1 val", val)
 	})
+	c1.Start()
 	// Testee
 	actual = Cor.DoNotation(func(self *CorDef[interface{}]) interface{} {
 		logMessage(self, "Do Notation", "init")

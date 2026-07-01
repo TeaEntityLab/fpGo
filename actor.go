@@ -2,6 +2,7 @@ package fpgo
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -14,15 +15,18 @@ type ActorHandle[T any] interface {
 
 // ActorDef[T] Actor model inspired by Erlang/Akka
 type ActorDef[T any] struct {
-	id       time.Time
-	isClosed bool
-	ch       chan T
-	effect   func(*ActorDef[T], T)
+	id        time.Time
+	isClosed  AtomBool
+	closeOnce sync.Once
+	ch        chan T
+	done      chan struct{}
+	effect    func(*ActorDef[T], T)
 
 	context map[string]interface{}
 
-	children map[time.Time]*ActorDef[T]
-	parent   *ActorDef[T]
+	childrenLock sync.RWMutex
+	children     map[time.Time]*ActorDef[T]
+	parent       *ActorDef[T]
 }
 
 var defaultActor *ActorDef[interface{}]
@@ -52,6 +56,7 @@ func ActorNewByOptionsGenerics[T any](effect func(*ActorDef[T], T), ioCh chan T,
 	newOne := ActorDef[T]{
 		id:       time.Now(),
 		ch:       ioCh,
+		done:     make(chan struct{}),
 		effect:   effect,
 		context:  context,
 		children: map[time.Time]*ActorDef[T]{},
@@ -64,17 +69,28 @@ func ActorNewByOptionsGenerics[T any](effect func(*ActorDef[T], T), ioCh chan T,
 
 // Send Send a message to the Actor
 func (actorSelf *ActorDef[T]) Send(message T) {
-	if actorSelf.isClosed {
+	if actorSelf.IsClosed() {
 		return
 	}
 
-	actorSelf.ch <- message
+	select {
+	case <-actorSelf.done:
+		return
+	case actorSelf.ch <- message:
+	}
 }
 
 // Spawn Spawn a new Actor with parent(this actor)
 func (actorSelf *ActorDef[T]) Spawn(effect func(*ActorDef[T], T)) *ActorDef[T] {
 	newOne := actorSelf.New(effect)
-	if actorSelf.isClosed {
+	if actorSelf.IsClosed() {
+		return newOne
+	}
+
+	actorSelf.childrenLock.Lock()
+	defer actorSelf.childrenLock.Unlock()
+
+	if actorSelf.IsClosed() {
 		return newOne
 	}
 
@@ -86,6 +102,9 @@ func (actorSelf *ActorDef[T]) Spawn(effect func(*ActorDef[T], T)) *ActorDef[T] {
 
 // GetChild Get a child Actor by ID
 func (actorSelf *ActorDef[T]) GetChild(id time.Time) *ActorDef[T] {
+	actorSelf.childrenLock.RLock()
+	defer actorSelf.childrenLock.RUnlock()
+
 	return actorSelf.children[id]
 }
 
@@ -101,19 +120,29 @@ func (actorSelf *ActorDef[T]) GetID() time.Time {
 
 // Close Close the Actor
 func (actorSelf *ActorDef[T]) Close() {
-	actorSelf.isClosed = true
-
-	close(actorSelf.ch)
+	actorSelf.closeOnce.Do(func() {
+		actorSelf.isClosed.Set(true)
+		close(actorSelf.done)
+	})
 }
 
 // IsClosed Check is Closed
 func (actorSelf *ActorDef[T]) IsClosed() bool {
-	return actorSelf.isClosed
+	return actorSelf.isClosed.Get()
 }
 
 func (actorSelf *ActorDef[T]) run() {
-	for message := range actorSelf.ch {
-		actorSelf.effect(actorSelf, message)
+	for {
+		select {
+		case message, ok := <-actorSelf.ch:
+			if !ok {
+				actorSelf.Close()
+				return
+			}
+			actorSelf.effect(actorSelf, message)
+		case <-actorSelf.done:
+			return
+		}
 	}
 }
 
@@ -197,6 +226,7 @@ func init() {
 	// Ask = *Ask.New(0, nil)
 	// Actor = *Actor.New(func(_ *ActorDef[interface{}], _ interface{}) {})
 	// Actor.Close()
-	Actor.isClosed = true
+	Actor.done = make(chan struct{})
+	Actor.isClosed.Set(true)
 	defaultActor = &Actor
 }

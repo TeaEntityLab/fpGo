@@ -20,7 +20,7 @@ func TestHandler_NewByCh(t *testing.T) {
 	handler := new(HandlerDef).NewByCh(ch)
 	assert.NotNil(t, handler)
 	assert.Equal(t, ch, handler.ch)
-	assert.False(t, handler.isClosed)
+	assert.False(t, handler.isClosed.Get())
 	handler.Close()
 }
 
@@ -50,10 +50,11 @@ func TestHandler_PostMultiple(t *testing.T) {
 	results := make([]int, 0, 3)
 
 	for i := 0; i < 3; i++ {
+		v := i
 		wg.Add(1)
 		handler.Post(func() {
 			mu.Lock()
-			results = append(results, i)
+			results = append(results, v)
 			mu.Unlock()
 			wg.Done()
 		})
@@ -73,10 +74,10 @@ func TestHandler_PostAfterClose(t *testing.T) {
 
 func TestHandler_Close(t *testing.T) {
 	handler := new(HandlerDef).New()
-	assert.False(t, handler.isClosed)
+	assert.False(t, handler.isClosed.Get())
 
 	handler.Close()
-	assert.True(t, handler.isClosed)
+	assert.True(t, handler.isClosed.Get())
 }
 
 func TestHandler_CloseMultiple(t *testing.T) {
@@ -165,4 +166,49 @@ func TestHandlerNewByCh(t *testing.T) {
 	assert.NotNil(t, handler)
 	assert.Equal(t, ch, handler.ch)
 	handler.Close()
+}
+
+func TestHandlerCloseMultipleDoesNotPanic(t *testing.T) {
+	handler := new(HandlerDef).New()
+
+	assert.NotPanics(t, func() {
+		handler.Close()
+		handler.Close()
+		handler.Close()
+	})
+	assert.True(t, handler.IsClosed())
+}
+
+func TestHandlerConcurrentPostCloseDoesNotPanic(t *testing.T) {
+	handler := new(HandlerDef).New()
+	start := make(chan struct{})
+	done := make(chan struct{}, 16)
+	panicCh := make(chan interface{}, 16)
+
+	for i := 0; i < 16; i++ {
+		go func() {
+			defer func() {
+				if p := recover(); p != nil {
+					panicCh <- p
+				}
+				done <- struct{}{}
+			}()
+			<-start
+			for j := 0; j < 100; j++ {
+				handler.Post(func() {})
+			}
+		}()
+	}
+
+	close(start)
+	handler.Close()
+	for i := 0; i < 16; i++ {
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Fatal("Post goroutine did not finish after handler close")
+		}
+	}
+	assert.Empty(t, panicCh)
+	assert.True(t, handler.IsClosed())
 }

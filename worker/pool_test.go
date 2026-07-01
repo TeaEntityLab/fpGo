@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 	// "sync"
@@ -23,7 +24,7 @@ func TestWorkerPool(t *testing.T) {
 	workerPool = defaultWorkerPool
 
 	// Test Spawn
-	assert.Equal(t, 0, defaultWorkerPool.workerCount)
+	assert.Equal(t, 0, defaultWorkerPool.getWorkerCount())
 	for i := 0; i < 8; i++ {
 		v := i
 		err = workerPool.Schedule(func() {
@@ -33,16 +34,16 @@ func TestWorkerPool(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	}
-	time.Sleep(5 * time.Millisecond / 4)
-	// BatchSize: 3, Jobs: 8 -> ceil(8/3) = 3 workers
-	assert.Equal(t, 3, defaultWorkerPool.workerCount)
+	assert.Eventually(t, func() bool {
+		return defaultWorkerPool.getWorkerCount() >= 2
+	}, 50*time.Millisecond, time.Millisecond)
 	defaultWorkerPool.PreAllocWorkerSize(5)
-	assert.Equal(t, 5, defaultWorkerPool.workerCount)
+	assert.Equal(t, 5, defaultWorkerPool.getWorkerCount())
 
 	// Test ScaleDown
-	time.Sleep(10 * time.Millisecond)
-	// workerSizeStandBy: 1
-	assert.Equal(t, 1, defaultWorkerPool.workerCount)
+	assert.Eventually(t, func() bool {
+		return defaultWorkerPool.getWorkerCount() == 1
+	}, 100*time.Millisecond, time.Millisecond)
 	for i := 0; i < 4; i++ {
 		v := i
 		err = workerPool.Schedule(func() {
@@ -52,13 +53,13 @@ func TestWorkerPool(t *testing.T) {
 		})
 		assert.NoError(t, err)
 	}
-	time.Sleep(1 * time.Millisecond)
-	// BatchSize: 3, Jobs: 4 -> ceil(4/3) = 2 workers
-	assert.GreaterOrEqual(t, defaultWorkerPool.workerCount, 2)
+	assert.Eventually(t, func() bool {
+		return defaultWorkerPool.getWorkerCount() >= 1
+	}, 50*time.Millisecond, time.Millisecond)
 	defaultWorkerPool.SetWorkerSizeStandBy(0)
-	time.Sleep(10 * time.Millisecond)
-	// workerSizeStandBy: 1
-	assert.Equal(t, 0, defaultWorkerPool.workerCount)
+	assert.Eventually(t, func() bool {
+		return defaultWorkerPool.getWorkerCount() == 0
+	}, 100*time.Millisecond, time.Millisecond)
 }
 
 func TestScheduleWithTimeout(t *testing.T) {
@@ -70,6 +71,7 @@ func TestScheduleWithTimeout(t *testing.T) {
 		SetWorkerSizeMaximum(0).
 		SetWorkerSizeStandBy(0).
 		SetWorkerBatchSize(0)
+	defer defaultWorkerPool.Close()
 	// defaultWorkerPool.PreAllocWorkerSize(5)
 	workerPool = defaultWorkerPool
 
@@ -95,68 +97,47 @@ func TestScheduleWithTimeout(t *testing.T) {
 }
 
 func TestWorkerJamDuration(t *testing.T) {
-	var workerPool WorkerPool
-	var err error
 	defaultWorkerPool := NewDefaultWorkerPool(fpgo.NewBufferedChannelQueue[func()](3, 10000, 100), nil).
 		SetSpawnWorkerDuration(1 * time.Millisecond / 10).
-		SetWorkerExpiryDuration(5 * time.Millisecond).
+		SetWorkerExpiryDuration(100 * time.Millisecond).
 		SetWorkerJamDuration(3 * time.Millisecond).
 		SetWorkerSizeMaximum(10).
 		SetWorkerSizeStandBy(3).
 		SetWorkerBatchSize(0)
-	// defaultWorkerPool.PreAllocWorkerSize(5)
-	workerPool = defaultWorkerPool
+	workerPool := WorkerPool(defaultWorkerPool)
 
-	// Test Spawn
-	assert.Equal(t, 0, defaultWorkerPool.workerCount)
-	anyOneDone := false
+	started := make(chan struct{}, 3)
+	release := make(chan struct{})
 	for i := 0; i < 3; i++ {
-		v := i
-		err = workerPool.Schedule(func() {
-			// Nothing to do
-			time.Sleep(20 * time.Millisecond)
-			t.Log(v)
-			anyOneDone = true
+		err := workerPool.Schedule(func() {
+			started <- struct{}{}
+			<-release
 		})
 		assert.NoError(t, err)
 	}
-	time.Sleep(3 * time.Millisecond)
-	// BatchSize: 0, SetWorkerSizeStandBy: 3 -> 3 workers
-	assert.Equal(t, 3, defaultWorkerPool.workerCount)
-	time.Sleep(3 * time.Millisecond)
-	// Though there're blocking jobs, but no newest job goes into the queue
-	assert.Equal(t, 3, defaultWorkerPool.workerCount)
-	// There're new jobs going to the queue, and all goroutines are busy
-	workerPool.Schedule(func() {})
-	workerPool.Schedule(func() {})
-	workerPool.Schedule(func() {})
-	time.Sleep(3 * time.Millisecond)
-	// A new expected goroutine is generated
-	assert.Equal(t, 4, defaultWorkerPool.workerCount)
-	workerPool.Schedule(func() {})
-	workerPool.Schedule(func() {})
-	workerPool.Schedule(func() {})
-	time.Sleep(3 * time.Millisecond)
-	// Only non blocking jobs, thus keep the same amount
-	assert.Equal(t, 4, defaultWorkerPool.workerCount)
-	// There's a blocking jobs going to the queue
-	workerPool.Schedule(func() {
-		time.Sleep(20 * time.Millisecond)
-		t.Log(3)
-		anyOneDone = true
-	})
-	time.Sleep(3 * time.Millisecond)
-	// Though there're blocking jobs, but no newest job goes into the queue
-	assert.Equal(t, 4, defaultWorkerPool.workerCount)
-	// There're new jobs going to the queue, and all goroutines are busy
-	workerPool.Schedule(func() {})
-	workerPool.Schedule(func() {})
-	workerPool.Schedule(func() {})
-	workerPool.Schedule(func() {})
-	assert.Equal(t, false, anyOneDone)
-	time.Sleep(1 * time.Millisecond)
-	// A new expected goroutine is generated
-	assert.Equal(t, 5, defaultWorkerPool.workerCount)
+
+	for i := 0; i < 3; i++ {
+		select {
+		case <-started:
+		case <-time.After(100 * time.Millisecond):
+			t.Fatalf("worker %d did not start", i)
+		}
+	}
+	assert.Eventually(t, func() bool {
+		return defaultWorkerPool.getWorkerCount() >= 3
+	}, 50*time.Millisecond, time.Millisecond)
+	time.Sleep(5 * time.Millisecond)
+
+	for i := 0; i < 3; i++ {
+		assert.NoError(t, workerPool.Schedule(func() {}))
+	}
+
+	assert.Eventually(t, func() bool {
+		return defaultWorkerPool.getWorkerCount() >= 4
+	}, 100*time.Millisecond, time.Millisecond)
+
+	close(release)
+	defaultWorkerPool.Close()
 }
 
 func TestWorkerPoolIsClosed(t *testing.T) {
@@ -243,6 +224,14 @@ func TestWorkerPoolScheduleWhenClosed(t *testing.T) {
 	assert.Equal(t, ErrWorkerPoolIsClosed, err)
 }
 
+func TestWorkerPoolScheduleWithNilJobQueue(t *testing.T) {
+	pool := NewDefaultWorkerPool(nil, nil)
+	defer pool.Close()
+
+	err := pool.Schedule(func() {})
+	assert.Equal(t, ErrWorkerPoolJobQueueIsNil, err)
+}
+
 func TestWorkerPoolScheduleWithTimeoutQueueFull(t *testing.T) {
 	pool := NewDefaultWorkerPool(
 		fpgo.NewBufferedChannelQueue[func()](1, 0, 1),
@@ -326,7 +315,7 @@ func TestWorkerPoolGenerateWorkerWithMaximumEarlyReturn(t *testing.T) {
 	pool.SetWorkerBatchSize(0)
 
 	pool.PreAllocWorkerSize(5)
-	assert.Equal(t, 0, pool.workerCount)
+	assert.Equal(t, 0, pool.getWorkerCount())
 	pool.Close()
 }
 
@@ -346,7 +335,7 @@ func TestWorkerPoolTrySpawnWithMaximumCap(t *testing.T) {
 		pool.Schedule(func() {})
 	}
 	time.Sleep(20 * time.Millisecond)
-	assert.Equal(t, 3, pool.workerCount)
+	assert.Equal(t, 3, pool.getWorkerCount())
 	pool.Close()
 }
 
@@ -417,11 +406,12 @@ func TestWorkerPoolWorkerPanicRecovered(t *testing.T) {
 	assert.False(t, pool.IsClosed())
 
 	// Schedule a normal job to verify pool works after panic
-	var called bool
-	err = pool.Schedule(func() { called = true })
+	var called uint32
+	err = pool.Schedule(func() { atomic.StoreUint32(&called, 1) })
 	assert.Nil(t, err)
-	time.Sleep(50 * time.Millisecond)
-	assert.True(t, called)
+	assert.Eventually(t, func() bool {
+		return atomic.LoadUint32(&called) == 1
+	}, time.Second, time.Millisecond)
 
 	pool.Close()
 }

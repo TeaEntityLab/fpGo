@@ -113,3 +113,9 @@ func TestConcatNilHeadAndInterior(t *testing.T) {
 	assert.Equal(t, []int{1, 2}, Concat[int](nil, []int{1, 2}))
 	assert.Equal(t, []int{1, 2, 3, 4}, Concat([]int{1, 2}, nil, []int{3, 4}))
 }
+
+func TestNumericIncludesUintAndUintptr(t *testing.T) {
+	assert.Equal(t, uint(9), Max[uint](1, 9, 3))
+	assert.Equal(t, uintptr(2), Min[uintptr](5, 2, 7))
+	assert.Equal(t, []uint{1, 3, 5}, Range[uint](1, 6, 2))
+}

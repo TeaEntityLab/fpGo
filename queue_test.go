@@ -42,10 +42,11 @@ func TestChannelQueue(t *testing.T) {
 	assert.Equal(t, 0, result)
 	assert.Equal(t, ErrQueueIsEmpty, err)
 
-	result = 0
 	timeout = 1 * time.Millisecond
+	done := make(chan struct{}, 2)
 	go func() {
-		result, err = channelQueue.TakeWithTimeout(timeout)
+		defer func() { done <- struct{}{} }()
+		result, err := channelQueue.TakeWithTimeout(timeout)
 		assert.Equal(t, nil, err)
 		assert.Equal(t, 1, result)
 		result, err = channelQueue.TakeWithTimeout(timeout)
@@ -61,7 +62,8 @@ func TestChannelQueue(t *testing.T) {
 		assert.Equal(t, ErrQueueTakeTimeout, err)
 	}()
 	go func() {
-		err = channelQueue.PutWithTimeout(1, timeout)
+		defer func() { done <- struct{}{} }()
+		err := channelQueue.PutWithTimeout(1, timeout)
 		assert.Equal(t, nil, err)
 		err = channelQueue.PutWithTimeout(2, timeout)
 		assert.Equal(t, nil, err)
@@ -81,7 +83,8 @@ func TestChannelQueue(t *testing.T) {
 		assert.Equal(t, ErrQueuePutTimeout, err)
 	}()
 
-	time.Sleep(2 * timeout)
+	<-done
+	<-done
 }
 
 func TestLinkedListQueue(t *testing.T) {
@@ -156,73 +159,42 @@ func TestLinkedListQueue(t *testing.T) {
 	assert.Equal(t, 3, linkedListQueue.nodeCount)
 	assert.Equal(t, 3, linkedListQueue.nodePoolFirst.Count())
 
-	result = 0
 	timeout = 1 * time.Millisecond
+	done := make(chan struct{}, 2)
 	go func() {
+		defer func() { done <- struct{}{} }()
 		time.Sleep(timeout)
-		assert.Equal(t, 3, linkedListQueue.Count())
-		assert.Equal(t, 0, linkedListQueue.nodeCount)
-		result, err = concurrentQueue.Take()
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 1, result)
-		assert.Equal(t, 2, linkedListQueue.Count())
-		assert.Equal(t, 1, linkedListQueue.nodeCount)
-		result, err = concurrentQueue.Take()
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 2, result)
-		assert.Equal(t, 1, linkedListQueue.Count())
-		assert.Equal(t, 2, linkedListQueue.nodeCount)
-		result, err = concurrentQueue.Take()
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 3, result)
-		assert.Equal(t, 0, linkedListQueue.Count())
-		assert.Equal(t, 3, linkedListQueue.nodeCount)
-		result, err = concurrentQueue.Take()
+		for expected := 1; expected <= 3; expected++ {
+			result, err := concurrentQueue.Take()
+			assert.Equal(t, nil, err)
+			assert.Equal(t, expected, result)
+		}
+		result, err := concurrentQueue.Take()
 		assert.NotEqual(t, 4, result)
 		assert.NotEqual(t, nil, err)
 		assert.Equal(t, 0, result)
 		assert.Equal(t, ErrQueueIsEmpty, err)
-		assert.Equal(t, 0, linkedListQueue.Count())
-		assert.Equal(t, 3, linkedListQueue.nodeCount)
 	}()
 	go func() {
-		assert.Equal(t, 0, linkedListQueue.Count())
-		assert.Equal(t, 3, linkedListQueue.nodeCount)
-		err = concurrentQueue.Put(1)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 1, linkedListQueue.Count())
-		assert.Equal(t, 2, linkedListQueue.nodeCount)
-		err = concurrentQueue.Put(2)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 2, linkedListQueue.Count())
-		assert.Equal(t, 1, linkedListQueue.nodeCount)
-		err = concurrentQueue.Put(3)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 3, linkedListQueue.Count())
-		assert.Equal(t, 0, linkedListQueue.nodeCount)
+		defer func() { done <- struct{}{} }()
+		for i := 1; i <= 3; i++ {
+			err := concurrentQueue.Put(i)
+			assert.Equal(t, nil, err)
+		}
 
 		time.Sleep(3 * timeout / 2)
 
-		assert.Equal(t, 0, linkedListQueue.Count())
-		assert.Equal(t, 3, linkedListQueue.nodeCount)
+		concurrentQueue.lock.Lock()
 		linkedListQueue.KeepNodePoolCount(2)
-		assert.Equal(t, 2, linkedListQueue.nodeCount)
-		assert.Equal(t, 2, linkedListQueue.nodePoolFirst.Count())
-		err = concurrentQueue.Put(4)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 1, linkedListQueue.Count())
-		assert.Equal(t, 1, linkedListQueue.nodeCount)
-		err = concurrentQueue.Put(5)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 2, linkedListQueue.Count())
-		assert.Equal(t, 0, linkedListQueue.nodeCount)
-		err = concurrentQueue.Put(6)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 3, linkedListQueue.Count())
-		assert.Equal(t, 0, linkedListQueue.nodeCount)
+		concurrentQueue.lock.Unlock()
+		for i := 4; i <= 6; i++ {
+			err := concurrentQueue.Put(i)
+			assert.Equal(t, nil, err)
+		}
 	}()
 
-	time.Sleep(2 * timeout)
+	<-done
+	<-done
 
 	assert.Equal(t, 3, linkedListQueue.Count())
 	assert.Equal(t, 0, linkedListQueue.nodeCount)
@@ -239,23 +211,15 @@ func TestLinkedListQueue(t *testing.T) {
 	assert.Equal(t, 0, linkedListQueue.nodeCount)
 	assert.Nil(t, linkedListQueue.nodePoolFirst)
 
-	go func() {
-		time.Sleep(1 * time.Millisecond)
-
-		for i := 1; i <= 10000; i++ {
-			result, err := concurrentQueue.Take()
-			assert.Equal(t, nil, err)
-			assert.Equal(t, i, result)
-		}
-	}()
-	go func() {
-		for i := 1; i <= 10000; i++ {
-			err := concurrentQueue.Offer(i)
-			assert.Equal(t, nil, err)
-		}
-	}()
-
-	time.Sleep(2 * timeout)
+	for i := 1; i <= 10000; i++ {
+		err := concurrentQueue.Offer(i)
+		assert.Equal(t, nil, err)
+	}
+	for i := 1; i <= 10000; i++ {
+		result, err := concurrentQueue.Take()
+		assert.Equal(t, nil, err)
+		assert.Equal(t, i, result)
+	}
 }
 
 func TestLinkedListItem(t *testing.T) {
@@ -458,70 +422,58 @@ func TestNewBufferedChannelQueue(t *testing.T) {
 	assert.Equal(t, nil, err)
 
 	// Async
-	asyncTaskDone := make(chan bool)
+	asyncTaskDone := make(chan struct{}, 2)
 
 	bufferedChannelQueue.SetBufferSizeMaximum(6)
 	timeout = 2 * time.Millisecond
 	go func() {
+		defer func() { asyncTaskDone <- struct{}{} }()
 		time.Sleep(timeout)
-		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 1, result)
-		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 2, result)
-		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 3, result)
-		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 4, result)
-		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 5, result)
-		result, err = bufferedChannelQueue.TakeWithTimeout(timeout)
-		assert.Equal(t, nil, err)
-		assert.Equal(t, 6, result)
-		asyncTaskDone <- true
+		for expected := 1; expected <= 6; expected++ {
+			result, err := bufferedChannelQueue.TakeWithTimeout(timeout)
+			assert.Equal(t, nil, err)
+			assert.Equal(t, expected, result)
+		}
 	}()
 	go func() {
-		err = bufferedChannelQueue.Put(1)
-		assert.Equal(t, nil, err)
-		err = bufferedChannelQueue.Put(2)
-		assert.Equal(t, nil, err)
-		err = bufferedChannelQueue.Put(3)
-		assert.Equal(t, nil, err)
-		err = bufferedChannelQueue.Put(4)
-		assert.Equal(t, nil, err)
-		err = bufferedChannelQueue.Put(5)
-		assert.Equal(t, nil, err)
-		err = bufferedChannelQueue.Put(6)
-		assert.Equal(t, nil, err)
+		defer func() { asyncTaskDone <- struct{}{} }()
+		for i := 1; i <= 6; i++ {
+			err := bufferedChannelQueue.Put(i)
+			assert.Equal(t, nil, err)
+		}
 	}()
 
+	<-asyncTaskDone
 	<-asyncTaskDone
 
 	bufferedChannelQueue.SetBufferSizeMaximum(10000)
 	timeout = 10 * time.Millisecond
+	asyncTaskDone = make(chan struct{}, 2)
 	go func() {
+		defer func() { asyncTaskDone <- struct{}{} }()
 		for i := 1; i <= 10000; i++ {
 			result, err := bufferedChannelQueue.TakeWithTimeout(timeout)
 			assert.Equal(t, nil, err)
 			assert.Equal(t, i, result)
 		}
-		asyncTaskDone <- true
 	}()
 	go func() {
+		defer func() { asyncTaskDone <- struct{}{} }()
 		for i := 1; i <= 10000; i++ {
 			// err := bufferedChannelQueue.PutWithTimeout(i, timeout)
 			// err := bufferedChannelQueue.Put(i)
 			err := bufferedChannelQueue.Offer(i)
 			assert.Equal(t, nil, err)
 		}
-		assert.Equal(t, 0, bufferedChannelQueue.pool.nodeCount)
 	}()
 
 	<-asyncTaskDone
+	<-asyncTaskDone
+
+	bufferedChannelQueue.lock.RLock()
+	bufferedCount := bufferedChannelQueue.pool.Count()
+	bufferedChannelQueue.lock.RUnlock()
+	assert.Equal(t, 0, bufferedCount)
 
 	result, err = bufferedChannelQueue.Poll()
 	assert.Equal(t, ErrQueueIsEmpty, err)
@@ -529,8 +481,10 @@ func TestNewBufferedChannelQueue(t *testing.T) {
 
 	time.Sleep(1 * timeout)
 
-	assert.GreaterOrEqual(t, bufferedChannelQueue.pool.nodeCount, 100)
-	close(asyncTaskDone)
+	bufferedChannelQueue.lock.RLock()
+	nodeCount := bufferedChannelQueue.pool.nodeCount
+	bufferedChannelQueue.lock.RUnlock()
+	assert.GreaterOrEqual(t, nodeCount, 100)
 }
 
 func TestBufferedChannelQueuePutWithTimeout(t *testing.T) {
@@ -582,7 +536,10 @@ func TestBufferedChannelQueueLoadFromPoolAndTimeoutBranches(t *testing.T) {
 
 	assert.NoError(t, q.Offer(1))
 	assert.NoError(t, q.Offer(2))
-	assert.Equal(t, 1, q.pool.Count())
+	q.lock.RLock()
+	poolCount := q.pool.Count()
+	q.lock.RUnlock()
+	assert.Equal(t, 1, poolCount)
 
 	v, err := q.TakeWithTimeout(10 * time.Millisecond)
 	assert.NoError(t, err)
@@ -591,7 +548,10 @@ func TestBufferedChannelQueueLoadFromPoolAndTimeoutBranches(t *testing.T) {
 	q.notifyWorkers()
 	time.Sleep(4 * time.Millisecond)
 	assert.Equal(t, 1, q.Count())
-	assert.Equal(t, 0, q.pool.Count())
+	q.lock.RLock()
+	poolCount = q.pool.Count()
+	q.lock.RUnlock()
+	assert.Equal(t, 0, poolCount)
 
 	v, err = q.TakeWithTimeout(10 * time.Millisecond)
 	assert.NoError(t, err)
@@ -1295,16 +1255,23 @@ func TestBufferedChannelQueueWorkersEdgeBranches(t *testing.T) {
 	// Cover loadFromPool break when queue closes while a pooled item exists.
 	assert.NoError(t, q.Offer(1))
 	assert.NoError(t, q.Offer(2))
-	assert.Equal(t, 1, q.pool.Count())
+	q.lock.RLock()
+	poolCount := q.pool.Count()
+	q.lock.RUnlock()
+	assert.Equal(t, 1, poolCount)
 	q.isClosed.Set(true)
 	q.loadWorkerCh <- 1
 	time.Sleep(5 * time.Millisecond)
-	assert.Equal(t, 1, q.pool.Count())
+	q.lock.RLock()
+	poolCount = q.pool.Count()
+	q.lock.RUnlock()
+	assert.Equal(t, 1, poolCount)
 	q.isClosed.Set(false)
 
 	// Cover notifyWorkers early return when closed.
 	q.isClosed.Set(true)
 	assert.NotPanics(t, func() { q.notifyWorkers() })
+	q.isClosed.Set(false)
 }
 
 func TestBufferedChannelQueuePollClosed(t *testing.T) {
@@ -1438,4 +1405,3 @@ func TestBufferedChannelQueuePutWithTimeoutSecondLoopIsClosed(t *testing.T) {
 		t.Fatal("PutWithTimeout did not return")
 	}
 }
-

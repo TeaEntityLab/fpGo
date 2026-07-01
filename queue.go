@@ -509,8 +509,9 @@ func (q *LinkedListQueue[T]) recycleNode(node *DoublyListItem[T]) {
 
 // BufferedChannelQueue BlockingQueue with ChannelQueue & scalable pool, inspired by Collection utils
 type BufferedChannelQueue[T any] struct {
-	lock     sync.RWMutex
-	isClosed AtomBool
+	lock       sync.RWMutex
+	notifyLock sync.Mutex
+	isClosed   AtomBool
 
 	loadWorkerCh     ChannelQueue[int]
 	freeNodeWorkerCh ChannelQueue[int]
@@ -600,6 +601,9 @@ func (q *BufferedChannelQueue[T]) loadFromPool() {
 }
 
 func (q *BufferedChannelQueue[T]) notifyWorkers() {
+	q.notifyLock.Lock()
+	defer q.notifyLock.Unlock()
+
 	if q.isClosed.Get() {
 		return
 	}
@@ -688,6 +692,9 @@ func (q *BufferedChannelQueue[T]) Close() {
 	if q.isClosed.Get() {
 		return
 	}
+
+	q.notifyLock.Lock()
+	defer q.notifyLock.Unlock()
 
 	q.isClosed.Set(true)
 	close(q.loadWorkerCh)

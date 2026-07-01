@@ -372,12 +372,12 @@ func APIMakePostJSONBody[T any, R any](simpleAPISelf *SimpleAPIDef, relativeURL 
 
 // APIMakePutJSONBody Make a Put API with json Body
 func APIMakePutJSONBody[T any, R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APIHasBody[T, R] {
-	return APIMakeDoNewRequestWithBodySerializer[T, R](simpleAPISelf, http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+	return APIMakeDoNewRequestWithBodySerializer[T, R](simpleAPISelf, http.MethodPut, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
 }
 
 // APIMakePatchJSONBody Make a Patch API with json Body
 func APIMakePatchJSONBody[T any, R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APIHasBody[T, R] {
-	return APIMakeDoNewRequestWithBodySerializer[T, R](simpleAPISelf, http.MethodPost, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
+	return APIMakeDoNewRequestWithBodySerializer[T, R](simpleAPISelf, http.MethodPatch, relativeURL, "application/json", simpleAPISelf.RequestSerializerForJSON)
 }
 
 // APIMakePostMultipartBody Make a Post API with multipart Body
@@ -387,12 +387,12 @@ func APIMakePostMultipartBody[R any](simpleAPISelf *SimpleAPIDef, relativeURL st
 
 // APIMakePutMultipartBody Make a Put API with multipart Body
 func APIMakePutMultipartBody[R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APIMultipart[R] {
-	return APIMakeDoNewRequestWithMultipartSerializer[R](simpleAPISelf, http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
+	return APIMakeDoNewRequestWithMultipartSerializer[R](simpleAPISelf, http.MethodPut, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
 }
 
 // APIMakePatchMultipartBody Make a Patch API with multipart Body
 func APIMakePatchMultipartBody[R any](simpleAPISelf *SimpleAPIDef, relativeURL string) APIMultipart[R] {
-	return APIMakeDoNewRequestWithMultipartSerializer[R](simpleAPISelf, http.MethodPost, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
+	return APIMakeDoNewRequestWithMultipartSerializer[R](simpleAPISelf, http.MethodPatch, relativeURL, simpleAPISelf.RequestSerializerForMultipart)
 }
 
 // APIMakeDoNewRequestWithBodySerializer Make a API with request body options

@@ -340,7 +340,7 @@ func TestAPIMakeJSONAndMultipartMethodSelection(t *testing.T) {
 	assert.NoError(t, putMultipart(nil, &MultipartForm{Value: map[string][]string{"k": {"v"}}}, &PostListResponse{}).Eval().Err)
 	assert.NoError(t, patchMultipart(nil, &MultipartForm{Value: map[string][]string{"k": {"v"}}}, &PostListResponse{}).Eval().Err)
 
-	assert.Equal(t, []string{http.MethodPost, http.MethodPost, http.MethodPost, http.MethodPost}, methods)
+	assert.Equal(t, []string{http.MethodPut, http.MethodPatch, http.MethodPut, http.MethodPatch}, methods)
 }
 
 func TestSimpleHTTPInterceptor(t *testing.T) {
@@ -847,4 +847,44 @@ func TestGeneralMultipartSerializerNilMapsAndCloseErrorFree(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, reader)
 	assert.Contains(t, contentType, "multipart/form-data")
+}
+
+// TestSimpleAPIHTTPMethods guards against the copy-paste defect where
+// APIMakePut*/APIMakePatch* issued POST instead of PUT/PATCH.
+func TestSimpleAPIHTTPMethods(t *testing.T) {
+	var actualMethod string
+
+	handler := http.HandlerFunc(func(writer http.ResponseWriter, req *http.Request) {
+		actualMethod = req.Method
+		_, err := writer.Write([]byte(`{"data":[]}`))
+		assert.NoError(t, err)
+	})
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	api := NewSimpleAPI(server.URL)
+
+	postJSON := APIMakePostJSONBody[Post, PostListResponse](api, "posts")
+	postJSON(nil, Post{ID: 1}, &PostListResponse{}).Eval()
+	assert.Equal(t, http.MethodPost, actualMethod)
+
+	putJSON := APIMakePutJSONBody[Post, PostListResponse](api, "posts")
+	putJSON(nil, Post{ID: 2}, &PostListResponse{}).Eval()
+	assert.Equal(t, http.MethodPut, actualMethod)
+
+	patchJSON := APIMakePatchJSONBody[Post, PostListResponse](api, "posts")
+	patchJSON(nil, Post{ID: 3}, &PostListResponse{}).Eval()
+	assert.Equal(t, http.MethodPatch, actualMethod)
+
+	postMultipart := APIMakePostMultipartBody[PostListResponse](api, "posts")
+	postMultipart(nil, &MultipartForm{Value: map[string][]string{"id": {"1"}}}, &PostListResponse{}).Eval()
+	assert.Equal(t, http.MethodPost, actualMethod)
+
+	putMultipart := APIMakePutMultipartBody[PostListResponse](api, "posts")
+	putMultipart(nil, &MultipartForm{Value: map[string][]string{"id": {"2"}}}, &PostListResponse{}).Eval()
+	assert.Equal(t, http.MethodPut, actualMethod)
+
+	patchMultipart := APIMakePatchMultipartBody[PostListResponse](api, "posts")
+	patchMultipart(nil, &MultipartForm{Value: map[string][]string{"id": {"3"}}}, &PostListResponse{}).Eval()
+	assert.Equal(t, http.MethodPatch, actualMethod)
 }

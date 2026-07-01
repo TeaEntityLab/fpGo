@@ -183,6 +183,40 @@ func TestActorSendAfterClose(t *testing.T) {
 	actor.Send("test")
 }
 
+func TestActorConcurrentSendCloseDoesNotPanic(t *testing.T) {
+	actor := Actor.New(func(self *ActorDef[interface{}], input interface{}) {})
+	start := make(chan struct{})
+	done := make(chan struct{}, 16)
+	panicCh := make(chan interface{}, 16)
+
+	for i := 0; i < 16; i++ {
+		go func() {
+			defer func() {
+				if panicVal := recover(); panicVal != nil {
+					panicCh <- panicVal
+				}
+				done <- struct{}{}
+			}()
+			<-start
+			for j := 0; j < 100; j++ {
+				actor.Send(j)
+			}
+		}()
+	}
+
+	close(start)
+	actor.Close()
+	for i := 0; i < 16; i++ {
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Fatal("send goroutine did not finish after actor close")
+		}
+	}
+	assert.Empty(t, panicCh)
+	assert.True(t, actor.IsClosed())
+}
+
 func TestActorGetDefault(t *testing.T) {
 	defaultActor := Actor.GetDefault()
 	assert.NotNil(t, defaultActor)

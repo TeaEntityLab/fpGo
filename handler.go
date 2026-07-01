@@ -2,9 +2,10 @@ package fpgo
 
 // HandlerDef Handler inspired by Android/WebWorker
 type HandlerDef struct {
-	isClosed bool
+	isClosed AtomBool
 
-	ch chan func()
+	ch   chan func()
+	done chan struct{}
 }
 
 var defaultHandler *HandlerDef
@@ -21,36 +22,48 @@ func (handlerSelf *HandlerDef) New() *HandlerDef {
 
 // NewByCh New Handler by its Channel
 func (handlerSelf *HandlerDef) NewByCh(ioCh chan func()) *HandlerDef {
-	new := HandlerDef{ch: ioCh}
-	go new.run()
+	newOne := HandlerDef{ch: ioCh, done: make(chan struct{})}
+	go newOne.run()
 
-	return &new
+	return &newOne
 }
 
 // Post Post a function to execute on the Handler
 func (handlerSelf *HandlerDef) Post(fn func()) {
-	if handlerSelf.isClosed {
+	if handlerSelf.isClosed.Get() {
 		return
 	}
 
-	handlerSelf.ch <- fn
+	select {
+	case <-handlerSelf.done:
+	case handlerSelf.ch <- fn:
+	}
 }
 
 // Close Close the Handler
 func (handlerSelf *HandlerDef) Close() {
-	handlerSelf.isClosed = true
+	if !handlerSelf.isClosed.CompareAndSwap(false, true) {
+		return
+	}
 
-	close(handlerSelf.ch)
+	close(handlerSelf.done)
 }
 
 // IsClosed Check if handler is closed
 func (handlerSelf *HandlerDef) IsClosed() bool {
-	return handlerSelf.isClosed
+	return handlerSelf.isClosed.Get()
 }
 
 func (handlerSelf *HandlerDef) run() {
-	for fn := range handlerSelf.ch {
-		fn()
+	for {
+		select {
+		case <-handlerSelf.done:
+			return
+		case fn := <-handlerSelf.ch:
+			if fn != nil {
+				fn()
+			}
+		}
 	}
 }
 
