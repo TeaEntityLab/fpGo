@@ -73,6 +73,10 @@ type PMapOption struct {
 // Compose Compose the functions from right to left (Math: f(g(x)) Compose: Compose(f, g)(x))
 func Compose[T any](fnList ...func(...T) []T) func(...T) []T {
 	return func(s ...T) []T {
+		if len(fnList) == 0 {
+			return s
+		}
+
 		f := fnList[0]
 		nextFnList := fnList[1:]
 
@@ -92,6 +96,10 @@ func ComposeInterface(fnList ...func(...interface{}) []interface{}) func(...inte
 // Pipe Pipe the functions from left to right
 func Pipe[T any](fnList ...func(...T) []T) func(...T) []T {
 	return func(s ...T) []T {
+		if len(fnList) == 0 {
+			return s
+		}
+
 		lastIndex := len(fnList) - 1
 		f := fnList[lastIndex]
 		nextFnList := fnList[:lastIndex]

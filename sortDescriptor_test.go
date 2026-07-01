@@ -57,9 +57,13 @@ func TestComparableString(t *testing.T) {
 	obj1 := NewComparableString("apple")
 	obj2 := NewComparableString("banana")
 
+	// fpGo's Comparable house convention is INVERTED vs strings.Compare: CompareTo
+	// returns +1 when the receiver sorts earlier (is "less"), matching
+	// ComparableOrdered/CompareToOrdered so a single sort comparator works for all
+	// Comparable types. "apple" < "banana" => obj1.CompareTo(obj2) == 1.
 	assert.Equal(t, 0, obj1.CompareTo(ComparableString{Val: "apple"}))
-	assert.Equal(t, -1, obj1.CompareTo(obj2))
-	assert.Equal(t, 1, obj2.CompareTo(obj1))
+	assert.Equal(t, 1, obj1.CompareTo(obj2))
+	assert.Equal(t, -1, obj2.CompareTo(obj1))
 }
 
 func TestSortedListBySortDescriptors(t *testing.T) {

@@ -1744,19 +1744,20 @@ func TestMaybeOverflowAndUnsupportedConversions(t *testing.T) {
 	_, err := Maybe.Just(uint64(math.MaxUint64)).ToInt()
 	assert.ErrorIs(t, err, ErrConversionSizeOverflow)
 
-	// float64->int32 overflow conversion is implementation-dependent per the Go spec
-	// (amd64 yields MinInt32, arm64 saturates to MaxInt32); ToInt32's float64 branch has
-	// no bounds check, so only the no-error contract is portable to assert here.
+	// float64 out of int32 range now returns a portable overflow error (the
+	// float64 branch of ToInt32 gained the same bounds check its float32
+	// sibling already had), instead of the implementation-defined saturation.
 	_, err = Maybe.Just(float64(math.MaxFloat64)).ToInt32()
-	assert.NoError(t, err)
+	assert.ErrorIs(t, err, ErrConversionSizeOverflow)
 
 	valUint, err := Maybe.Just(int64(-1)).ToUint()
 	assert.Equal(t, uint(0), valUint)
 	assert.ErrorIs(t, err, ErrConversionSizeOverflow)
 
+	// Negative float -> uint32 now guarded (matches ToUint64), returns overflow.
 	valUint32, err := Maybe.Just(float64(-1)).ToUint32()
-	assert.Equal(t, uint32(math.MaxUint32), valUint32)
-	assert.NoError(t, err)
+	assert.Equal(t, uint32(0), valUint32)
+	assert.ErrorIs(t, err, ErrConversionSizeOverflow)
 
 	valUint64, err := Maybe.Just(float64(-1)).ToUint64()
 	assert.Equal(t, uint64(0), valUint64)
@@ -3936,9 +3937,11 @@ func TestMaybeCoverageDirectBranches(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint(321), valUint)
 
+	// int16(-1) -> uint16 now rejects the negative with an overflow error
+	// (was silently wrapping to 65535).
 	valUint16, err := JustGenerics(int16(-1)).ToUint16()
-	assert.NoError(t, err)
-	assert.Equal(t, uint16(65535), valUint16)
+	assert.ErrorIs(t, err, ErrConversionSizeOverflow)
+	assert.Equal(t, uint16(0), valUint16)
 
 	valUint32, err := JustGenerics(float64(12.2)).ToUint32()
 	assert.NoError(t, err)
@@ -3997,10 +4000,11 @@ func TestMaybeRemainingBranchCoverage(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, uint(123), valUint)
 
-	// ToUint16 int16 direct branch.
+	// ToUint16 int16 direct branch: negative now returns overflow error
+	// (also fixes the former copy-paste that called ToInt32 here).
 	valUint16, err := JustGenerics(int16(-1)).ToUint16()
-	assert.NoError(t, err)
-	assert.Equal(t, uint16(65535), valUint16)
+	assert.ErrorIs(t, err, ErrConversionSizeOverflow)
+	assert.Equal(t, uint16(0), valUint16)
 
 	// ToUint32 float64 direct branch.
 	valUint32, err := JustGenerics(float64(7.2)).ToUint32()

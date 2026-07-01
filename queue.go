@@ -63,8 +63,8 @@ func (q *ConcurrentQueue[T]) Put(val T) error {
 
 // Take Take the T val(probably blocking)
 func (q *ConcurrentQueue[T]) Take() (T, error) {
-	q.lock.RLock()
-	defer q.lock.RUnlock()
+	q.lock.Lock()
+	defer q.lock.Unlock()
 
 	return q.queue.Take()
 }
@@ -79,8 +79,8 @@ func (q *ConcurrentQueue[T]) Offer(val T) error {
 
 // Poll Poll the T val(non-blocking)
 func (q *ConcurrentQueue[T]) Poll() (T, error) {
-	q.lock.RLock()
-	defer q.lock.RUnlock()
+	q.lock.Lock()
+	defer q.lock.Unlock()
 
 	return q.queue.Poll()
 }
@@ -110,8 +110,8 @@ func (q *ConcurrentStack[T]) Push(val T) error {
 
 // Take Take the T val(probably blocking)
 func (q *ConcurrentStack[T]) Pop() (T, error) {
-	q.lock.RLock()
-	defer q.lock.RUnlock()
+	q.lock.Lock()
+	defer q.lock.Unlock()
 
 	return q.stack.Pop()
 }
@@ -419,6 +419,10 @@ func (q *LinkedListQueue[T]) Shift() (T, error) {
 	q.first = node.Next
 	if q.first == nil {
 		q.last = nil
+	} else {
+		// Sever the dangling link to the just-removed (and recycled) node so a
+		// later traversal cannot walk into a pooled node.
+		q.first.Prev = nil
 	}
 	val := *node.Val
 
@@ -459,6 +463,10 @@ func (q *LinkedListQueue[T]) Pop() (T, error) {
 	q.last = node.Prev
 	if q.last == nil {
 		q.first = nil
+	} else {
+		// Sever the dangling link to the just-removed (and recycled) node so a
+		// later Shift cannot walk q.first into a pooled node.
+		q.last.Next = nil
 	}
 	val := *node.Val
 	q.recycleNode(node)

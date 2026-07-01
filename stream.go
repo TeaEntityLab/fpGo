@@ -129,13 +129,16 @@ func (streamSelf *StreamDef[T]) Append(item ...T) *StreamDef[T] {
 
 // Remove Remove an item by its index
 func (streamSelf *StreamDef[T]) Remove(index int) *StreamDef[T] {
-	var result StreamDef[T]
 	if index >= 0 && index < streamSelf.Len() {
-		result = append((*streamSelf)[:index], (*streamSelf)[index+1:]...)
-	} else {
-		return streamSelf
+		mine := *streamSelf
+		// Build a fresh backing array so the receiver (and its slice) is not
+		// corrupted by append aliasing — Remove returns a new Stream.
+		result := make(StreamDef[T], 0, len(mine)-1)
+		result = append(result, mine[:index]...)
+		result = append(result, mine[index+1:]...)
+		return &result
 	}
-	return &result
+	return streamSelf
 }
 
 // Len Get length of Stream

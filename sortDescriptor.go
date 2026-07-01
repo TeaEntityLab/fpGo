@@ -2,7 +2,6 @@ package fpgo
 
 import (
 	"reflect"
-	"strings"
 )
 
 // NewComparableOrdered Generate a Ordered Comparable for Comparator
@@ -36,7 +35,7 @@ type ComparableString struct {
 
 // CompareTo Compare with an another object
 func (obj ComparableString) CompareTo(input interface{}) int {
-	return strings.Compare(string(obj.Val), string(input.(ComparableString).Val))
+	return CompareToOrdered(obj.Val, input.(ComparableString).Val)
 }
 
 // SortDescriptor Define a Transformer Pattern SortDescriptor
@@ -69,9 +68,9 @@ func _compareBySortDescriptors[T any](item1 T, item2 T, sortDescriptors []SortDe
 	result := 0
 	if key1 != nil && key2 != nil {
 		if descriptor.IsAscending() {
-			key1.CompareTo(key2)
+			result = key1.CompareTo(key2)
 		} else {
-			key2.CompareTo(key1)
+			result = key2.CompareTo(key1)
 		}
 	}
 	if key1 != nil && key2 == nil {
