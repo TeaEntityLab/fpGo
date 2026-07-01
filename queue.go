@@ -530,8 +530,9 @@ func (q *LinkedListQueue) recycleNode(node *DoublyListItem) {
 
 // BufferedChannelQueue BlockingQueue with ChannelQueue & scalable pool, inspired by Collection utils
 type BufferedChannelQueue struct {
-	lock     sync.RWMutex
-	isClosed AtomBool
+	lock       sync.RWMutex
+	notifyLock sync.Mutex
+	isClosed   AtomBool
 
 	loadWorkerCh     ChannelQueue
 	freeNodeWorkerCh ChannelQueue
@@ -625,11 +626,13 @@ func (q *BufferedChannelQueue) loadFromPool() {
 }
 
 func (q *BufferedChannelQueue) notifyWorkers() {
-	q.lock.RLock()
-	defer q.lock.RUnlock()
+	q.notifyLock.Lock()
+	defer q.notifyLock.Unlock()
+
 	if q.isClosed.Get() {
 		return
 	}
+
 	q.loadWorkerCh.Offer(1)
 	q.freeNodeWorkerCh.Offer(1)
 }
@@ -672,6 +675,9 @@ func (q *BufferedChannelQueue) GetNodeHookPoolSize() int {
 func (q *BufferedChannelQueue) PoolNodeCount() int {
 	q.lock.RLock()
 	defer q.lock.RUnlock()
+	if q.pool == nil {
+		return 0
+	}
 	return q.pool.nodeCount
 }
 
@@ -694,12 +700,16 @@ func (q *BufferedChannelQueue) GetChannel() chan interface{} {
 
 // Count Count items
 func (q *BufferedChannelQueue) Count() int {
+	q.lock.RLock()
+	defer q.lock.RUnlock()
+
 	if q.isClosed.Get() {
 		return 0
 	}
 
-	q.lock.RLock()
-	defer q.lock.RUnlock()
+	if q.blockingQueue == nil || q.pool == nil {
+		return 0
+	}
 
 	return len(q.blockingQueue) + q.pool.Count()
 }
@@ -714,8 +724,16 @@ func (q *BufferedChannelQueue) Close() {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
+	if q.isClosed.Get() {
+		return
+	}
+
+	q.notifyLock.Lock()
+	defer q.notifyLock.Unlock()
+
 	q.isClosed.Set(true)
 	close(q.loadWorkerCh)
+	close(q.freeNodeWorkerCh)
 	close(q.blockingQueue)
 }
 
@@ -744,17 +762,20 @@ func (q *BufferedChannelQueue) Put(val interface{}) error {
 
 // PutWithTimeout Put the T val(blocking), with timeout
 func (q *BufferedChannelQueue) PutWithTimeout(val interface{}, timeout time.Duration) error {
-	//  	q.lock.Lock()
-	//  	defer q.lock.Unlock()
-
 	if q.isClosed.Get() {
 		return ErrQueueIsClosed
 	}
 
 	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		//fmt.Println("iteration")
-		q.loadWorkerCh.Offer(1)
+	for {
+		if q.isClosed.Get() {
+			return ErrQueueIsClosed
+		}
+		if !time.Now().Before(deadline) {
+			break
+		}
+
+		q.notifyWorkers()
 
 		err := q.Offer(val)
 		if err == nil {
@@ -763,11 +784,10 @@ func (q *BufferedChannelQueue) PutWithTimeout(val interface{}, timeout time.Dura
 		if errors.Is(err, ErrQueueIsFull) {
 			return err
 		}
-		q.loadWorkerCh.Offer(1)
+
+		q.notifyWorkers()
 		time.Sleep(q.loadFromPoolDuration)
 	}
-
-	//return q.blockingQueue.PutWithTimeout(val, timeout)
 
 	return ErrQueuePutTimeout
 }
