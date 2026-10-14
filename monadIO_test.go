@@ -282,3 +282,52 @@ func TestMonadIOObserveOnNil(t *testing.T) {
 
 	assert.Equal(t, 1, result)
 }
+
+// Regression: SubscribeOn/ObserveOn had their roles inverted. Rx convention:
+// subscribeOn schedules the upstream effect, observeOn schedules the OnNext
+// delivery. Previously obOn ran the effect and subOn delivered the callback —
+// the opposite. Detectable: a closed subscribeOn handler must not stop the
+// effect from producing a value for a live observeOn handler, and vice versa.
+func TestMonadIOSubscribeOnSchedulesEffectOnly(t *testing.T) {
+	hSub := new(HandlerDef).New()
+
+	// Close the subscription handler before subscribing: the effect is posted
+	// there, so with correct semantics it is dropped — nothing runs.
+	hSub.Close()
+
+	ran := make(chan struct{}, 1)
+	m := MonadIO.New(func() interface{} {
+		ran <- struct{}{}
+		return 1
+	}).SubscribeOn(hSub)
+
+	m.Subscribe(Subscription[interface{}]{OnNext: func(in interface{}) {}})
+	select {
+	case <-ran:
+		t.Fatal("effect ran despite closed subscribeOn handler")
+	case <-time.After(200 * time.Millisecond):
+	}
+}
+
+func TestMonadIOObserveOnSchedulesCallbackOnly(t *testing.T) {
+	hSub := new(HandlerDef).New()
+	defer hSub.Close()
+	hOb := new(HandlerDef).New()
+
+	// Close the observe handler before subscribing: OnNext delivery is dropped,
+	// but the effect itself must still run.
+	hOb.Close()
+
+	ran := make(chan struct{}, 1)
+	m := MonadIO.New(func() interface{} {
+		ran <- struct{}{}
+		return 1
+	}).ObserveOn(hOb).SubscribeOn(hSub)
+
+	m.Subscribe(Subscription[interface{}]{OnNext: func(in interface{}) {}})
+	select {
+	case <-ran:
+	case <-time.After(2 * time.Second):
+		t.Fatal("effect did not run — observeOn should only gate OnNext delivery")
+	}
+}
