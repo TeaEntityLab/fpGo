@@ -77,6 +77,15 @@ func (actorSelf *ActorDef) Spawn(effect func(*ActorDef, interface{})) *ActorDef 
 
 	newOne.parent = actorSelf
 	actorSelf.childrenLock.Lock()
+	// IDs come from time.Now(); two spawns in the same tick (coarse clocks can
+	// tick at ~15ms) would collide and silently drop a child. Bump by a
+	// nanosecond — re-calling Now() would spin on the same tick.
+	for {
+		if _, exists := actorSelf.children[newOne.id]; !exists {
+			break
+		}
+		newOne.id = newOne.id.Add(time.Nanosecond)
+	}
 	actorSelf.children[newOne.id] = newOne
 	actorSelf.childrenLock.Unlock()
 
@@ -180,10 +189,12 @@ func (askSelf *AskDef) AskOnce(target ActorHandle) interface{} {
 // AskOnceWithTimeout Sender Ask with timeout
 func (askSelf *AskDef) AskOnceWithTimeout(target ActorHandle, timeout time.Duration) (interface{}, error) {
 	ch := askSelf.AskChannel(target)
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	var result interface{}
 	select {
 	case result = <-ch:
-	case <-time.After(timeout):
+	case <-timer.C:
 		return result, ErrActorAskTimeout
 	}
 

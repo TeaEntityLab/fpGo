@@ -245,13 +245,16 @@ func (streamSelf *StreamDef) Append(item ...interface{}) *StreamDef {
 	return streamSelf.Concat(item)
 }
 
-// Remove Remove an item by its index
+// Remove Remove an item by its index.
+// Returns a new stream. The receiver is not modified and does not share a
+// backing array with the result (append would otherwise alias it).
 func (streamSelf *StreamDef) Remove(index int) *StreamDef {
 	if index >= 0 && index < streamSelf.Len() {
-		result := make(StreamDef, 0, streamSelf.Len()-1)
-		result = append(result, (*streamSelf)[:index]...)
-		result = append(result, (*streamSelf)[index+1:]...)
-		*streamSelf = result
+		mine := *streamSelf
+		result := make(StreamDef, 0, len(mine)-1)
+		result = append(result, mine[:index]...)
+		result = append(result, mine[index+1:]...)
+		return &result
 	}
 	return streamSelf
 }

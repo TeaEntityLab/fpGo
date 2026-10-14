@@ -46,6 +46,15 @@ type ConcurrentQueue struct {
 	queue Queue
 }
 
+// threadSafeQueue marks Queue implementations that already synchronize their
+// own state. For those, ConcurrentQueue must NOT hold its own lock across a
+// blocking op: a consumer blocked in Take would otherwise hold the write lock
+// forever, so a producer's Offer could never acquire it — guaranteed deadlock.
+type threadSafeQueue interface {
+	Queue
+	threadSafe()
+}
+
 // NewConcurrentQueue New ConcurrentQueue instance from a Queue
 func NewConcurrentQueue(queue Queue) *ConcurrentQueue {
 	return &ConcurrentQueue{
@@ -55,6 +64,10 @@ func NewConcurrentQueue(queue Queue) *ConcurrentQueue {
 
 // Put Put the val(probably blocking)
 func (q *ConcurrentQueue) Put(val interface{}) error {
+	if _, ok := q.queue.(threadSafeQueue); ok {
+		return q.queue.Put(val)
+	}
+
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -63,6 +76,10 @@ func (q *ConcurrentQueue) Put(val interface{}) error {
 
 // Take Take the val(probably blocking)
 func (q *ConcurrentQueue) Take() (interface{}, error) {
+	if _, ok := q.queue.(threadSafeQueue); ok {
+		return q.queue.Take()
+	}
+
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -71,6 +88,10 @@ func (q *ConcurrentQueue) Take() (interface{}, error) {
 
 // Offer Offer the val(non-blocking)
 func (q *ConcurrentQueue) Offer(val interface{}) error {
+	if _, ok := q.queue.(threadSafeQueue); ok {
+		return q.queue.Offer(val)
+	}
+
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -79,18 +100,29 @@ func (q *ConcurrentQueue) Offer(val interface{}) error {
 
 // Poll Poll the val(non-blocking)
 func (q *ConcurrentQueue) Poll() (interface{}, error) {
+	if _, ok := q.queue.(threadSafeQueue); ok {
+		return q.queue.Poll()
+	}
+
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	return q.queue.Poll()
 }
 
-// Count Count Items (thread-safe)
+// Count Count Items (thread-safe).
+//
+// Prefers a Count() method when the wrapped queue exposes one. A plain channel
+// (ChannelQueue) has none, so its buffered length is reported directly — a
+// channel holding items is not empty.
 func (q *ConcurrentQueue) Count() int {
 	q.lock.RLock()
 	defer q.lock.RUnlock()
 	if counter, ok := q.queue.(interface{ Count() int }); ok {
 		return counter.Count()
+	}
+	if ch, ok := q.queue.(interface{ Len() int }); ok {
+		return ch.Len()
 	}
 	return 0
 }
@@ -146,18 +178,60 @@ func NewChannelQueue(capacity int) ChannelQueue {
 	return make(ChannelQueue, capacity)
 }
 
+// Len Number of items currently buffered in the channel
+func (q ChannelQueue) Len() int {
+	return len(q)
+}
+
+// threadSafe ChannelQueue is already safe for concurrent use
+func (q ChannelQueue) threadSafe() {}
+
+// closedSend reports the runtime panic from sending on a closed channel.
+// ChannelQueue is a named chan, so callers can close it; sends must return
+// ErrQueueIsClosed rather than crash the caller.
+func closedSend(r interface{}) bool {
+	err, ok := r.(error)
+	return ok && err.Error() == "send on closed channel"
+}
+
 // Put Put the val(blocking)
-func (q ChannelQueue) Put(val interface{}) error {
+func (q ChannelQueue) Put(val interface{}) (err error) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		if closedSend(r) {
+			err = ErrQueueIsClosed
+			return
+		}
+		panic(r)
+	}()
+
 	q <- val
 	return nil
 }
 
 // PutWithTimeout Put the val(blocking), with timeout
-func (q ChannelQueue) PutWithTimeout(val interface{}, timeout time.Duration) error {
+func (q ChannelQueue) PutWithTimeout(val interface{}, timeout time.Duration) (err error) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		if closedSend(r) {
+			err = ErrQueueIsClosed
+			return
+		}
+		panic(r)
+	}()
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	select {
 	case q <- val:
 		return nil
-	case <-time.After(timeout):
+	case <-timer.C:
 		return ErrQueuePutTimeout
 	}
 }
@@ -173,19 +247,33 @@ func (q ChannelQueue) Take() (interface{}, error) {
 
 // TakeWithTimeout Take the val(blocking), with timeout
 func (q ChannelQueue) TakeWithTimeout(timeout time.Duration) (interface{}, error) {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	select {
 	case val, ok := <-q:
 		if !ok {
 			return *new(interface{}), ErrQueueIsClosed
 		}
 		return val, nil
-	case <-time.After(timeout):
+	case <-timer.C:
 		return *new(interface{}), ErrQueueTakeTimeout
 	}
 }
 
 // Offer Offer the val(non-blocking)
-func (q ChannelQueue) Offer(val interface{}) error {
+func (q ChannelQueue) Offer(val interface{}) (err error) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		if closedSend(r) {
+			err = ErrQueueIsClosed
+			return
+		}
+		panic(r)
+	}()
+
 	select {
 	case q <- val:
 		return nil
@@ -197,7 +285,10 @@ func (q ChannelQueue) Offer(val interface{}) error {
 // Poll Poll the val(non-blocking)
 func (q ChannelQueue) Poll() (interface{}, error) {
 	select {
-	case val := <-q:
+	case val, ok := <-q:
+		if !ok {
+			return *new(interface{}), ErrQueueIsClosed
+		}
 		return val, nil
 	default:
 		return *new(interface{}), ErrQueueIsEmpty
@@ -850,7 +941,15 @@ func (q *BufferedChannelQueue) Offer(val interface{}) error {
 	return nil
 }
 
+// threadSafe BufferedChannelQueue synchronizes its own state
+func (q *BufferedChannelQueue) threadSafe() {}
+
 // Poll Poll the val(non-blocking)
+//
+// The overflow pool may hold items the loader goroutine has not moved into the
+// channel yet (it runs on an interval). Check the pool under the same lock the
+// loader uses so Poll does not report ErrQueueIsEmpty while the queue still
+// holds buffered items, and cannot race the loader's pool->channel move.
 func (q *BufferedChannelQueue) Poll() (interface{}, error) {
 	if q.isClosed.Get() {
 		return *new(interface{}), ErrQueueIsClosed
@@ -858,5 +957,12 @@ func (q *BufferedChannelQueue) Poll() (interface{}, error) {
 
 	q.notifyWorkers()
 
-	return q.blockingQueue.Poll()
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	val, err := q.blockingQueue.Poll()
+	if err == ErrQueueIsEmpty && q.pool != nil {
+		val, err = q.pool.Poll()
+	}
+	return val, err
 }

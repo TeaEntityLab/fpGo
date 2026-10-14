@@ -53,6 +53,7 @@ type CorDef struct {
 
 	opCh     chan *CorOp
 	resultCh chan interface{}
+	done     chan struct{}
 
 	effect func()
 }
@@ -63,6 +64,7 @@ func (corSelf *CorDef) New(effect func()) *CorDef {
 		effect:    effect,
 		opCh:      make(chan *CorOp, 5),
 		resultCh:  make(chan interface{}, 5),
+		done:      make(chan struct{}),
 		isStarted: AtomBool{flag: 0},
 	}
 	return cor
@@ -153,23 +155,50 @@ func (corSelf *CorDef) YieldFrom(target *CorDef, in interface{}) interface{} {
 		return result
 	}
 
-	target.receive(corSelf, in)
+	if !target.receive(corSelf, in) {
+		return result
+	}
 
-	// fmt.Println(corSelf, "Wait for", "result")
-	result, _ = <-corSelf.resultCh
-	// fmt.Println(corSelf, "Wait for", "result", "done")
+	// resultCh is not closed (a close would race the send). target.done is.
+	// If both are ready, the done arm still drains a result that was sent
+	// before close: that send happens-before done is closed.
+	select {
+	case result = <-corSelf.resultCh:
+	case <-target.done:
+		select {
+		case result = <-corSelf.resultCh:
+		default:
+		}
+	case <-corSelf.done:
+		select {
+		case result = <-corSelf.resultCh:
+		default:
+		}
+	}
 
 	return result
 }
 
-func (corSelf *CorDef) receive(cor *CorDef, in interface{}) {
-	corSelf.doCloseSafe(func() {
-		if corSelf.opCh != nil {
-			// fmt.Println(corSelf, "Wait for", "receive", cor, in)
-			corSelf.opCh <- &CorOp{cor: cor, val: in}
-			// fmt.Println(corSelf, "Wait for", "receive", "done")
-		}
-	})
+func (corSelf *CorDef) receive(cor *CorDef, in interface{}) bool {
+	corSelf.closedM.Lock()
+	if corSelf.IsDone() || corSelf.opCh == nil {
+		corSelf.closedM.Unlock()
+		return false
+	}
+	ch := corSelf.opCh
+	done := corSelf.done
+	corSelf.closedM.Unlock()
+
+	if done == nil {
+		ch <- &CorOp{cor: cor, val: in}
+		return true
+	}
+	select {
+	case <-done:
+		return false
+	case ch <- &CorOp{cor: cor, val: in}:
+		return true
+	}
 }
 
 // YieldFromIO Yield from a given MonadIO
@@ -201,24 +230,26 @@ func (corSelf *CorDef) IsStarted() bool {
 
 func (corSelf *CorDef) close() {
 	corSelf.closedM.Lock()
+	defer corSelf.closedM.Unlock()
+	if corSelf.isClosed.Get() {
+		return
+	}
 	corSelf.isClosed.Set(true)
-	if corSelf.resultCh != nil {
-		close(corSelf.resultCh)
+	// Close done only. Closing opCh/resultCh here races any in-flight send,
+	// and closing them while the sender holds closedM deadlocks.
+	if corSelf.done != nil {
+		close(corSelf.done)
 	}
-	if corSelf.opCh != nil {
-		close(corSelf.opCh)
-	}
-	corSelf.closedM.Unlock()
 }
 
 func (corSelf *CorDef) doCloseSafe(fn func()) {
 	corSelf.closedM.Lock()
-	if corSelf.IsDone() {
-		corSelf.closedM.Unlock()
+	done := corSelf.IsDone()
+	corSelf.closedM.Unlock()
+	if done {
 		return
 	}
 	fn()
-	corSelf.closedM.Unlock()
 }
 
 // Cor Cor utils instance
