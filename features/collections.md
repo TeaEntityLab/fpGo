@@ -1,9 +1,9 @@
 # Feature: collections
 
-`source_commit: d7ae751` · `last_verified_at: 2026-09-23` · `verification_status: passed`
+`source_commit: 32a0438` · `last_verified_at: 2026-10-14` · `verification_status: passed`
 
-User goal: Java8Stream-like lazy/eager collection ops (generics + interface
-variants) and sort descriptors.
+User goal: Java8Stream-like eager collection ops (generics + interface
+variants — every op materializes a new slice) and sort descriptors.
 
 ## Preconditions
 
@@ -29,10 +29,15 @@ go test -mod=mod -v -run 'TestSortDescriptor|TestComparableStringHouseConvention
 - `StreamFromArray([]int{}).Append(1,1).Extend(StreamFromArray([]int{2,3,4}))`
   → `ToArray()` = `[1 1 2 3 4]`; `.Distinct()` → `[1 2 3 4]`.
 - `StreamForInterface` tolerates nil elements; `FilterNotNil()` drops them.
-- `Stream.Remove` does **not** mutate the receiver and does not alias it
-  (regression-tested: `TestStreamRemoveDoesNotMutateReceiver`,
-  `TestStreamRemoveResultDoesNotAliasReceiver`).
-- sortDescriptor: ascending/descending actually reorder; mixed keys tie-break.
+- `Stream.Remove` and `StreamForInterface.Remove` do **not** mutate the
+  receiver and do not alias it (regression-tested:
+  `TestStreamRemoveDoesNotMutateReceiver`,
+  `TestStreamRemoveResultDoesNotAliasReceiver`,
+  `TestStreamForInterfaceRemoveDoesNotMutateOrAlias`).
+- sortDescriptor: ascending/descending actually reorder; mixed keys
+  tie-break. Descriptors are value types — set direction/field at
+  construction; `SetAscending`/`SetFieldName` mutate only the call-site copy
+  and cannot update a descriptor already stored in a builder.
 
 ## Failure paths
 

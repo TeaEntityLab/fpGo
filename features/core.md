@@ -1,6 +1,6 @@
 # Feature: core
 
-`source_commit: d7ae751` · `last_verified_at: 2026-09-23` · `verification_status: passed`
+`source_commit: 32a0438` · `last_verified_at: 2026-10-14` · `verification_status: passed`
 
 User goal: Optional/Maybe semantics, Rx-like MonadIO, Publisher pub/sub,
 fp function helpers, pattern matching.
@@ -31,13 +31,23 @@ go test -mod=mod -v -run 'TestCompose|TestPipe|TestFPFunctions|TestTrampoline|Te
 ## Observable outcomes
 
 - `Maybe.Just(1).IsPresent()` → true; `Maybe.Just(nil).IsPresent()` → **false**
-  (Just(nil) is present-as-nil: `IsNil()` true, `IsPresent()` false).
+  (Just(nil) is present-as-nil: `IsNil()` true, `IsPresent()` false). Typed
+  nils of any nilable kind (ptr/slice/map/chan/func) are also absent.
 - `Maybe.Just(nil).Or(3)` → 3; `Maybe.Just(1).Or(3)` → 1.
-- `m.Let(fn)` runs fn only when present.
+- `m.Let(fn)` runs fn only when present. `Map`/`FlatMap` short-circuit the
+  same way — fn never receives a nil. `MaybeMap(m, T->R)` crosses types
+  (interface methods cannot declare type params) and preserves absence. The
+  `Maybe` namespace var itself is an absent Maybe (`Maybe.Or(x)` → x).
+- MonadIO `SubscribeOn(h)` schedules the effect; `ObserveOn(h)` schedules
+  OnNext delivery (Rx convention).
 - MonadIO `Just(1).FlatMap(f).Subscribe(...)` delivers mapped values via OnNext.
 - Publisher: `Publish` fans out to subscribers; unsubscribe during publish is safe.
-- fp: `Compose`/`Pipe` ordering, `Distinct`, `Intersection`, `PMap` (concurrent,
-  order not guaranteed — `TestPMapNoOrderConcurrency`).
+- fp: `Compose`/`Pipe` ordering, `Distinct`, `Intersection`, `PMap` (concurrent;
+  default worker count is bounded by NumCPU×8, override via `PMapOption`).
+- `InCaseOfRegex` precompiles the pattern at construction; an invalid pattern
+  never matches. `MatchFor` panics only when no pattern matches — design an
+  `Otherwise` arm; non-`CompData` structs and nil pointers no longer panic
+  inside pattern dispatch.
 
 ## Failure paths
 

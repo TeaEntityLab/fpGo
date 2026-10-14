@@ -1,6 +1,6 @@
 # Feature: concurrency
 
-`source_commit: d7ae751` · `last_verified_at: 2026-09-23` · `verification_status: passed`
+`source_commit: 32a0438` · `last_verified_at: 2026-10-14` · `verification_status: passed`
 
 User goal: Akka/Erlang-like actors (send/receive/spawn/states), Pythonic
 coroutines (yield/yieldFrom), Handler posting.
@@ -27,14 +27,23 @@ go test -mod=mod -v -run 'TestHandler|TestGetDefault' .
 
 ## Observable outcomes
 
-- Actor: `Send` is async; `Spawn` creates children; `Ask` returns a reply or
-  times out (`TestActorAskTimeoutThenReplySucceedsForNextAsk` — a timed-out
-  Ask must not poison the next one); `Close` shuts down; `Send`/`Spawn` after
-  close do not panic.
+- Actor: `Send` hands the message to the mailbox channel and returns — with
+  the default unbuffered channel it blocks only until the run loop picks the
+  message up, so an actor must never `Send` to itself from inside its own
+  effect (rendezvous deadlock). `Spawn` creates children with unique IDs even
+  when two spawns share a `time.Now()` tick; `Ask` returns a reply or times
+  out (`TestActorAskTimeoutThenReplySucceedsForNextAsk` — a timed-out Ask
+  must not poison the next one); `Close` shuts down; `Send`/`Spawn` after
+  close do not panic. `Close` does not close the mailbox (it may be caller-owned);
+  if that send is already possible, `select` can still deliver one message
+  after close — Go has no priority select.
 - Coroutine: `Yield` suspends/resumes; `YieldFrom` delegates; `IsDone`/
-  `IsStarted` track lifecycle; `Close` on a done coroutine is safe.
+  `IsStarted` track lifecycle; `Close` on a done coroutine is safe. A send
+  that races `close` is dropped instead of panicking, and `close` is not
+  blocked behind that send.
 - Handler: `Post` executes in order; `Post` after `Close` does not panic;
-  external channel close exits the run loop.
+  external channel close exits the run loop. Same select limitation as Actor
+  `Send`: a post already racing `Close` may still be queued.
 
 ## Failure paths
 

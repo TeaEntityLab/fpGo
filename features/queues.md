@@ -1,6 +1,6 @@
 # Feature: queues
 
-`source_commit: d7ae751` · `last_verified_at: 2026-09-23` · `verification_status: passed`
+`source_commit: 32a0438` · `last_verified_at: 2026-10-14` · `verification_status: passed`
 
 User goal: FIFO/LIFO containers — LinkedListQueue (queue+stack),
 ChannelQueue, BufferedChannelQueue (timeouts, pool), ConcurrentQueue.
@@ -30,10 +30,18 @@ go test -mod=mod -v -run 'TestConcurrent' .
   out; empty → `ErrQueueIsEmpty`).
 - Same impl as Stack: `Push`/`Pop` at tail (LIFO: 1,2,3 in → 3,2,1 out;
   empty → `ErrStackIsEmpty`).
-- BufferedChannelQueue: `TakeWithTimeout` honors the timeout; `Close` stops
-  freeNodePool/loadFromPool goroutines (`TestBufferedChannelQueueCloseStopsFreeNodeGoroutine`).
+- ChannelQueue: `Poll`/`Take`/`Put`/`Offer` on a closed channel return
+  `ErrQueueIsClosed`. A send must not panic, and a receive must not look like
+  a real zero.
+- BufferedChannelQueue: `Poll` drains the overflow pool too (not just the
+  channel), so a fresh `Poll` after over-capacity `Offer`s does not return a
+  spurious `ErrQueueIsEmpty`; `TakeWithTimeout` honors the timeout; `Close`
+  stops freeNodePool/loadFromPool goroutines
+  (`TestBufferedChannelQueueCloseStopsFreeNodeGoroutine`).
 - ConcurrentQueue: no loss under concurrent producers/consumers
-  (`TestConcurrentQueueNoLossUnderConcurrency`).
+  (`TestConcurrentQueueNoLossUnderConcurrency`). Wrapping a self-synchronizing
+  queue (ChannelQueue/BufferedChannelQueue) bypasses the wrapper lock, so a
+  blocked `Take` cannot deadlock producers (`TestConcurrentQueueChannelBackedProducerConsumer`).
 
 ## Failure paths
 

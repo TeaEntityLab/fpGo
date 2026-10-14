@@ -4,7 +4,7 @@ How an agent launches, checks, drives, and cleans up verification of this
 library. Read this plus the relevant `features/*.md` file before touching the
 code.
 
-`source_commit: a8b8521-era` · `last_verified_at: 2026-09-23` · `verification_status: passed`
+`source_commit: 32a0438` · `last_verified_at: 2026-10-14` · `verification_status: passed`
 
 ## Launch
 
