@@ -801,7 +801,16 @@ func pMapPreserveOrder(f TransformerFunctor, list []interface{}, worker int) []i
 }
 
 func pMapNoOrder(f TransformerFunctor, list []interface{}, worker int) []interface{} {
-	chJobs := make(chan interface{}, len(list))
+	listLen := len(list)
+	if listLen == 0 {
+		return make([]interface{}, 0)
+	}
+
+	if worker > listLen || worker <= 0 {
+		worker = listLen
+	}
+
+	chJobs := make(chan interface{}, listLen)
 	go func() {
 		for _, v := range list {
 			chJobs <- v
@@ -809,34 +818,28 @@ func pMapNoOrder(f TransformerFunctor, list []interface{}, worker int) []interfa
 		close(chJobs)
 	}()
 
-	chResult := make(chan interface{}, worker/3)
+	chResult := make(chan interface{}, listLen)
 
 	var wg sync.WaitGroup
-
 	for i := 0; i < worker; i++ {
 		wg.Add(1)
-
-		go func(chResult chan interface{}, chJobs chan interface{}) {
+		go func() {
 			defer wg.Done()
-
 			for v := range chJobs {
 				chResult <- f(v)
 			}
-		}(chResult, chJobs)
+		}()
 	}
 
-	// This will wait for the workers to complete their job and then close the channel
+	// Close chResult when all workers are done
 	go func() {
 		wg.Wait()
 		close(chResult)
 	}()
 
-	newList := make([]interface{}, len(list))
-	i := 0
-
+	newList := make([]interface{}, 0, listLen)
 	for v := range chResult {
-		newList[i] = v
-		i++
+		newList = append(newList, v)
 	}
 
 	return newList

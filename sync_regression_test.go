@@ -179,3 +179,18 @@ func TestSyncMonadIOSubscribeOnSchedulesEffect(t *testing.T) {
 		t.Fatal("subscribeOn did not schedule the effect on the handler")
 	}
 }
+
+// Ported from the generics branch: unordered PMap buffers one slot per element.
+// worker/3 was unbuffered for pools smaller than 3.
+
+func TestSyncPMapNoOrderSmallPool(t *testing.T) {
+	empty := PMap(func(a interface{}) interface{} { return a }, &PMapOption{RandomOrder: true})
+	assert.Equal(t, []interface{}{}, empty)
+
+	got := PMap(func(a interface{}) interface{} {
+		aVal, _ := Maybe.Just(a).ToInt()
+		return aVal + 1
+	}, &PMapOption{FixedPool: 1, RandomOrder: true}, 1, 2, 3, 4, 5)
+	assert.Equal(t, []interface{}{2, 3, 4, 5, 6}, SortIntAscending(got...))
+	assert.Len(t, got, 5)
+}
