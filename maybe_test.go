@@ -2,6 +2,7 @@ package fpgo
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"reflect"
 	"strconv"
@@ -4023,4 +4024,114 @@ func TestMaybeRemainingBranchCoverage(t *testing.T) {
 	valUintptr64, err := JustGenerics(float64(8.6)).ToUintptr()
 	assert.NoError(t, err)
 	assert.Equal(t, uintptr(9), valUintptr64)
+}
+
+// Regression: someDef.FlatMap invoked fn unconditionally, so a nil Maybe ran
+// the callback with a nil value. FlatMap must short-circuit like Let/Or:
+// fn never runs when nothing is present.
+func TestFlatMapShortCircuitsNil(t *testing.T) {
+	ran := false
+	m := Maybe.Just(nil).FlatMap(func(in interface{}) MaybeDef[interface{}] {
+		ran = true
+		return Maybe.Just(1)
+	})
+	assert.False(t, ran, "fn must not run on a nil Maybe")
+	assert.True(t, m.IsNil())
+
+	ran = false
+	m2 := None.FlatMap(func(in interface{}) MaybeDef[interface{}] {
+		ran = true
+		return Maybe.Just(1)
+	})
+	assert.False(t, ran, "fn must not run on None")
+	assert.True(t, m2.IsNil())
+
+	ran = false
+	m3 := Maybe.Just(5).FlatMap(func(in interface{}) MaybeDef[interface{}] {
+		ran = true
+		v, _ := Maybe.Just(in).ToInt()
+		return Maybe.Just(v + 1)
+	})
+	assert.True(t, ran, "fn must run on a present value")
+	assert.Equal(t, 6, m3.Unwrap())
+}
+
+// Regression: IsNil only checked reflect.Ptr, so typed nils of other nilable
+// kinds (slice/map/chan/func) were treated as present. JustGenerics relied on
+// IsNil, making Maybe.Just([]int(nil)).IsPresent() true.
+func TestJustTypedNilIsNotPresent(t *testing.T) {
+	assert.False(t, Maybe.Just([]int(nil)).IsPresent())
+	assert.False(t, Maybe.Just(map[string]int(nil)).IsPresent())
+	assert.False(t, Maybe.Just((chan int)(nil)).IsPresent())
+	assert.False(t, Maybe.Just((func())(nil)).IsPresent())
+
+	assert.True(t, Maybe.Just([]int{}).IsPresent(), "empty non-nil slice is present")
+	assert.True(t, Maybe.Just(map[string]int{}).IsPresent(), "empty non-nil map is present")
+}
+
+// Regression coverage: the short-circuit lives on someDef, reached via a typed
+// nil pointer (JustGenerics produces isNil someDef, not noneDef).
+func TestFlatMapShortCircuitsTypedNil(t *testing.T) {
+	ran := false
+	m := JustGenerics((*int)(nil)).FlatMap(func(in *int) MaybeDef[*int] {
+		ran = true
+		return JustGenerics(in)
+	})
+	assert.False(t, ran)
+	assert.True(t, m.IsNil())
+}
+
+// Map transforms a present value without requiring the caller to re-wrap it;
+// it short-circuits on nil just like FlatMap.
+func TestMaybeMap(t *testing.T) {
+	assert.Equal(t, 2, Maybe.Just(1).Map(func(in interface{}) interface{} {
+		v, _ := Maybe.Just(in).ToInt()
+		return v + 1
+	}).Unwrap())
+
+	ran := false
+	m := Maybe.Just(nil).Map(func(in interface{}) interface{} {
+		ran = true
+		return in
+	})
+	assert.False(t, ran)
+	assert.True(t, m.IsNil())
+
+	ran = false
+	m2 := None.Map(func(in interface{}) interface{} {
+		ran = true
+		return in
+	})
+	assert.False(t, ran)
+	assert.True(t, m2.IsNil())
+}
+
+// MaybeMap crosses types (interface methods cannot declare type params).
+func TestMaybeMapCrossType(t *testing.T) {
+	m := MaybeMap(Maybe.Just(41), func(in interface{}) string {
+		v, _ := Maybe.Just(in).ToInt()
+		return fmt.Sprintf("%d", v+1)
+	})
+	assert.Equal(t, "42", m.Unwrap())
+
+	m2 := MaybeMap[interface{}, string](None, func(in interface{}) string {
+		return "unreached"
+	})
+	assert.True(t, m2.IsNil())
+}
+
+// Regression: ToPtr did reflect.Indirect(...).Interface() on a nil pointer —
+// Indirect returns an invalid Value whose Interface() panics.
+func TestMaybeToPtrNilPointer(t *testing.T) {
+	assert.NotPanics(t, func() {
+		m := JustGenerics((*int)(nil))
+		_ = m.ToPtr()
+	})
+}
+
+// The zero-value Maybe namespace var behaves as an absent Maybe.
+func TestMaybeNamespaceVarIsAbsent(t *testing.T) {
+	assert.True(t, Maybe.IsNil())
+	assert.False(t, Maybe.IsPresent())
+	assert.Equal(t, 9, Maybe.Or(9))
 }

@@ -25,6 +25,7 @@ type MaybeDef[T any] interface {
 	Or(or T) T
 	Clone() MaybeDef[T]
 	FlatMap(fn func(T) MaybeDef[T]) MaybeDef[T]
+	Map(fn func(T) T) MaybeDef[T]
 	ToString() string
 	ToPtr() *T
 	ToMaybe() MaybeDef[T]
@@ -113,9 +114,35 @@ func (maybeSelf someDef[T]) Clone() MaybeDef[T] {
 	return CloneTo[T](maybeSelf, *new(T))
 }
 
-// FlatMap FlatMap Maybe by function
+// FlatMap FlatMap Maybe by function. The function runs only when a value is
+// present; a nil/None Maybe short-circuits and stays nil instead of feeding a
+// nil into fn.
 func (maybeSelf someDef[T]) FlatMap(fn func(T) MaybeDef[T]) MaybeDef[T] {
+	if !maybeSelf.IsPresent() {
+		return maybeSelf
+	}
 	return fn(maybeSelf.ref)
+}
+
+// Map Map the wrapped value by function without unwrapping. Runs only when a
+// value is present; a nil/None Maybe short-circuits. For a cross-type map
+// (T -> R) use MaybeMap, since interface methods cannot declare type params.
+func (maybeSelf someDef[T]) Map(fn func(T) T) MaybeDef[T] {
+	if !maybeSelf.IsPresent() {
+		return maybeSelf
+	}
+	return JustGenerics(fn(maybeSelf.ref))
+}
+
+// MaybeMap Map a Maybe's wrapped value across types (T -> R). Short-circuits
+// on absent values.
+func MaybeMap[T any, R any](m MaybeDef[T], fn func(T) R) MaybeDef[R] {
+	if !m.IsPresent() {
+		// Preserve absence: JustGenerics of a non-nilable zero R (e.g. "")
+		// would read as present.
+		return someDef[R]{isNil: true, isPresent: false}
+	}
+	return JustGenerics(fn(m.Unwrap()))
 }
 
 // ToString Maybe to String
@@ -138,13 +165,16 @@ func (maybeSelf someDef[T]) ToString() string {
 // ToPtr Maybe to Ptr
 func (maybeSelf someDef[T]) ToPtr() *T {
 	if maybeSelf.IsPtr() {
-		val := reflect.Indirect(reflect.ValueOf(maybeSelf.ref)).Interface()
-		switch val.(type) {
-		case *T:
-			return val.(*T)
-		case T:
-			result := val.(T)
-			return &result
+		indirect := reflect.Indirect(reflect.ValueOf(maybeSelf.ref))
+		if indirect.IsValid() {
+			val := indirect.Interface()
+			switch val.(type) {
+			case *T:
+				return val.(*T)
+			case T:
+				result := val.(T)
+				return &result
+			}
 		}
 	}
 
@@ -1395,8 +1425,10 @@ func (maybeSelf someDef[T]) IsKind(t reflect.Kind) bool {
 	return maybeSelf.Kind() == t
 }
 
-// Maybe Maybe utils instance
-var Maybe someDef[interface{}]
+// Maybe Maybe utils instance. Held as noneDef so the zero-value namespace
+// behaves like an absent Maybe (Or returns the fallback, IsNil is true) rather
+// than a phantom non-nil someDef.
+var Maybe noneDef
 
 // None
 
@@ -1512,6 +1544,16 @@ func (noneSelf noneDef) ToByte() (byte, error) {
 
 // Let If the wrapped value is not nil, then do the given function
 func (noneSelf noneDef) Let(fn func()) {}
+
+// FlatMap On None the function is never invoked; None propagates.
+func (noneSelf noneDef) FlatMap(fn func(interface{}) MaybeDef[interface{}]) MaybeDef[interface{}] {
+	return noneSelf
+}
+
+// Map On None the function is never invoked; None propagates.
+func (noneSelf noneDef) Map(fn func(interface{}) interface{}) MaybeDef[interface{}] {
+	return noneSelf
+}
 
 // Unwrap Unwrap the wrapped value of Maybe
 func (noneSelf noneDef) Unwrap() interface{} {
