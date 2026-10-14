@@ -71,6 +71,16 @@ var defaultDefaultWorkerSettings = &DefaultWorkerPoolSettings{
 	panicHandler:              defaultPanicHandler,
 }
 
+// NewDefaultWorkerPoolSettings New a settings instance pre-filled with the
+// library defaults. All fields are private, so callers must start from this
+// (or nil, which selects the same defaults in NewDefaultWorkerPool) and tune
+// via the Set* methods — a literal &DefaultWorkerPoolSettings{} is all zeros
+// and yields a pool that never spawns workers.
+func NewDefaultWorkerPoolSettings() *DefaultWorkerPoolSettings {
+	settings := *defaultDefaultWorkerSettings
+	return &settings
+}
+
 // DefaultWorkerPool DefaultWorkerPool inspired by Java ExecutorService
 type DefaultWorkerPool struct {
 	isClosed fpgo.AtomBool
@@ -164,12 +174,6 @@ func (workerPoolSelf *DefaultWorkerPool) PreAllocWorkerSize(preAllocWorkerSize i
 }
 
 func (workerPoolSelf *DefaultWorkerPool) spawnLoop() {
-	defer func() {
-		if panic := recover(); panic != nil {
-			defaultPanicHandler(panic)
-		}
-	}()
-
 	for {
 		select {
 		case <-workerPoolSelf.done:
@@ -182,7 +186,16 @@ func (workerPoolSelf *DefaultWorkerPool) spawnLoop() {
 				return
 			}
 
-			workerPoolSelf.trySpawn()
+			// Recover inside the loop: a single trySpawn panic must not kill
+			// the spawnLoop goroutine and silently stop pool scaling forever.
+			func() {
+				defer func() {
+					if panic := recover(); panic != nil {
+						defaultPanicHandler(panic)
+					}
+				}()
+				workerPoolSelf.trySpawn()
+			}()
 
 			workerPoolSelf.lock.RLock()
 			spawnWorkerDuration := workerPoolSelf.spawnWorkerDuration
@@ -256,8 +269,11 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 				return
 			}
 
+			expiry := time.NewTimer(workerExpiryDuration)
 			select {
 			case job := <-jobQueue.GetChannel():
+				// Stop the timer so the expiry arm does not leak until it fires
+				expiry.Stop()
 				if job != nil {
 					workerPoolSelf.lock.Lock()
 					isBusy = true
@@ -271,7 +287,7 @@ func (workerPoolSelf *DefaultWorkerPool) generateWorkerWithMaximum(maximum int) 
 					isBusy = false
 					workerPoolSelf.lock.Unlock()
 				}
-			case <-time.After(workerExpiryDuration):
+			case <-expiry.C:
 				workerPoolSelf.lock.RLock()
 				workerCount := workerPoolSelf.workerCount
 				workerSizeStandBy := workerPoolSelf.workerSizeStandBy

@@ -564,3 +564,29 @@ func TestWorkerPoolCloseStopsSpawnLoop(t *testing.T) {
 	assert.LessOrEqual(t, runtime.NumGoroutine(), baseline,
 		"spawnLoop goroutine should exit after Close(), not leak")
 }
+
+// Coverage: settings fields are private; the constructor is the only way to
+// get a valid non-nil settings object. A zero-value literal previously
+// produced a pool that never spawned a worker.
+func TestNewDefaultWorkerPoolSettingsDefaults(t *testing.T) {
+	settings := NewDefaultWorkerPoolSettings()
+	assert.NotNil(t, settings)
+	assert.Equal(t, defaultDefaultWorkerSettings.workerSizeStandBy, settings.workerSizeStandBy)
+	assert.Equal(t, defaultDefaultWorkerSettings.workerSizeMaximum, settings.workerSizeMaximum)
+	assert.Equal(t, defaultDefaultWorkerSettings.workerBatchSize, settings.workerBatchSize)
+
+	// A pool built from the constructor's settings actually runs jobs.
+	q := fpgo.NewBufferedChannelQueue[func()](8, 100, 10)
+	p := NewDefaultWorkerPool(q, settings).
+		SetSpawnWorkerDuration(time.Millisecond).
+		SetWorkerExpiryDuration(50 * time.Millisecond)
+	defer p.Close()
+
+	done := make(chan struct{})
+	assert.NoError(t, p.Schedule(func() { close(done) }))
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("job never ran with constructor-built settings")
+	}
+}
