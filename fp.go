@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"runtime"
 	"sort"
 	"sync"
 )
@@ -711,7 +712,12 @@ func Range(lower, higher int, hops ...int) []interface{} {
 	if lower >= higher {
 		return make([]interface{}, 0)
 	}
-	l := make([]interface{}, 0)
+	// Preallocate when the span is known and sane
+	capHint := (higher-lower)/hop + 1
+	if capHint < 0 || capHint > 1<<24 {
+		capHint = 0
+	}
+	l := make([]interface{}, 0, capHint)
 	for v := lower; v < higher; v += hop {
 		l = append(l, v)
 	}
@@ -733,44 +739,51 @@ func PMap(f TransformerFunctor, option *PMapOption, list ...interface{}) []inter
 	}
 
 	worker := len(list)
-	if option != nil {
-		if option.FixedPool > 0 && option.FixedPool < worker {
+	if option != nil && option.FixedPool > 0 {
+		// An explicit pool size is a deliberate resource decision: honor it,
+		// only clamped to the work that exists.
+		if option.FixedPool < worker {
 			worker = option.FixedPool
 		}
+	} else if maxWorker := runtime.NumCPU() * 8; worker > maxWorker {
+		// Unbounded default (one goroutine per element) explodes on large lists
+		worker = maxWorker
+	}
 
-		if option.RandomOrder == true {
-			return pMapNoOrder(f, list, worker)
-		}
+	if option != nil && option.RandomOrder {
+		return pMapNoOrder(f, list, worker)
 	}
 
 	return pMapPreserveOrder(f, list, worker)
 }
 
 func pMapPreserveOrder(f TransformerFunctor, list []interface{}, worker int) []interface{} {
-	chJobs := make(chan map[int]interface{}, len(list))
+	chJobs := make(chan int, len(list))
 	go func() {
-		for i, v := range list {
-			chJobs <- map[int]interface{}{i: v}
+		for i := range list {
+			chJobs <- i
 		}
 		close(chJobs)
 	}()
 
-	chResult := make(chan map[int]interface{}, worker/3)
+	type resultItem struct {
+		index int
+		val   interface{}
+	}
+	chResult := make(chan resultItem, worker)
 
 	var wg sync.WaitGroup
 
 	for i := 0; i < worker; i++ {
 		wg.Add(1)
 
-		go func(chResult chan map[int]interface{}, chJobs chan map[int]interface{}) {
+		go func() {
 			defer wg.Done()
 
-			for m := range chJobs {
-				for k, v := range m {
-					chResult <- map[int]interface{}{k: f(v)}
-				}
+			for j := range chJobs {
+				chResult <- resultItem{index: j, val: f(list[j])}
 			}
-		}(chResult, chJobs)
+		}()
 	}
 
 	// This will wait for the workers to complete their job and then close the channel
@@ -779,17 +792,9 @@ func pMapPreserveOrder(f TransformerFunctor, list []interface{}, worker int) []i
 		close(chResult)
 	}()
 
-	newListMap := make(map[int]interface{}, len(list))
 	newList := make([]interface{}, len(list))
-
 	for m := range chResult {
-		for k, v := range m {
-			newListMap[k] = v
-		}
-	}
-
-	for i := 0; i < len(list); i++ {
-		newList[i] = newListMap[i]
+		newList[m.index] = m.val
 	}
 
 	return newList
@@ -1152,10 +1157,12 @@ func DuplicateMap(input map[interface{}]interface{}) map[interface{}]interface{}
 func IsNil(obj interface{}) bool {
 	val := reflect.ValueOf(obj)
 
-	if Kind(obj) == reflect.Ptr {
+	switch val.Kind() {
+	case reflect.Ptr, reflect.UnsafePointer, reflect.Map, reflect.Slice, reflect.Chan, reflect.Func, reflect.Interface:
 		return val.IsNil()
+	default:
+		return !val.IsValid()
 	}
-	return !val.IsValid()
 }
 
 // IsPtr Check is it a Ptr
@@ -1439,7 +1446,7 @@ type EqualPatternDef struct {
 
 // RegexPatternDef Pattern which matching when the regex rule matches the given string
 type RegexPatternDef struct {
-	pattern string
+	pattern *regexp.Regexp
 	effect  fnObj
 }
 
@@ -1453,10 +1460,11 @@ func (patternMatchingSelf PatternMatching) MatchFor(inValue interface{}) interfa
 	for _, pattern := range patternMatchingSelf.patterns {
 		value := inValue
 		maybe := Maybe.Just(inValue)
-		if maybe.IsKind(reflect.Ptr) {
-			ptr := maybe.ToPtr()
-			if reflect.TypeOf(*ptr).Kind() == (reflect.TypeOf(CompData{}).Kind()) {
-				value = *ptr
+		// Unwrap pointers to structs (CompData carriers) for matching. A nil
+		// ptr's pointee is invalid — skip instead of panicking.
+		if maybe.IsKind(reflect.Ptr) && maybe.IsPresent() {
+			if indirect := reflect.Indirect(reflect.ValueOf(inValue)); indirect.IsValid() && indirect.Kind() == reflect.Struct {
+				value = indirect.Interface()
 			}
 		}
 
@@ -1479,8 +1487,10 @@ func (patternSelf KindPatternDef) Matches(value interface{}) bool {
 
 // Matches Match the given value by the pattern
 func (patternSelf CompTypePatternDef) Matches(value interface{}) bool {
-	if Maybe.Just(value).IsPresent() && reflect.TypeOf(value).Kind() == reflect.TypeOf(CompData{}).Kind() {
-		return MatchCompType(patternSelf.compType, (value).(CompData))
+	if Maybe.Just(value).IsPresent() {
+		if data, ok := value.(CompData); ok {
+			return MatchCompType(patternSelf.compType, data)
+		}
 	}
 
 	return patternSelf.compType.Matches(value)
@@ -1497,12 +1507,11 @@ func (patternSelf RegexPatternDef) Matches(value interface{}) bool {
 		return false
 	}
 
-	matches, err := regexp.MatchString(patternSelf.pattern, (value).(string))
-	if err == nil && matches {
-		return true
+	if patternSelf.pattern == nil {
+		return false
 	}
 
-	return false
+	return patternSelf.pattern.MatchString((value).(string))
 }
 
 // Matches Match the given value by the pattern
@@ -1557,7 +1566,8 @@ func InCaseOfEqual(value interface{}, effect fnObj) Pattern {
 
 // InCaseOfRegex In case of the given regex rule matches its value
 func InCaseOfRegex(pattern string, effect fnObj) Pattern {
-	return RegexPatternDef{pattern: pattern, effect: effect}
+	compiled, _ := regexp.Compile(pattern)
+	return RegexPatternDef{pattern: compiled, effect: effect}
 }
 
 // Otherwise In case of the other patterns didn't match it

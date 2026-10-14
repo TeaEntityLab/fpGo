@@ -26,6 +26,7 @@ type MaybeDef interface {
 	CloneTo(dest interface{}) MaybeDef
 	Clone() MaybeDef
 	FlatMap(fn func(interface{}) MaybeDef) MaybeDef
+	Map(fn func(interface{}) interface{}) MaybeDef
 	ToString() string
 	ToPtr() *interface{}
 	ToMaybe() MaybeDef
@@ -65,9 +66,9 @@ func (maybeSelf someDef) Just(in interface{}) MaybeDef {
 
 // Or Check the value wrapped by Maybe, if it's nil then return a given fallback value
 func (maybeSelf someDef) Or(or interface{}) interface{} {
-	// if maybeSelf.IsNil() {
-	// 	return or
-	// }
+	if maybeSelf.IsNil() {
+		return or
+	}
 
 	return maybeSelf.ref
 }
@@ -97,9 +98,23 @@ func (maybeSelf someDef) Clone() MaybeDef {
 	return maybeSelf.CloneTo(new(interface{}))
 }
 
-// FlatMap FlatMap Maybe by function
+// FlatMap FlatMap Maybe by function. The function runs only when a value is
+// present; a nil/None Maybe short-circuits and stays nil instead of feeding a
+// nil into fn.
 func (maybeSelf someDef) FlatMap(fn func(interface{}) MaybeDef) MaybeDef {
+	if !maybeSelf.IsPresent() {
+		return maybeSelf
+	}
 	return fn(maybeSelf.ref)
+}
+
+// Map Map the wrapped value by function without unwrapping. Runs only when a
+// value is present; a nil/None Maybe short-circuits.
+func (maybeSelf someDef) Map(fn func(interface{}) interface{}) MaybeDef {
+	if !maybeSelf.IsPresent() {
+		return maybeSelf
+	}
+	return maybeSelf.Just(fn(maybeSelf.ref))
 }
 
 // ToString Maybe to String
@@ -118,8 +133,11 @@ func (maybeSelf someDef) ToString() string {
 // ToPtr Maybe to Ptr
 func (maybeSelf someDef) ToPtr() *interface{} {
 	if maybeSelf.IsPtr() {
-		val := reflect.Indirect(reflect.ValueOf(maybeSelf.ref)).Interface()
-		return &val
+		indirect := reflect.Indirect(reflect.ValueOf(maybeSelf.ref))
+		if indirect.IsValid() {
+			val := indirect.Interface()
+			return &val
+		}
 	}
 
 	return &maybeSelf.ref
@@ -1298,8 +1316,10 @@ func (maybeSelf someDef) IsKind(t reflect.Kind) bool {
 	return maybeSelf.Kind() == t
 }
 
-// Maybe Maybe utils instance
-var Maybe someDef
+// Maybe Maybe utils instance. Held as noneDef so the zero-value namespace
+// behaves like an absent Maybe (Or returns the fallback, IsNil is true) rather
+// than a phantom non-nil someDef.
+var Maybe noneDef
 
 // None
 
@@ -1366,6 +1386,16 @@ func (noneSelf noneDef) ToInt64() (int64, error) {
 // ToBool Maybe to Bool
 func (noneSelf noneDef) ToBool() (bool, error) {
 	return bool(false), ErrConversionNil
+}
+
+// FlatMap On None the function is never invoked; None propagates.
+func (noneSelf noneDef) FlatMap(fn func(interface{}) MaybeDef) MaybeDef {
+	return noneSelf
+}
+
+// Map On None the function is never invoked; None propagates.
+func (noneSelf noneDef) Map(fn func(interface{}) interface{}) MaybeDef {
+	return noneSelf
 }
 
 // Let If the wrapped value is not nil, then do the given function

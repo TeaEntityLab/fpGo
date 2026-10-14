@@ -56,20 +56,22 @@ func (monadIOSelf *MonadIODef) doSubscribe(s *Subscription, obOn *HandlerDef, su
 	if s.OnNext != nil {
 		var result interface{}
 
+		// Rx semantics: subscribeOn schedules the upstream effect; observeOn
+		// schedules the downstream OnNext delivery.
 		doSub := func() {
 			s.OnNext(result)
 		}
 		doOb := func() {
 			result = monadIOSelf.doEffect()
 
-			if subOn != nil {
-				subOn.Post(doSub)
+			if obOn != nil {
+				obOn.Post(doSub)
 			} else {
 				doSub()
 			}
 		}
-		if obOn != nil {
-			obOn.Post(doOb)
+		if subOn != nil {
+			subOn.Post(doOb)
 		} else {
 			doOb()
 		}

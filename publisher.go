@@ -7,8 +7,6 @@ type PublisherDef struct {
 	subscribers []*Subscription
 	subscribeM  sync.Mutex
 	subOn       *HandlerDef
-
-	origin *PublisherDef
 }
 
 // New New a Publisher
@@ -21,7 +19,6 @@ func (publisherSelf *PublisherDef) New() *PublisherDef {
 // Map Map the Publisher in order to make a broadcasting chain
 func (publisherSelf *PublisherDef) Map(fn func(interface{}) interface{}) *PublisherDef {
 	next := publisherSelf.New()
-	next.origin = publisherSelf
 	publisherSelf.Subscribe(Subscription{
 		OnNext: func(in interface{}) {
 			next.Publish(fn(in))
@@ -49,24 +46,16 @@ func (publisherSelf *PublisherDef) SubscribeOn(h *HandlerDef) *PublisherDef {
 
 // Unsubscribe Unsubscribe the publisher by the Subscription
 func (publisherSelf *PublisherDef) Unsubscribe(s *Subscription) {
-	isAnyMatching := false
-
 	publisherSelf.doSubscribeSafe(func() {
 		subscribers := publisherSelf.subscribers
 		for i, v := range subscribers {
 			if v == s {
-				isAnyMatching = true
 				subscribers = append(subscribers[:i], subscribers[i+1:]...)
 				publisherSelf.subscribers = subscribers
 				break
 			}
 		}
 	})
-
-	// Delete subscriptions recursively
-	if isAnyMatching {
-		publisherSelf.Unsubscribe(s)
-	}
 }
 
 // Publish Publish a value to its subscribers or next chains

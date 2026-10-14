@@ -29,8 +29,8 @@ func SortBySortDescriptors(sortDescriptors []SortDescriptor, input []interface{}
 
 func _compareBySortDescriptors(item1 interface{}, item2 interface{}, sortDescriptors []SortDescriptor, descriptorIndex int) int {
 	descriptor := sortDescriptors[descriptorIndex]
-	key1 := descriptor.TransformedBy()(item1).(Comparable)
-	key2 := descriptor.TransformedBy()(item2).(Comparable)
+	key1, _ := descriptor.TransformedBy()(item1).(Comparable)
+	key2, _ := descriptor.TransformedBy()(item2).(Comparable)
 	result := 0
 	if key1 != nil && key2 != nil {
 		if descriptor.IsAscending() {
