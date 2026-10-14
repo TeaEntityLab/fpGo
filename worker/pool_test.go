@@ -295,6 +295,18 @@ func TestWorkerPoolPreAllocConcurrentWithSpawnLoop(t *testing.T) {
 	wg.Wait()
 }
 
+func TestNewDefaultWorkerPoolSettingsDefaults(t *testing.T) {
+	settings := NewDefaultWorkerPoolSettings()
+	assert.Equal(t, defaultDefaultWorkerSettings.workerSizeStandBy, settings.workerSizeStandBy)
+	assert.Equal(t, defaultDefaultWorkerSettings.workerSizeMaximum, settings.workerSizeMaximum)
+	assert.Equal(t, defaultDefaultWorkerSettings.workerBatchSize, settings.workerBatchSize)
+	assert.Equal(t, defaultDefaultWorkerSettings.spawnWorkerDuration, settings.spawnWorkerDuration)
+	assert.NotSame(t, defaultDefaultWorkerSettings, settings, "must be a copy, not the shared default")
+
+	settings.workerSizeStandBy = 42
+	assert.NotEqual(t, 42, defaultDefaultWorkerSettings.workerSizeStandBy, "mutating the copy must not touch the default")
+}
+
 func TestDefaultWorkerPoolSettings(t *testing.T) {
 	customSettings := &DefaultWorkerPoolSettings{
 		isJobQueueClosedWhenClose: false,
