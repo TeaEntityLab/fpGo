@@ -1978,3 +1978,38 @@ func TestPMapNoOrderCalledDirectly(t *testing.T) {
 	sorted := SortOrderedAscending(result...)
 	assert.Equal(t, []int{2, 3, 4}, sorted)
 }
+
+func TestPMapLargeListBoundedWorkers(t *testing.T) {
+	// Default worker count was len(list): a huge list spawned one goroutine
+	// per element. The default is now bounded; results must still be correct.
+	big := make([]int, 50000)
+	for i := range big {
+		big[i] = i
+	}
+	out := PMap(func(v int) int { return v * 2 }, nil, big...)
+	assert.Equal(t, len(big), len(out))
+	for i := range big {
+		assert.Equal(t, big[i]*2, out[i], "order preserved at %d", i)
+	}
+}
+
+// Regression: CompTypePatternDef.Matches type-asserted value.(CompData) on any
+// present struct, panicking on arbitrary structs; MatchFor also dereferenced
+// nil pointers. Both must degrade gracefully.
+func TestPatternMatchingArbitraryStructAndNilPtr(t *testing.T) {
+	type plain struct{ X int }
+
+	// Non-CompData struct: falls through to Otherwise instead of panicking.
+	got := Either(plain{X: 1},
+		InCaseOfSumType(DefSum(DefProduct(reflect.Int)), func(v interface{}) interface{} { return "comptype" }),
+		Otherwise(func(v interface{}) interface{} { return "other" }))
+	assert.Equal(t, "other", got)
+
+	// *CompData still unwraps to CompData and matches the sum type.
+	var ct CompType = DefSum(DefProduct(reflect.String))
+	cd := NewCompData(ct, "x")
+	got = Either(cd,
+		InCaseOfSumType(ct, func(v interface{}) interface{} { return "comptype" }),
+		Otherwise(func(v interface{}) interface{} { return "other" }))
+	assert.Equal(t, "comptype", got)
+}
