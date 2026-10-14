@@ -482,6 +482,20 @@ func TestStreamForInterface_Remove(t *testing.T) {
 	assert.Equal(t, 2, result.Len())
 }
 
+// Regression: Remove used append on the receiver's own backing array, so the
+// result aliased the receiver and the receiver's tail was corrupted. Same
+// contract as StreamDef.Remove: non-destructive, no shared backing array.
+func TestStreamForInterfaceRemoveDoesNotMutateOrAlias(t *testing.T) {
+	s := StreamForInterface.FromArrayInt([]int{1, 2, 3, 4, 5})
+	result := s.Remove(1)
+
+	assert.Equal(t, []interface{}{1, 3, 4, 5}, result.ToArray())
+	assert.Equal(t, []interface{}{1, 2, 3, 4, 5}, s.ToArray(), "receiver must be intact")
+
+	(*result)[0] = 99
+	assert.Equal(t, []interface{}{1, 2, 3, 4, 5}, s.ToArray(), "result must not alias the receiver")
+}
+
 func TestStreamForInterface_Len(t *testing.T) {
 	s := StreamForInterface.FromArrayInt([]int{1, 2, 3})
 	assert.Equal(t, 3, s.Len())
