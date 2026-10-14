@@ -46,6 +46,15 @@ type ConcurrentQueue[T any] struct {
 	queue Queue[T]
 }
 
+// threadSafeQueue marks Queue implementations that already synchronize their
+// own state. For those, ConcurrentQueue must NOT hold its own lock across a
+// blocking op: a consumer blocked in Take would otherwise hold the write lock
+// forever, so a producer's Offer could never acquire it — guaranteed deadlock.
+type threadSafeQueue[T any] interface {
+	Queue[T]
+	threadSafe()
+}
+
 // NewConcurrentQueue New ConcurrentQueue instance from a Queue[T]
 func NewConcurrentQueue[T any](queue Queue[T]) *ConcurrentQueue[T] {
 	return &ConcurrentQueue[T]{
@@ -55,6 +64,10 @@ func NewConcurrentQueue[T any](queue Queue[T]) *ConcurrentQueue[T] {
 
 // Put Put the T val(probably blocking)
 func (q *ConcurrentQueue[T]) Put(val T) error {
+	if _, ok := q.queue.(threadSafeQueue[T]); ok {
+		return q.queue.Put(val)
+	}
+
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -63,6 +76,10 @@ func (q *ConcurrentQueue[T]) Put(val T) error {
 
 // Take Take the T val(probably blocking)
 func (q *ConcurrentQueue[T]) Take() (T, error) {
+	if _, ok := q.queue.(threadSafeQueue[T]); ok {
+		return q.queue.Take()
+	}
+
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -71,6 +88,10 @@ func (q *ConcurrentQueue[T]) Take() (T, error) {
 
 // Offer Offer the T val(non-blocking)
 func (q *ConcurrentQueue[T]) Offer(val T) error {
+	if _, ok := q.queue.(threadSafeQueue[T]); ok {
+		return q.queue.Offer(val)
+	}
+
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
@@ -79,18 +100,29 @@ func (q *ConcurrentQueue[T]) Offer(val T) error {
 
 // Poll Poll the T val(non-blocking)
 func (q *ConcurrentQueue[T]) Poll() (T, error) {
+	if _, ok := q.queue.(threadSafeQueue[T]); ok {
+		return q.queue.Poll()
+	}
+
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	return q.queue.Poll()
 }
 
-// Count Count Items (thread-safe)
+// Count Count Items (thread-safe).
+//
+// Prefers a Count() method when the wrapped queue exposes one. A plain channel
+// (ChannelQueue) has none, so its buffered length is reported directly — a
+// channel holding items is not empty.
 func (q *ConcurrentQueue[T]) Count() int {
 	q.lock.RLock()
 	defer q.lock.RUnlock()
 	if counter, ok := q.queue.(interface{ Count() int }); ok {
 		return counter.Count()
+	}
+	if ch, ok := q.queue.(interface{ Len() int }); ok {
+		return ch.Len()
 	}
 	return 0
 }
@@ -146,18 +178,60 @@ func NewChannelQueue[T any](capacity int) ChannelQueue[T] {
 	return make(ChannelQueue[T], capacity)
 }
 
+// Len Number of items currently buffered in the channel
+func (q ChannelQueue[T]) Len() int {
+	return len(q)
+}
+
+// threadSafe ChannelQueue is already safe for concurrent use
+func (q ChannelQueue[T]) threadSafe() {}
+
+// closedSend reports the runtime panic from sending on a closed channel.
+// ChannelQueue is a named chan, so callers can close it; sends must return
+// ErrQueueIsClosed rather than crash the caller.
+func closedSend(r any) bool {
+	err, ok := r.(error)
+	return ok && err.Error() == "send on closed channel"
+}
+
 // Put Put the T val(blocking)
-func (q ChannelQueue[T]) Put(val T) error {
+func (q ChannelQueue[T]) Put(val T) (err error) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		if closedSend(r) {
+			err = ErrQueueIsClosed
+			return
+		}
+		panic(r)
+	}()
+
 	q <- val
 	return nil
 }
 
 // PutWithTimeout Put the T val(blocking), with timeout
-func (q ChannelQueue[T]) PutWithTimeout(val T, timeout time.Duration) error {
+func (q ChannelQueue[T]) PutWithTimeout(val T, timeout time.Duration) (err error) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		if closedSend(r) {
+			err = ErrQueueIsClosed
+			return
+		}
+		panic(r)
+	}()
+
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	select {
 	case q <- val:
 		return nil
-	case <-time.After(timeout):
+	case <-timer.C:
 		return ErrQueuePutTimeout
 	}
 }
@@ -173,19 +247,33 @@ func (q ChannelQueue[T]) Take() (T, error) {
 
 // TakeWithTimeout Take the T val(blocking), with timeout
 func (q ChannelQueue[T]) TakeWithTimeout(timeout time.Duration) (T, error) {
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	select {
 	case val, ok := <-q:
 		if !ok {
 			return *new(T), ErrQueueIsClosed
 		}
 		return val, nil
-	case <-time.After(timeout):
+	case <-timer.C:
 		return *new(T), ErrQueueTakeTimeout
 	}
 }
 
 // Offer Offer the T val(non-blocking)
-func (q ChannelQueue[T]) Offer(val T) error {
+func (q ChannelQueue[T]) Offer(val T) (err error) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			return
+		}
+		if closedSend(r) {
+			err = ErrQueueIsClosed
+			return
+		}
+		panic(r)
+	}()
+
 	select {
 	case q <- val:
 		return nil
@@ -197,7 +285,10 @@ func (q ChannelQueue[T]) Offer(val T) error {
 // Poll Poll the T val(non-blocking)
 func (q ChannelQueue[T]) Poll() (T, error) {
 	select {
-	case val := <-q:
+	case val, ok := <-q:
+		if !ok {
+			return *new(T), ErrQueueIsClosed
+		}
 		return val, nil
 	default:
 		return *new(T), ErrQueueIsEmpty
@@ -698,6 +789,9 @@ func (q *BufferedChannelQueue[T]) PoolNodeCount() int {
 	return q.pool.nodeCount
 }
 
+// threadSafe BufferedChannelQueue synchronizes its own state
+func (q *BufferedChannelQueue[T]) threadSafe() {}
+
 // Count Count items
 func (q *BufferedChannelQueue[T]) Count() int {
 	q.lock.RLock()
@@ -851,6 +945,11 @@ func (q *BufferedChannelQueue[T]) Offer(val T) error {
 }
 
 // Poll Poll the T val(non-blocking)
+//
+// The overflow pool may hold items the loader goroutine has not moved into the
+// channel yet (it runs on an interval). Check the pool under the same lock the
+// loader uses so Poll does not report ErrQueueIsEmpty while the queue still
+// holds buffered items, and cannot race the loader's pool->channel move.
 func (q *BufferedChannelQueue[T]) Poll() (T, error) {
 	if q.isClosed.Get() {
 		return *new(T), ErrQueueIsClosed
@@ -858,5 +957,12 @@ func (q *BufferedChannelQueue[T]) Poll() (T, error) {
 
 	q.notifyWorkers()
 
-	return q.blockingQueue.Poll()
+	q.lock.Lock()
+	defer q.lock.Unlock()
+
+	val, err := q.blockingQueue.Poll()
+	if err == ErrQueueIsEmpty && q.pool != nil {
+		val, err = q.pool.Poll()
+	}
+	return val, err
 }
