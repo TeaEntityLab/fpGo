@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	fpgo "github.com/TeaEntityLab/fpGo/v2"
@@ -110,8 +111,12 @@ func (simpleHTTPSelf *SimpleHTTPDef) RoundTrip(request *http.Request) (*http.Res
 }
 
 func (simpleHTTPSelf *SimpleHTTPDef) recursiveVisit(request *http.Request, index int) (*http.Response, error) {
-	if index >= simpleHTTPSelf.interceptors.Len() && simpleHTTPSelf.clientTransport != nil {
-		return simpleHTTPSelf.clientTransport.RoundTrip(request)
+	if index >= simpleHTTPSelf.interceptors.Len() {
+		if simpleHTTPSelf.clientTransport != nil {
+			return simpleHTTPSelf.clientTransport.RoundTrip(request)
+		}
+		// A RoundTripper must not panic; surface a real error.
+		return nil, fmt.Errorf("SimpleHTTP has no transport: call SetHTTPClient or NewSimpleHTTP first")
 	}
 
 	err := (*simpleHTTPSelf.interceptors[index])(request)
@@ -130,53 +135,74 @@ func (simpleHTTPSelf *SimpleHTTPDef) GetContextTimeout() (context.Context, conte
 	return context.WithTimeout(context.Background(), DefaultTimeoutMillisecond)
 }
 
+// cancelOnCloseBody cancels the request context when the body is closed.
+// Cancelling the context as soon as client.Do returns (before the caller has
+// read the body) aborts body reads with context.Canceled; cancelling on Close
+// bounds the whole request lifetime, matching the standard http.Client
+// "caller must close Body" contract.
+type cancelOnCloseBody struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+	once   sync.Once
+}
+
+func (b *cancelOnCloseBody) Close() error {
+	err := b.ReadCloser.Close()
+	b.once.Do(b.cancel)
+	return err
+}
+
+// bindCancelToBody ties context cancellation to the response body lifetime.
+// On request failure (no response) the context is cancelled immediately.
+func (simpleHTTPSelf *SimpleHTTPDef) bindCancelToBody(result *ResponseWithError, cancel context.CancelFunc) *ResponseWithError {
+	if result == nil || result.Response == nil || result.Response.Body == nil {
+		cancel()
+		return result
+	}
+	result.Response.Body = &cancelOnCloseBody{ReadCloser: result.Response.Body, cancel: cancel}
+	return result
+}
+
 // Get HTTP Method Get
 func (simpleHTTPSelf *SimpleHTTPDef) Get(givenURL string) *ResponseWithError {
 	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
-	defer cancel()
-	return simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodGet, givenURL)
+	return simpleHTTPSelf.bindCancelToBody(simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodGet, givenURL), cancel)
 }
 
 // Head HTTP Method Head
 func (simpleHTTPSelf *SimpleHTTPDef) Head(givenURL string) *ResponseWithError {
 	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
-	defer cancel()
-	return simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodHead, givenURL)
+	return simpleHTTPSelf.bindCancelToBody(simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodHead, givenURL), cancel)
 }
 
 // Options HTTP Method Options
 func (simpleHTTPSelf *SimpleHTTPDef) Options(givenURL string) *ResponseWithError {
 	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
-	defer cancel()
-	return simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodOptions, givenURL)
+	return simpleHTTPSelf.bindCancelToBody(simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodOptions, givenURL), cancel)
 }
 
 // Delete HTTP Method Delete
 func (simpleHTTPSelf *SimpleHTTPDef) Delete(givenURL string) *ResponseWithError {
 	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
-	defer cancel()
-	return simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodDelete, givenURL)
+	return simpleHTTPSelf.bindCancelToBody(simpleHTTPSelf.DoNewRequest(ctx, nil, http.MethodDelete, givenURL), cancel)
 }
 
 // Post HTTP Method Post
 func (simpleHTTPSelf *SimpleHTTPDef) Post(givenURL, contentType string, body io.Reader) *ResponseWithError {
 	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
-	defer cancel()
-	return simpleHTTPSelf.DoNewRequestWithBodyOptions(ctx, nil, http.MethodPost, givenURL, body, contentType)
+	return simpleHTTPSelf.bindCancelToBody(simpleHTTPSelf.DoNewRequestWithBodyOptions(ctx, nil, http.MethodPost, givenURL, body, contentType), cancel)
 }
 
 // Put HTTP Method Put
 func (simpleHTTPSelf *SimpleHTTPDef) Put(givenURL, contentType string, body io.Reader) *ResponseWithError {
 	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
-	defer cancel()
-	return simpleHTTPSelf.DoNewRequestWithBodyOptions(ctx, nil, http.MethodPut, givenURL, body, contentType)
+	return simpleHTTPSelf.bindCancelToBody(simpleHTTPSelf.DoNewRequestWithBodyOptions(ctx, nil, http.MethodPut, givenURL, body, contentType), cancel)
 }
 
 // Patch HTTP Method Patch
 func (simpleHTTPSelf *SimpleHTTPDef) Patch(givenURL, contentType string, body io.Reader) *ResponseWithError {
 	ctx, cancel := simpleHTTPSelf.GetContextTimeout()
-	defer cancel()
-	return simpleHTTPSelf.DoNewRequestWithBodyOptions(ctx, nil, http.MethodPatch, givenURL, body, contentType)
+	return simpleHTTPSelf.bindCancelToBody(simpleHTTPSelf.DoNewRequestWithBodyOptions(ctx, nil, http.MethodPatch, givenURL, body, contentType), cancel)
 }
 
 // DoNewRequest Do New HTTP Request
@@ -287,6 +313,10 @@ func JSONBodySerializer(body interface{}) (io.Reader, error) {
 
 // GeneralMultipartSerializer Default Multipart Body serializer
 func GeneralMultipartSerializer(form *MultipartForm) (io.Reader, string, error) {
+	if form == nil {
+		return nil, "", fmt.Errorf("multipart form is nil")
+	}
+
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
@@ -308,9 +338,17 @@ func GeneralMultipartSerializer(form *MultipartForm) (io.Reader, string, error) 
 			if openFileErr != nil {
 				return nil, "", openFileErr
 			}
-			defer file.Close()
 
-			io.Copy(part, file)
+			// Close per file, not deferred: a large form would hold every
+			// descriptor open until serialization finished.
+			_, copyErr := io.Copy(part, file)
+			closeErr := file.Close()
+			if copyErr != nil {
+				return nil, "", copyErr
+			}
+			if closeErr != nil {
+				return nil, "", closeErr
+			}
 		}
 	}
 	writer.Close()
@@ -336,10 +374,15 @@ func NewSimpleAPI(baseURL string) *SimpleAPIDef {
 
 // NewSimpleAPIWithSimpleHTTP a SimpleAPIDef instance with a SimpleHTTP
 func NewSimpleAPIWithSimpleHTTP(baseURL string, simpleHTTP *SimpleHTTPDef) *SimpleAPIDef {
-	urlInstance, _ := url.Parse(baseURL)
+	// url.Parse can fail and return nil; keep the raw base so the request
+	// fails with a real error later instead of dereferencing a nil *URL.
+	base := baseURL
+	if urlInstance, err := url.Parse(baseURL); err == nil && urlInstance != nil {
+		base = urlInstance.String()
+	}
 
 	return &SimpleAPIDef{
-		BaseURL: urlInstance.String(),
+		BaseURL: base,
 
 		RequestSerializerForMultipart: GeneralMultipartSerializer,
 		RequestSerializerForJSON:      JSONBodySerializer,
@@ -480,9 +523,29 @@ func APIMakeDoNewRequest[R any](simpleAPISelf *SimpleAPIDef, method string, rela
 	})
 }
 
-// decodeResponseBody Make a API without body options
+// decodeResponseBody Close the body and decode it into target. Non-2xx
+// responses surface an error carrying the status instead of attempting to
+// deserialize an error page into the target type.
 func decodeResponseBody[R any](simpleAPISelf *SimpleAPIDef, response *APIResponse[R], target *R) *APIResponse[R] {
 	defer response.Response.Body.Close()
+
+	if response.Response.StatusCode >= http.StatusBadRequest {
+		// Keep a short slice of the error body. The status alone hides the
+		// payload the server sent (validation JSON, plain-text reason).
+		snippet, readErr := io.ReadAll(io.LimitReader(response.Response.Body, 512))
+		_, _ = io.Copy(io.Discard, response.Response.Body)
+		if readErr != nil {
+			response.Err = readErr
+			return response
+		}
+		if len(snippet) == 0 {
+			response.Err = fmt.Errorf("http error: %s", response.Response.Status)
+		} else {
+			response.Err = fmt.Errorf("http error: %s: %s", response.Response.Status, snippet)
+		}
+		return response
+	}
+
 	responseBody, readResponseErr := io.ReadAll(response.Response.Body)
 	if readResponseErr != nil {
 		response.Err = readResponseErr
@@ -491,14 +554,31 @@ func decodeResponseBody[R any](simpleAPISelf *SimpleAPIDef, response *APIRespons
 
 	var tempTarget interface{}
 	tempTarget, response.Err = simpleAPISelf.ResponseDeserializer(responseBody, target)
-	response.TargetObject = tempTarget.(*R)
+	typed, ok := tempTarget.(*R)
+	if !ok {
+		response.Err = fmt.Errorf("response deserializer returned %T, not *R", tempTarget)
+		return response
+	}
+	response.TargetObject = typed
 	return response
 }
 
 func (simpleAPISelf *SimpleAPIDef) replacePathParams(relativeURL string, pathParam PathParam) string {
-	finalURL := relativeURL
+	// Split on the first '?'. PathEscape leaves '&' and '=' alone, which is
+	// legal inside a path segment but splits a query. Values in the query use
+	// QueryEscape; values in the path use PathEscape.
+	pathPart, queryPart, hasQuery := strings.Cut(relativeURL, "?")
 	for k, v := range pathParam {
-		finalURL = strings.ReplaceAll(finalURL, fmt.Sprintf("{%s}", k), fmt.Sprintf("%v", v))
+		token := fmt.Sprintf("{%s}", k)
+		raw := fmt.Sprintf("%v", v)
+		pathPart = strings.ReplaceAll(pathPart, token, url.PathEscape(raw))
+		if hasQuery {
+			queryPart = strings.ReplaceAll(queryPart, token, url.QueryEscape(raw))
+		}
+	}
+	finalURL := pathPart
+	if hasQuery {
+		finalURL += "?" + queryPart
 	}
 	return simpleAPISelf.BaseURL + "/" + finalURL
 }

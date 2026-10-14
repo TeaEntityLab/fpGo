@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -304,19 +305,22 @@ func TestGeneralMultipartSerializerMissingFile(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestGeneralMultipartSerializerNilFormPanics(t *testing.T) {
-	assert.Panics(t, func() {
-		_, _, _ = GeneralMultipartSerializer(nil)
-	})
+func TestGeneralMultipartSerializerNilFormReturnsError(t *testing.T) {
+	// A nil form used to panic; a serializer must report the bad input as an
+	// error instead.
+	_, _, err := GeneralMultipartSerializer(nil)
+	assert.Error(t, err)
 }
 
-func TestSimpleHTTPRecursiveVisitWithoutTransportPanics(t *testing.T) {
+func TestSimpleHTTPRecursiveVisitWithoutTransportReturnsError(t *testing.T) {
+	// A RoundTripper must never panic. Without a transport the request used to
+	// index an empty interceptor list and panic; it now surfaces an error.
 	client := &SimpleHTTPDef{}
 	req := httptest.NewRequest(http.MethodGet, "http://example.com", nil)
 
-	assert.Panics(t, func() {
-		_, _ = client.RoundTrip(req)
-	})
+	resp, err := client.RoundTrip(req)
+	assert.Error(t, err)
+	assert.Nil(t, resp)
 }
 
 func TestAPIMakeJSONAndMultipartMethodSelection(t *testing.T) {
@@ -956,4 +960,95 @@ func TestDecodeResponseBodyClosesBody(t *testing.T) {
 	target := 0
 	decodeResponseBody[int](api, resp, &target)
 	assert.True(t, closed, "response body should be closed after decoding")
+}
+
+// Regression: every SimpleHTTP verb cancelled the request context with
+// defer cancel() right after client.Do returned, aborting body reads with
+// context.Canceled. Cancellation is now bound to Body.Close.
+func TestSimpleHTTPGetBodyReadableAfterReturn(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "4096")
+		w.Write(make([]byte, 4096))
+	}))
+	defer server.Close()
+
+	res := NewSimpleHTTP().Get(server.URL)
+	assert.Nil(t, res.Err)
+	body, err := io.ReadAll(res.Response.Body)
+	assert.NoError(t, err)
+	assert.Equal(t, 4096, len(body))
+	res.Response.Body.Close()
+}
+
+// Regression: decodeResponseBody ignored the HTTP status, so a 500 with a
+// matching JSON body deserialized as a successful response. Non-2xx now
+// surfaces an error.
+func TestSimpleAPIErrorStatusSurfacesError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"id":1}`))
+	}))
+	defer server.Close()
+
+	api := NewSimpleAPI(server.URL)
+	get := APIMakeGet[Post](api, "posts/{id}")
+	resp := get(PathParam{"id": 1}, &Post{}).Eval()
+	assert.Error(t, resp.Err)
+	assert.Contains(t, resp.Err.Error(), "500")
+	assert.Contains(t, resp.Err.Error(), `{"id":1}`, "error body must not be discarded")
+}
+
+// Regression: path params were substituted verbatim, letting values with
+// '/', '?', '&' or '%' escape their path segment.
+func TestReplacePathParamsEscapesValues(t *testing.T) {
+	api := NewSimpleAPI("http://example.com")
+	result := api.replacePathParams("users/{id}", PathParam{"id": "a/b?x=1&y=2"})
+	assert.Equal(t, "http://example.com/users/a%2Fb%3Fx=1&y=2", result)
+
+	// A placeholder in the query must be query-escaped. PathEscape leaves '&'
+	// untouched, which would split the query.
+	result = api.replacePathParams("search?q={term}", PathParam{"term": "a&b=c"})
+	assert.Equal(t, "http://example.com/search?q=a%26b%3Dc", result)
+}
+
+// Coverage: bindCancelToBody cancels immediately when there is no response
+// body to bind to (e.g. the request failed).
+func TestBindCancelToBodyWithoutResponseCancels(t *testing.T) {
+	client := NewSimpleHTTP()
+	canceled := false
+	result := client.bindCancelToBody(&ResponseWithError{Err: io.EOF}, func() { canceled = true })
+	assert.True(t, canceled)
+	assert.NotNil(t, result)
+}
+
+// Coverage: multipart serializer surfaces os.Open failures (missing file) and
+// io.Copy failures (a directory opens successfully but cannot be read).
+func TestGeneralMultipartSerializerFileErrors(t *testing.T) {
+	_, _, err := GeneralMultipartSerializer(&MultipartForm{
+		File: map[string][]string{"f": {filepath.Join(t.TempDir(), "does-not-exist.bin")}},
+	})
+	assert.Error(t, err)
+
+	_, _, err = GeneralMultipartSerializer(&MultipartForm{
+		File: map[string][]string{"f": {t.TempDir()}}, // directory: opens, then read fails
+	})
+	assert.Error(t, err)
+}
+
+// Coverage: a deserializer returning a type other than *R must not panic on
+// the assertion; it surfaces an error.
+func TestDecodeResponseBodyDeserializerTypeMismatch(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"id":1}`))
+	}))
+	defer server.Close()
+
+	api := NewSimpleAPI(server.URL)
+	api.ResponseDeserializer = func(body []byte, target interface{}) (interface{}, error) {
+		return "not the right type", nil
+	}
+
+	get := APIMakeGet[Post](api, "posts/{id}")
+	resp := get(PathParam{"id": 1}, &Post{}).Eval()
+	assert.Error(t, resp.Err)
 }
