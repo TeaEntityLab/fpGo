@@ -251,6 +251,7 @@ func TestActorSpawnAfterClose(t *testing.T) {
 	// Spawn should still work but child won't have parent reference
 	child := actorRoot.Spawn(func(self *ActorDef[interface{}], input interface{}) {})
 	assert.NotNil(t, child)
+	defer child.Close()
 
 	// Parent should be nil since actor is closed
 	assert.Nil(t, child.GetParent())
@@ -409,4 +410,36 @@ func TestActorAskTimeoutThenReplySucceedsForNextAsk(t *testing.T) {
 	result, err := AskNewGenerics[interface{}, int](7).AskOnceWithTimeout(actorRoot, time.Second)
 	assert.NoError(t, err)
 	assert.Equal(t, 70, result)
+}
+
+// Regression: actor child IDs came from time.Now(); two spawns landing on the
+// same nanosecond overwrote each other in the children map, silently dropping
+// a child. Spawn now bumps the ID until it is unique.
+func TestActorSpawnIDsUniqueUnderBurst(t *testing.T) {
+	parent := Actor.New(func(self *ActorDef[interface{}], msg interface{}) {})
+	defer parent.Close()
+
+	const n = 200
+	ids := map[interface{}]bool{}
+	for i := 0; i < n; i++ {
+		child := parent.Spawn(func(self *ActorDef[interface{}], msg interface{}) {})
+		ids[child.GetID()] = true
+	}
+	assert.Equal(t, n, len(ids), "every spawned child must have a distinct ID")
+}
+
+// run() must terminate when the owning channel is closed externally (the !ok
+// receive arm), marking the actor closed.
+func TestActorExternalChannelCloseStopsRun(t *testing.T) {
+	ch := make(chan interface{})
+	actor := Actor.NewByOptions(func(self *ActorDef[interface{}], msg interface{}) {}, ch, nil)
+
+	assert.False(t, actor.IsClosed())
+	close(ch)
+
+	deadline := time.Now().Add(2 * time.Second)
+	for !actor.IsClosed() && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	assert.True(t, actor.IsClosed(), "actor must close when its channel closes")
 }
